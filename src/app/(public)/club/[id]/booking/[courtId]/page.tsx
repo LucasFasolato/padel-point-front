@@ -67,7 +67,7 @@ export default function BookingPage() {
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         
         // Ensure you have this endpoint in your backend!
-        const res = await api.get(`/availability`, {
+        const res = await api.get(`/availability/slots`, {
           params: {
             from: dateStr,
             to: dateStr,

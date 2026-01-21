@@ -55,11 +55,8 @@ export default function CheckoutPage() {
       
       // ✅ Success Feedback
       // In a real app with MercadoPago, this is where you'd handle the callback.
-      // For now, we simulate a successful payment.
-      const confirmMsg = confirm("¡Pago exitoso! Tu cancha ha sido reservada. \n\n¿Volver al inicio?");
-      if (confirmMsg) {
-          router.push('/');
-      }
+      // Pass the token so the success page can fetch details securely
+      router.push(`/checkout/success/${reservationId}?token=${token}`);
 
     } catch (error) {
       console.error("Payment failed", error);

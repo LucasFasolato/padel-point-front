@@ -1,44 +1,53 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
-import { Reservation } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { parseISO, format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { CheckCircle2, Calendar, MapPin, ArrowRight, Download, Share2 } from 'lucide-react';
+import { CheckCircle2, Calendar, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckoutReservation } from '@/types';
 
-export default function SuccessPage({ params }: { params: { id: string } }) {
+export default function SuccessPage({ params }: { params: Promise<{ reservationId: string }> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  
+  // Unwrap the params promise (Required for Next.js 15)
+  const unwrappedParams = use(params);
+  const id = unwrappedParams.reservationId;
+
   const token = searchParams.get('token');
-  const [reservation, setReservation] = useState<Reservation | null>(null);
+  const [reservation, setReservation] = useState<CheckoutReservation | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !id) return;
+    
     const fetchRes = async () => {
       try {
-        const res = await api.get(`/public/reservations/${params.id}`, {
+        setLoading(true);
+        const res = await api.get(`/public/reservations/${id}`, {
           params: { token }
         });
         setReservation(res.data);
       } catch (error) {
-        console.error("Error loading reservation");
+        console.error("Error loading reservation", error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchRes();
-  }, [params.id, token]);
+  }, [id, token]);
 
   const handleAddToCalendar = () => {
     if (!reservation) return;
     const start = parseISO(reservation.startAt);
     const end = parseISO(reservation.endAt);
     
-    // Simple .ics generator for robustness without external libs
-    const title = "Padel Match - PadelPoint";
-    const details = `Cancha ID: ${reservation.courtId}`;
-    const location = "Club PadelPoint"; // In a real app, use club.direccion
+    const title = `Padel Match - ${reservation.court?.nombre || 'PadelPoint'}`;
+    const details = `Reserva confirmada. ID: ${reservation.id}`;
+    const location = reservation.court?.club?.nombre || "Club PadelPoint";
     
     const formatDate = (date: Date) => date.toISOString().replace(/-|:|\.\d\d\d/g, "");
     
@@ -62,9 +71,24 @@ export default function SuccessPage({ params }: { params: { id: string } }) {
     link.setAttribute('download', 'padel-reservation.ics');
     document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   };
 
-  if (!reservation) return <div className="flex h-screen items-center justify-center">Cargando ticket...</div>;
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <Loader2 className="animate-spin text-emerald-500 h-10 w-10" />
+      </div>
+    );
+  }
+
+  if (!reservation) {
+    return (
+      <div className="flex h-screen items-center justify-center text-slate-500">
+        No se encontró la reserva o el token es inválido.
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex items-center justify-center">
@@ -101,12 +125,17 @@ export default function SuccessPage({ params }: { params: { id: string } }) {
             <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
                <div>
                   <p className="text-xs text-slate-400 mb-1">Cancha</p>
-                  <p className="font-semibold text-slate-700">Court {reservation.courtId?.slice(-4)}</p>
+                  <p className="font-semibold text-slate-700">{reservation.court?.nombre}</p>
                </div>
                <div className="text-right">
                   <p className="text-xs text-slate-400 mb-1">Precio</p>
                   <p className="font-semibold text-slate-700">{formatCurrency(reservation.precio)}</p>
                </div>
+            </div>
+            
+            <div className="text-center">
+                 <p className="text-xs text-slate-400 mb-1">Club</p>
+                 <p className="font-bold text-slate-900">{reservation.court?.club?.nombre}</p>
             </div>
           </div>
 
@@ -120,7 +149,7 @@ export default function SuccessPage({ params }: { params: { id: string } }) {
             </button>
             
             <button 
-              onClick={() => router.push(`/club/${reservation.court?.id || ''}`)} // Redirects back to club (requires parsing clubId correctly in real app)
+              onClick={() => router.push(`/club/${reservation.court?.club?.id}`)} 
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-3.5 text-sm font-bold text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900"
             >
               Volver al Club <ArrowRight size={16} />
@@ -129,7 +158,7 @@ export default function SuccessPage({ params }: { params: { id: string } }) {
         </div>
 
         <div className="bg-slate-50 p-4 text-center border-t border-slate-100">
-           <p className="text-xs text-slate-400">ID de Reserva: {reservation.id}</p>
+           <p className="text-xs text-slate-400 font-mono">ID de Reserva: {id}</p>
         </div>
       </div>
     </div>

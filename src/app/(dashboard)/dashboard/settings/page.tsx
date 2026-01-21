@@ -84,7 +84,7 @@ export default function SettingsPage() {
         let createdCount = 0;
 
         for (const court of courts) {
-            await api.post('/availability', {
+            await api.post(`/availability`, {
                 courtId: court.id,
                 diasSemana: scheduleForm.diasSemana, // [1,2,3...]
                 horaInicio: scheduleForm.horaInicio,

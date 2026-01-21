@@ -14,26 +14,43 @@ export interface Court {
   precioPorHora: number;
   activa: boolean;
   primaryPhoto?: { url: string; secureUrl: string };
+  club?: Club;
 }
-
 
 export interface Reservation {
   clienteNombre: string;
   clienteEmail: string;
   id: string;
-  courtId: string;
   startAt: string; // ISO String (e.g., "2026-01-20T10:00:00")
   endAt: string;
   precio: number;
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
   paymentStatus: 'PENDING' | 'PAID';
-  // Include nested relations often returned by the API
-  court?: {
+  courtId: string;
+  court?: Court;
+}
+
+export interface CheckoutReservation {
+  id: string;
+  status: string;
+  startAt: string;
+  endAt: string;
+  expiresAt: string | null;
+  precio: number;
+  court: {
     id: string;
     nombre: string;
-    club?: {
+    superficie: string;
+    precioPorHora: number;
+    club: {
+      id: string;
       nombre: string;
-      direccion: string;
     };
   };
+  cliente: {
+    nombre: string;
+    email: string | null;
+    telefono: string | null;
+  };
+  checkoutTokenExpiresAt: string | null;
 }
