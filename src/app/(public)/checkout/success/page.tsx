@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, Calendar, Clock, MapPin, Home, Loader2 } from 'lucide-react';
@@ -9,7 +9,8 @@ import { es } from 'date-fns/locale';
 import api from '@/lib/api';
 import { Reservation } from '@/types';
 
-export default function SuccessPage() {
+// 👇 1. We move the logic into a separate component called "SuccessContent"
+function SuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get('token');
@@ -21,8 +22,7 @@ export default function SuccessPage() {
     if (!token) return;
     const fetchRes = async () => {
       try {
-        // Re-using the public endpoint to get details
-        const res = await api.get(`/public/reservations/${token}`); 
+        const res = await api.get(`/public/reservations/${token}`);
         setReservation(res.data);
       } catch (error) {
         console.error(error);
@@ -97,5 +97,14 @@ export default function SuccessPage() {
 
       </div>
     </div>
+  );
+}
+
+// 👇 2. The Default Export is now a Wrapper with Suspense
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={<div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-green-600"/></div>}>
+      <SuccessContent />
+    </Suspense>
   );
 }

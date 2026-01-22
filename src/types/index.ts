@@ -86,12 +86,16 @@ export interface Reservation {
 // --- DTOs (Data Transfer Objects for Requests) ---
 
 export interface AvailabilitySlot {
+  fecha: string;        // "2026-01-23"
   courtId: string;
-  date: string;      // YYYY-MM-DD
-  startTime: string; // HH:mm
-  endTime: string;   // HH:mm
-  available: boolean;
-  price?: number;    // Calculated price for this specific slot
+  courtNombre: string;
+  ruleId: string;
+  horaInicio: string;   // "09:00"
+  horaFin: string;      // "10:30"
+  ocupado: boolean;
+  estado: 'ocupado' | 'libre';
+  motivoBloqueo: string | null;
+  reservationId: string | null;
 }
 
 export interface CreateHoldRequest {
