@@ -90,5 +90,12 @@ export const PlayerService = {
   createHold: async (payload: CreateHoldRequest): Promise<Reservation> => {
     const { data } = await api.post<Reservation>('/reservations/hold', payload);
     return data;
+  },
+
+  searchClubs: async (query: string): Promise<Club[]> => {
+    const { data } = await api.get<Club[]>('/public/clubs/search', {
+      params: { q: query }
+    });
+    return data;
   }
 };

@@ -3,7 +3,7 @@ import { MapPin, Phone, Mail, Share2, Star } from 'lucide-react';
 
 interface ClubHeroProps {
   club: Club;
-  cover?: MediaAsset | null; 
+  cover?: MediaAsset | null;
   logo?: MediaAsset | null;
 }
 
@@ -34,7 +34,8 @@ export function ClubHero({ club, cover, logo }: ClubHeroProps) {
                 <img src={logo.secureUrl} alt="Logo" className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-slate-100 text-2xl font-bold text-slate-300">
-                  {club.nombre[0]}
+                  {/* 👇 FIXED: Safe check for name */}
+                  {club.nombre ? club.nombre[0] : 'C'}
                 </div>
               )}
             </div>
@@ -42,10 +43,13 @@ export function ClubHero({ club, cover, logo }: ClubHeroProps) {
 
           {/* Text Info */}
           <div className="flex-1 pb-1">
-            <h1 className="text-2xl font-bold text-white shadow-sm sm:text-3xl">{club.nombre}</h1>
+            <h1 className="text-2xl font-bold text-white shadow-sm sm:text-3xl">
+               {club.nombre || 'Club Sin Nombre'}
+            </h1>
             <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-200">
               <span className="flex items-center gap-1">
-                <MapPin size={14} className="text-blue-400" /> {club.direccion}
+                <MapPin size={14} className="text-blue-400" /> 
+                {club.direccion || 'Sin dirección'}
               </span>
               <span className="flex items-center gap-1">
                  <Star size={14} className="text-yellow-400 fill-yellow-400" /> 4.9 (TrustPilot)
