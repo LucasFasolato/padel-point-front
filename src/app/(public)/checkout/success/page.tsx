@@ -12,17 +12,17 @@ import { Reservation } from '@/types';
 export default function SuccessPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const id = searchParams.get('id');
+  const token = searchParams.get('token');
 
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
+    if (!token) return;
     const fetchRes = async () => {
       try {
         // Re-using the public endpoint to get details
-        const res = await api.get(`/public/reservations/${id}`); 
+        const res = await api.get(`/public/reservations/${token}`); 
         setReservation(res.data);
       } catch (error) {
         console.error(error);
@@ -31,7 +31,7 @@ export default function SuccessPage() {
       }
     };
     fetchRes();
-  }, [id]);
+  }, [token]);
 
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-green-600"/></div>;
   if (!reservation) return <div className="h-screen flex items-center justify-center">Reserva no encontrada</div>;
