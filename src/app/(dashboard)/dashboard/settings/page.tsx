@@ -64,12 +64,11 @@ export default function SettingsPage() {
   // 3. Generate Availability Rules (The Engine)
   const handleApplySchedule = async () => {
     if (!club) return;
-    // Confirmation
     if (!window.confirm("Esto generará horarios para TODAS tus canchas activas. ¿Continuar?")) return;
     
     setGeneratingRules(true);
     try {
-        // A. Get all courts first
+        // 1. Get all courts first
         const courtsRes = await api.get(`/courts/by-club/${club.id}`);
         const courts: Court[] = courtsRes.data;
 
@@ -78,15 +77,14 @@ export default function SettingsPage() {
             return;
         }
 
-        // B. Loop and create rules for each court
-        // In a real prod app, you might want a backend endpoint that does this in bulk for all courts.
-        // For this MVP, we iterate here to use the existing POST /availability endpoint.
+        // 2. Loop courts, but use the BULK endpoint for each court
+        // This sends [1,2,3,4,5] in one go, which matches your DTO
         let createdCount = 0;
 
         for (const court of courts) {
-            await api.post(`/availability`, {
+            await api.post(`/availability/rules/bulk`, { // <--- CHANGE URL TO 'bulk'
                 courtId: court.id,
-                diasSemana: scheduleForm.diasSemana, // [1,2,3...]
+                diasSemana: scheduleForm.diasSemana, // Array [1,2,3...]
                 horaInicio: scheduleForm.horaInicio,
                 horaFin: scheduleForm.horaFin,
                 slotMinutos: scheduleForm.slotMinutos,
@@ -95,16 +93,15 @@ export default function SettingsPage() {
             createdCount++;
         }
 
-        setMessage({ type: 'success', text: `¡Listo! Horarios generados para ${createdCount} canchas.` });
+        setMessage({ type: 'success', text: `¡Listo! Horarios configurados para ${createdCount} canchas.` });
 
     } catch (error) {
         console.error(error);
-        setMessage({ type: 'error', text: 'Error al generar horarios. Puede que ya existan reglas duplicadas.' });
+        setMessage({ type: 'error', text: 'Error al generar horarios. Verifica que no existan reglas duplicadas.' });
     } finally {
         setGeneratingRules(false);
     }
   };
-
   if (loading) return <div className="flex h-full items-center justify-center text-slate-400">Cargando configuración...</div>;
   if (!club) return <div className="p-8 text-center">No se encontró el club.</div>;
 
