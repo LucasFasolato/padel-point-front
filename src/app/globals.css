@@ -5,15 +5,11 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    -webkit-tap-highlight-color: transparent; /* Removes blue highlight on mobile tap */
-  }
-  
-  body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
-/* Hide Scrollbar for Horizontal Scrollers (DateNavigator) */
+/* Hide Scrollbar for Horizontal Scrollers */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

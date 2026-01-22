@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { Toaster } from "sonner"; // 👈 Import Sonner
+import { Toaster } from "sonner";
+import { cn } from "@/lib/utils"; // Make sure you import 'cn'
 import "./globals.css";
 
-// Configure Font
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -18,10 +18,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={inter.className}>
+      {/* 👇 We apply the classes here instead of globals.css */}
+      <body className={cn(
+          inter.className, 
+          "bg-slate-50 text-slate-900 antialiased"
+      )}>
         {children}
-        
-        {/* 👇 Global Notification Container */}
         <Toaster 
           position="top-center" 
           richColors 
