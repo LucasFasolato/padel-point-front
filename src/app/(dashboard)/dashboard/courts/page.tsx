@@ -118,8 +118,8 @@ export default function CourtsPage() {
               <div key={court.id} className="group relative overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 transition-all hover:shadow-lg">
                 {/* Image Area */}
                 <div className="relative h-48 w-full bg-slate-100">
-                  {court.primaryPhoto ? (
-                    <img src={court.primaryPhoto.secureUrl} className="h-full w-full object-cover" alt="Cancha" />
+                  {court.primaryImage ? (
+                    <img src={court.primaryImage.secureUrl} className="h-full w-full object-cover" alt="Cancha" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-slate-400">
                       <Layout size={32} opacity={0.5} />
@@ -214,7 +214,7 @@ export default function CourtsPage() {
                                 <ImageUploader 
                                     ownerId={editingCourt.id} 
                                     kind="COURT_PRIMARY"
-                                    currentImage={editingCourt.primaryPhoto?.secureUrl}
+                                    currentImage={editingCourt.primaryImage?.secureUrl}
                                     onUploadComplete={(url: string, secureUrl: string) => {
                                         // Update local state to reflect change immediately
                                         setEditingCourt(prev => ({ ...prev, primaryPhoto: { url, secureUrl } }));

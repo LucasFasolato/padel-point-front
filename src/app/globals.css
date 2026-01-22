@@ -1,17 +1,29 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* Tus animaciones personalizadas pueden ir debajo si quieres */
-@theme {
-  --animate-slide-up: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  --animate-fade-in: fadeIn 0.2s ease-out forwards;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent; /* Removes blue highlight on mobile tap */
+  }
+  
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
 }
 
-@keyframes slideUp {
-  from { transform: translate(-50%, 100%); }
-  to { transform: translate(-50%, -50%); }
+/* Hide Scrollbar for Horizontal Scrollers (DateNavigator) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+/* Custom Selection Color */
+::selection {
+  background-color: #bfdbfe; /* Blue-200 */
+  color: #1e3a8a; /* Blue-900 */
 }
