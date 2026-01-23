@@ -5,59 +5,92 @@ import { useParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { Loader2, AlertCircle } from 'lucide-react';
 
-// Services & Types
 import { PlayerService } from '@/services/player-service';
-import { Club, Court, MediaAsset, AvailabilitySlot } from '@/types';
+import type {
+  Club,
+  Court,
+  AvailabilitySlot,
+  PublicMedia,
+  PublicClubOverview,
+} from '@/types';
+
 import { useBookingStore } from '@/store/booking-store';
 
-// Components
-import { ClubHero } from '@/app/components/public/club-hero'; // Check your import paths
+import { ClubHero } from '@/app/components/public/club-hero';
 import { DateNavigator } from '@/app/components/public/date-navigator';
 import { CourtCard } from '@/app/components/public/court-card';
-import { BookingDrawer } from '@/app/components/public/booking-drawer'; // We enable this now
+import { BookingDrawer } from '@/app/components/public/booking-drawer';
 
 export default function ClubPage() {
   const params = useParams();
   const id = params.id as string;
-  
+
   // Store (Global State for Booking)
-  const { 
-    selectedDate, 
-    setDate, 
-    setSelectedSlot, 
-    setCourt, 
-    setClub: setStoreClub, // Alias to avoid conflict with local state
-    openDrawer 
+  const {
+    selectedDate,
+    setDate,
+    setSelectedSlot,
+    setCourt,
+    setClub: setStoreClub,
+    openDrawer,
   } = useBookingStore();
 
   // Local Data State
   const [club, setClub] = useState<Club | null>(null);
-  const [assets, setAssets] = useState<{ cover?: MediaAsset | null; logo?: MediaAsset | null }>({});
+  const [assets, setAssets] = useState<{ cover?: PublicMedia | null; logo?: PublicMedia | null }>({});
   const [courts, setCourts] = useState<Court[]>([]);
-  
+
   // Availability State
   const [availability, setAvailability] = useState<Record<string, AvailabilitySlot[]>>({});
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [initLoading, setInitLoading] = useState(true);
 
-  // 1. Initial Load (Club, Assets, Courts)
+  // 1) Initial Load (Overview: club + media + courts)
   useEffect(() => {
     if (!id) return;
 
     const initData = async () => {
       try {
-        const [clubData, courtsData, assetsData] = await Promise.all([
-          PlayerService.getClub(id),
-          PlayerService.getCourts(id),
-          PlayerService.getClubAssets(id)
-        ]);
-        
+        const overview: PublicClubOverview = await PlayerService.getClubOverview(id);
+
+        const clubData: Club = {
+          id: overview.club.id,
+          nombre: overview.club.nombre,
+          direccion: overview.club.direccion,
+          telefono: overview.club.telefono,
+          email: overview.club.email,
+          activo: overview.club.activo,
+          latitud: overview.club.latitud,
+          longitud: overview.club.longitud,
+
+          // Estos dos no vienen en overview, pero tu type Club los tiene.
+          // Los seteamos como empty para evitar undefined en UI.
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
         setClub(clubData);
-        setStoreClub(clubData); // Sync with store
-        setCourts(courtsData);
-        setAssets(assetsData);
+        setStoreClub(clubData);
+
+        setAssets({
+          logo: overview.media.logo,
+          cover: overview.media.cover,
+        });
+
+        // Adaptamos courts (overview) a tu Court type actual
+        const mappedCourts: Court[] = overview.courts.map((c) => ({
+          id: c.id,
+          nombre: c.nombre,
+          superficie: c.superficie,
+          precioPorHora: Number(c.precioPorHora),
+          activa: c.activa,
+          clubId: overview.club.id,
+          primaryImage: c.primaryPhoto ?? undefined, 
+        }));
+
+        setCourts(mappedCourts);
       } catch (e) {
-        console.error("Failed to load club data", e);
+        console.error('Failed to load club overview', e);
       } finally {
         setInitLoading(false);
       }
@@ -66,17 +99,16 @@ export default function ClubPage() {
     initData();
   }, [id, setStoreClub]);
 
-  // 2. Fetch Availability (When Date or Courts change)
+  // 2) Fetch Availability (When Date or Courts change)
   useEffect(() => {
     const fetchAvailability = async () => {
       if (courts.length === 0) return;
-      
+
       setLoadingSlots(true);
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       const nextAvailability: Record<string, AvailabilitySlot[]> = {};
 
       try {
-        // Run requests in parallel
         await Promise.all(
           courts.map(async (court) => {
             try {
@@ -88,9 +120,10 @@ export default function ClubPage() {
             }
           })
         );
+
         setAvailability(nextAvailability);
       } catch (error) {
-        console.error("Error fetching availability", error);
+        console.error('Error fetching availability', error);
       } finally {
         setLoadingSlots(false);
       }
@@ -99,12 +132,15 @@ export default function ClubPage() {
     fetchAvailability();
   }, [selectedDate, courts]);
 
-  // 3. Interaction Handler
-  const handleSlotSelect = useCallback((slot: AvailabilitySlot, court: Court) => {
-    setSelectedSlot(slot);
-    setCourt(court);
-    openDrawer();
-  }, [setSelectedSlot, setCourt, openDrawer]);
+  // 3) Interaction Handler
+  const handleSlotSelect = useCallback(
+    (slot: AvailabilitySlot, court: Court) => {
+      setSelectedSlot(slot);
+      setCourt(court);
+      openDrawer();
+    },
+    [setSelectedSlot, setCourt, openDrawer]
+  );
 
   // --- RENDER STATES ---
 
@@ -131,23 +167,15 @@ export default function ClubPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-32">
-      
-      {/* 1. Hero & Info */}
-      <ClubHero 
-        club={club} 
-        cover={assets.cover} 
-        logo={assets.logo} 
-      />
+      {/* 1) Hero */}
+      <ClubHero club={club} cover={assets.cover} logo={assets.logo} />
 
-      {/* 2. Date Navigator (Sticky) */}
+      {/* 2) Date Navigator (Sticky) */}
       <div className="sticky top-0 z-30 -mt-6">
-         <DateNavigator 
-           selectedDate={selectedDate} 
-           onSelect={setDate} 
-         />
+        <DateNavigator selectedDate={selectedDate} onSelect={setDate} />
       </div>
 
-      {/* 3. Courts List */}
+      {/* 3) Courts List */}
       <div className="mx-auto max-w-md space-y-6 px-4 pt-8 sm:max-w-3xl">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-lg font-bold text-slate-900">Canchas Disponibles</h2>
@@ -155,15 +183,13 @@ export default function ClubPage() {
             {courts.length} {courts.length === 1 ? 'Pista' : 'Pistas'}
           </span>
         </div>
-        
-        {courts.map(court => (
-          <CourtCard 
+
+        {courts.map((court) => (
+          <CourtCard
             key={court.id}
             court={court}
-            // Pass the specific slots for this court
             slots={availability[court.id] || []}
             loading={loadingSlots}
-            // Pass the handler to open the drawer
             onSlotSelect={(slot) => handleSlotSelect(slot, court)}
           />
         ))}
@@ -176,9 +202,8 @@ export default function ClubPage() {
         )}
       </div>
 
-      {/* 4. Booking Drawer (The Magic ✨) */}
+      {/* 4) Booking Drawer */}
       <BookingDrawer />
-
     </div>
   );
 }

@@ -46,10 +46,48 @@ export interface Club {
   activo: boolean;
   createdAt: string;
   updatedAt: string;
-  // Computed fields (fetched via separate endpoints or overview)
+  latitud?: number | null;
+  longitud?: number | null;
+
   logo?: MediaAsset;
   cover?: MediaAsset;
 }
+
+export type PublicCourtCard = {
+  id: string;
+  nombre: string;
+  superficie: string;
+  precioPorHora: number;
+  activa: boolean;
+  primaryPhoto: PublicMedia | null;
+};
+
+export type PublicMedia = { url: string; secureUrl: string };
+
+export type PublicClubOverview = {
+  club: {
+    id: string;
+    nombre: string;
+    direccion: string;
+    telefono: string;
+    email: string;
+    latitud: number | null;
+    longitud: number | null;
+    activo: boolean;
+  };
+  media: {
+    logo: PublicMedia | null;
+    cover: PublicMedia | null;
+  };
+  courts: Array<{
+    id: string;
+    nombre: string;
+    superficie: string;
+    precioPorHora: number;
+    activa: boolean;
+    primaryPhoto: PublicMedia | null;
+  }>;
+};
 
 export interface Court {
   id: string;
@@ -59,7 +97,7 @@ export interface Court {
   activa: boolean;
   clubId: string; // Relation
   // Computed fields
-  primaryImage?: MediaAsset;
+  primaryImage?: MediaAsset | PublicMedia;
   club?:Club;
 }
 
