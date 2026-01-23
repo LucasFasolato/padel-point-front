@@ -42,7 +42,8 @@ export default function ClubPage() {
 
   // Availability State
   const [availability, setAvailability] = useState<Record<string, AvailabilitySlot[]>>({});
-  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [loadingByCourt, setLoadingByCourt] = useState<Record<string, boolean>>({});
+  const [errorByCourt, setErrorByCourt] = useState<Record<string, string | null>>({});
   const [initLoading, setInitLoading] = useState(true);
 
   // 1) Initial Load (Overview: club + media + courts)
@@ -104,29 +105,36 @@ export default function ClubPage() {
     const fetchAvailability = async () => {
       if (courts.length === 0) return;
 
-      setLoadingSlots(true);
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      const nextAvailability: Record<string, AvailabilitySlot[]> = {};
 
-      try {
-        await Promise.all(
-          courts.map(async (court) => {
-            try {
-              const slots = await PlayerService.getAvailability(court.id, dateStr);
-              nextAvailability[court.id] = slots;
-            } catch (err) {
-              console.error(`Error fetching slots for court ${court.id}`, err);
-              nextAvailability[court.id] = [];
-            }
-          })
-        );
+      // mark all courts loading
+      setLoadingByCourt(() => {
+        const obj: Record<string, boolean> = {};
+        for (const c of courts) obj[c.id] = true;
+        return obj;
+      });
 
-        setAvailability(nextAvailability);
-      } catch (error) {
-        console.error('Error fetching availability', error);
-      } finally {
-        setLoadingSlots(false);
-      }
+      setErrorByCourt(() => {
+        const obj: Record<string, string | null> = {};
+        for (const c of courts) obj[c.id] = null;
+        return obj;
+      });
+
+      await Promise.all(
+        courts.map(async (court) => {
+          try {
+            const slots = await PlayerService.getAvailability(court.id, dateStr);
+            setAvailability((prev) => ({ ...prev, [court.id]: slots }));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } catch (e: any) {
+            const msg = e?.response?.data?.message || 'No pudimos cargar los horarios.';
+            setAvailability((prev) => ({ ...prev, [court.id]: [] }));
+            setErrorByCourt((prev) => ({ ...prev, [court.id]: msg }));
+          } finally {
+            setLoadingByCourt((prev) => ({ ...prev, [court.id]: false }));
+          }
+        })
+      );
     };
 
     fetchAvailability();
@@ -189,7 +197,8 @@ export default function ClubPage() {
             key={court.id}
             court={court}
             slots={availability[court.id] || []}
-            loading={loadingSlots}
+            loading={!!loadingByCourt[court.id]}
+            error={errorByCourt[court.id] || null}
             onSlotSelect={(slot) => handleSlotSelect(slot, court)}
           />
         ))}
