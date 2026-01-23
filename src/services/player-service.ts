@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import type { AvailabilitySlot, Club, Court, CreateHoldRequest, MediaAsset, PublicClubOverview, Reservation } from '@/types';
+import type { AvailabilitySlot, Club, Court, CreateHoldRequest, HoldReservationResponse, MediaAsset, PublicClubOverview, Reservation } from '@/types';
 
 export const PlayerService = {
   listClubs: async (): Promise<Club[]> => {
@@ -44,8 +44,8 @@ export const PlayerService = {
     return data;
   },
 
-  createHold: async (payload: CreateHoldRequest): Promise<Reservation> => {
-    const { data } = await api.post<Reservation>('/reservations/hold', payload);
+  createHold: async (payload: CreateHoldRequest): Promise<HoldReservationResponse> => {
+    const { data } = await api.post<HoldReservationResponse>('/reservations/hold', payload);
     return data;
   },
 };

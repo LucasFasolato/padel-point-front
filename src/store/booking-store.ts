@@ -1,42 +1,130 @@
 import { create } from 'zustand';
-import { Club, Court, AvailabilitySlot } from '@/types';
+import { Club, Court, AvailabilitySlot, CreateHoldRequest, HoldReservationResponse } from '@/types';
+
+type HoldState = 'idle' | 'creating' | 'held' | 'expired' | 'error';
+
+function toIsoLocal(date: Date) {
+  // No invento TZ acá. Vos ya mandás ISO desde front.
+  // Si armás ISO con Date, queda UTC. Está OK si el back lo interpreta con Luxon TZ.
+  return date.toISOString();
+}
+
+function slotToIso(selectedDate: Date, hhmm: string) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const d = new Date(selectedDate);
+  d.setHours(h, m, 0, 0);
+  return toIsoLocal(d);
+}
 
 interface BookingState {
-  // Data State
+  // Data
   club: Club | null;
   court: Court | null;
   selectedDate: Date;
-  selectedSlot: AvailabilitySlot | null; // 👈 NEW
-  
-  // UI State
-  isDrawerOpen: boolean; // 👈 NEW
+  selectedSlot: AvailabilitySlot | null;
+
+  // Hold flow
+  hold: HoldReservationResponse | null;
+  holdState: HoldState;
+  holdError: string | null;
+
+  // UI
+  isDrawerOpen: boolean;
 
   // Actions
   setClub: (club: Club) => void;
   setCourt: (court: Court) => void;
   setDate: (date: Date) => void;
-  setSelectedSlot: (slot: AvailabilitySlot | null) => void; // 👈 NEW
-  
-  // Drawer Actions
-  openDrawer: () => void;  // 👈 NEW
-  closeDrawer: () => void; // 👈 NEW
+  setSelectedSlot: (slot: AvailabilitySlot | null) => void;
+
+  openDrawer: () => void;
+  closeDrawer: () => void;
+
+  // Hold actions
+  setHoldCreating: () => void;
+  setHoldSuccess: (hold: HoldReservationResponse) => void;
+  setHoldError: (message: string) => void;
+  clearHold: () => void;
+
+  // Helpers
+  buildHoldPayload: (input: { nombre: string; email?: string; telefono?: string; precio: number }) => CreateHoldRequest | null;
+  getHoldSecondsLeft: () => number;
 }
 
-export const useBookingStore = create<BookingState>((set) => ({
-  // Initial State
+export const useBookingStore = create<BookingState>((set, get) => ({
+  // Initial
   club: null,
   court: null,
   selectedDate: new Date(),
   selectedSlot: null,
+
+  hold: null,
+  holdState: 'idle',
+  holdError: null,
+
   isDrawerOpen: false,
 
-  // Actions implementation
+  // Basic setters
   setClub: (club) => set({ club }),
   setCourt: (court) => set({ court }),
   setDate: (date) => set({ selectedDate: date }),
-  
   setSelectedSlot: (slot) => set({ selectedSlot: slot }),
-  
-  openDrawer: () => set({ isDrawerOpen: true }),
-  closeDrawer: () => set({ isDrawerOpen: false, selectedSlot: null }), // Reset slot on close
+
+  resetFlow: () =>
+    set({
+      hold: null,
+      holdState: 'idle',
+      holdError: null,
+    }),
+
+  openDrawer: () =>
+    set({
+      isDrawerOpen: true,
+      hold: null,
+      holdState: 'idle',
+      holdError: null,
+    }),
+
+  closeDrawer: () =>
+    set({
+      isDrawerOpen: false,
+      selectedSlot: null,
+      hold: null,
+      holdState: 'idle',
+      holdError: null,
+    }),
+
+  // Hold reducers
+  setHoldCreating: () => set({ holdState: 'creating', holdError: null }),
+  setHoldSuccess: (hold) => set({ hold, holdState: 'held', holdError: null }),
+  setHoldError: (message) => set({ holdState: 'error', holdError: message }),
+  clearHold: () => set({ hold: null, holdState: 'idle', holdError: null }),
+
+  // Build payload from slot
+  buildHoldPayload: ({ nombre, email, telefono, precio }) => {
+    const { court, selectedDate, selectedSlot } = get();
+    if (!court || !selectedSlot) return null;
+
+    const startAt = slotToIso(selectedDate, selectedSlot.horaInicio);
+    const endAt = slotToIso(selectedDate, selectedSlot.horaFin);
+
+    return {
+      courtId: court.id,
+      startAt,
+      endAt,
+      clienteNombre: nombre,
+      clienteEmail: email?.trim() ? email.trim() : undefined,
+      clienteTelefono: telefono?.trim() ? telefono.trim() : undefined,
+      precio,
+    };
+  },
+
+  // Seconds left for hold
+  getHoldSecondsLeft: () => {
+    const { hold } = get();
+    if (!hold?.expiresAt) return 0;
+    const exp = new Date(hold.expiresAt).getTime();
+    const now = Date.now();
+    return Math.max(0, Math.floor((exp - now) / 1000));
+  },
 }));

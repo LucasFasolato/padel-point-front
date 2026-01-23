@@ -146,6 +146,16 @@ export interface CreateHoldRequest {
   precio: number;
 }
 
+export interface HoldReservationResponse {
+  id: string;
+  status: ReservationStatus; // 'hold'
+  startAt: string; // ISO (JSON)
+  endAt: string;   // ISO
+  expiresAt: string; // ISO
+  precio: number;
+  checkoutToken: string;
+}
+
 export interface CheckoutReservation extends Reservation {
   court: Court & {
     club: Club;
