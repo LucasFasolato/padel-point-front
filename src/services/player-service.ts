@@ -1,5 +1,14 @@
 import api from '@/lib/api';
-import type { AvailabilitySlot, Club, Court, CreateHoldRequest, HoldReservationResponse, MediaAsset, PublicClubOverview, Reservation } from '@/types';
+import type {
+  AvailabilitySlot,
+  Club,
+  Court,
+  CreateHoldRequest,
+  HoldReservationResponse,
+  MediaAsset,
+  PublicClubOverview,
+  CheckoutReservation,
+} from '@/types';
 
 export const PlayerService = {
   listClubs: async (): Promise<Club[]> => {
@@ -19,7 +28,7 @@ export const PlayerService = {
     return data;
   },
 
-  // COURTS (tu versión actual está ok, pero ojo N+1; lo dejamos para después)
+  // COURTS
   getCourts: async (clubId: string): Promise<Court[]> => {
     const { data } = await api.get<Court[]>(`/public/courts/club/${clubId}`);
 
@@ -44,8 +53,24 @@ export const PlayerService = {
     return data;
   },
 
+  // HOLD
   createHold: async (payload: CreateHoldRequest): Promise<HoldReservationResponse> => {
     const { data } = await api.post<HoldReservationResponse>('/reservations/hold', payload);
+    return data;
+  },
+
+  // CHECKOUT (PUBLIC)
+  getCheckout: async (reservationId: string, token: string): Promise<CheckoutReservation> => {
+    const { data } = await api.get<CheckoutReservation>(`/public/reservations/${reservationId}`, {
+      params: { token },
+    });
+    return data;
+  },
+
+  confirmCheckout: async (id: string, token: string): Promise<CheckoutReservation> => {
+    const { data } = await api.post<CheckoutReservation>(`/public/reservations/${id}/confirm`, {
+      token,
+    });
     return data;
   },
 };

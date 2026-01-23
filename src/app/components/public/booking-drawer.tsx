@@ -15,12 +15,26 @@ import {
 import { cn } from '@/lib/utils';
 import { PlayerService } from '@/services/player-service';
 import { useBookingStore } from '@/store/booking-store';
-import { CreateHoldRequest } from '@/types';
+import type { CreateHoldRequest } from '@/types';
 
 function formatMMSS(totalSeconds: number) {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function buildIsoForDayAndTime(day: Date, hhmm: string) {
+  const [hh, mm] = hhmm.split(':').map((n) => Number(n));
+  const dt = new Date(
+    day.getFullYear(),
+    day.getMonth(),
+    day.getDate(),
+    Number.isFinite(hh) ? hh : 0,
+    Number.isFinite(mm) ? mm : 0,
+    0,
+    0
+  );
+  return dt.toISOString();
 }
 
 export function BookingDrawer() {
@@ -31,20 +45,22 @@ export function BookingDrawer() {
     court,
     selectedDate,
     selectedSlot,
+
     hold,
     holdState,
     holdError,
     setHoldCreating,
     setHoldSuccess,
     setHoldError,
-    getHoldSecondsLeft,
   } = useBookingStore();
 
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [telefono, setTelefono] = useState('');
+
+  // Tick para contador (sin setState “cascada” rara)
   const [now, setNow] = useState(() => Date.now());
-  
+
   const resumen = useMemo(() => {
     if (!club || !court || !selectedSlot) return null;
     return {
@@ -57,6 +73,7 @@ export function BookingDrawer() {
     };
   }, [club, court, selectedDate, selectedSlot]);
 
+  // ESC + scroll lock (solo si está abierto)
   useEffect(() => {
     if (!isDrawerOpen) return;
 
@@ -75,21 +92,27 @@ export function BookingDrawer() {
     };
   }, [isDrawerOpen, closeDrawer]);
 
-
-  // ✅ countdown tick (sin setState cascada problemática)
+  // Countdown tick solo si hay hold activo
   useEffect(() => {
-    if (!isDrawerOpen || !hold?.expiresAt) return;
+    if (!isDrawerOpen) return;
+    if (holdState !== 'held') return;
+    if (!hold?.expiresAt) return;
+
     const t = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(t);
-  }, [isDrawerOpen, hold?.expiresAt]);
+  }, [isDrawerOpen, holdState, hold?.expiresAt]);
 
-  const secondsLeft = (() => {
-    if (!hold?.expiresAt) return 0;
-    const exp = new Date(hold.expiresAt).getTime();
-    return Math.max(0, Math.floor((exp - now) / 1000));
-  })();
+  const secondsLeft =
+  holdState === 'held' && hold?.expiresAt
+    ? Math.max(
+        0,
+        Math.floor((new Date(hold.expiresAt).getTime() - now) / 1000),
+      )
+    : 0;
 
-  // form key: cambia si cambia el slot => remount form limpio
+  const isExpired = holdState === 'held' && secondsLeft <= 0;
+
+  // form key: cambia si cambia slot => inputs limpios sin useEffect reseteando state
   const formKey = useMemo(() => {
     if (!selectedSlot || !court) return 'empty';
     return `${court.id}-${selectedSlot.fecha}-${selectedSlot.horaInicio}-${selectedSlot.horaFin}`;
@@ -108,56 +131,47 @@ export function BookingDrawer() {
     setHoldCreating();
 
     try {
-      const payload = {
+      const payload: CreateHoldRequest = {
         courtId: court.id,
-        startAt: new Date(
-          selectedDate.getFullYear(),
-          selectedDate.getMonth(),
-          selectedDate.getDate(),
-          Number(selectedSlot.horaInicio.split(':')[0]),
-          Number(selectedSlot.horaInicio.split(':')[1]),
-          0,
-          0
-        ).toISOString(),
-        endAt: new Date(
-          selectedDate.getFullYear(),
-          selectedDate.getMonth(),
-          selectedDate.getDate(),
-          Number(selectedSlot.horaFin.split(':')[0]),
-          Number(selectedSlot.horaFin.split(':')[1]),
-          0,
-          0
-        ).toISOString(),
+        startAt: buildIsoForDayAndTime(selectedDate, selectedSlot.horaInicio),
+        endAt: buildIsoForDayAndTime(selectedDate, selectedSlot.horaFin),
         clienteNombre: nombre.trim(),
         clienteEmail: email.trim() ? email.trim() : undefined,
         clienteTelefono: telefono.trim() ? telefono.trim() : undefined,
         precio: resumen.precio,
       };
 
-      const res = await PlayerService.createHold(payload as CreateHoldRequest);
+      const res = await PlayerService.createHold(payload);
       setHoldSuccess(res);
       toast.success('Turno retenido por 10 minutos ✅');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
+    } catch (err: unknown) {
+      // sin any: extraemos mensaje de forma segura
+      const e = err as {
+        response?: { data?: { message?: string | string[] } };
+        message?: string;
+      };
+
+      const raw = e?.response?.data?.message;
       const msg =
-        e?.response?.data?.message ||
-        (Array.isArray(e?.response?.data?.message)
-          ? e.response.data.message.join(', ')
-          : null) ||
-        'No se pudo reservar. Probá otro horario.';
+        typeof raw === 'string'
+          ? raw
+          : Array.isArray(raw)
+          ? raw.join(', ')
+          : e?.message || 'No se pudo reservar. Probá otro horario.';
+
       setHoldError(String(msg));
       toast.error(String(msg));
     }
   };
 
   const onGoCheckout = () => {
-    if (!hold?.id || !hold?.checkoutToken) return;
-    window.location.href = `/checkout/${hold.id}?token=${encodeURIComponent(
-      hold.checkoutToken
-    )}`;
+    if (isExpired) {
+      toast.error('El hold expiró. Elegí otro horario.');
+      return;
+    }
+    if (!hold?.id || !hold.checkoutToken) return;
+    window.location.href = `/checkout/${hold.id}?token=${encodeURIComponent(hold.checkoutToken)}`;
   };
-
-  
 
   return (
     <div className="fixed inset-0 z-50">
@@ -167,9 +181,9 @@ export function BookingDrawer() {
         onClick={closeDrawer}
       />
 
-      {/* PANEL: bottom-sheet on mobile, centered modal on md+ */}
+      {/* PANEL */}
       <div className="absolute inset-x-0 bottom-0 mx-auto w-full md:inset-0 md:flex md:items-center md:justify-center">
-        <div
+        <div onClick={(e) => e.stopPropagation()}
           className={cn(
             'w-full bg-white shadow-2xl ring-1 ring-black/10',
             'rounded-t-3xl md:rounded-3xl',
@@ -206,7 +220,7 @@ export function BookingDrawer() {
             </button>
           </div>
 
-          {/* body (scrollable) */}
+          {/* body */}
           <div className="flex-1 overflow-auto px-5 py-5 md:px-6">
             <div className="grid gap-5 md:grid-cols-2">
               {/* Summary */}
@@ -256,11 +270,31 @@ export function BookingDrawer() {
                   )}
                 </div>
 
-                {/* status blocks */}
-                {holdState === 'held' && hold && (
+                {/* Expirado */}
+                {isExpired && (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 text-rose-600" size={18} />
+                      <div>
+                        <p className="text-sm font-semibold text-rose-900">
+                          El turno expiró
+                        </p>
+                        <p className="text-xs text-rose-800/80">
+                          Elegí otro horario para continuar.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Hold activo */}
+                {holdState === 'held' && hold && !isExpired && (
                   <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                     <div className="flex items-start gap-2">
-                      <CheckCircle2 className="mt-0.5 text-emerald-600" size={18} />
+                      <CheckCircle2
+                        className="mt-0.5 text-emerald-600"
+                        size={18}
+                      />
                       <div>
                         <p className="text-sm font-semibold text-emerald-900">
                           Hold activo
@@ -277,10 +311,14 @@ export function BookingDrawer() {
                   </div>
                 )}
 
+                {/* Error */}
                 {holdState === 'error' && holdError && (
                   <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
                     <div className="flex items-start gap-2">
-                      <AlertTriangle className="mt-0.5 text-amber-600" size={18} />
+                      <AlertTriangle
+                        className="mt-0.5 text-amber-600"
+                        size={18}
+                      />
                       <div>
                         <p className="text-sm font-semibold text-amber-900">
                           No se pudo reservar
@@ -342,16 +380,18 @@ export function BookingDrawer() {
 
                 <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-100">
                   <p className="text-xs text-slate-500">
-                    Tip: si ponés email, después podés ver tus reservas en “Mis turnos”.
+                    Tip: si ponés email, después podés ver tus reservas en “Mis
+                    turnos”.
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* footer sticky (CTA siempre visible) */}
+          {/* footer */}
           <div className="border-t border-slate-100 bg-white px-5 py-4 md:px-6">
             <div className="grid gap-3 md:grid-cols-2">
+              {/* CTA principal */}
               {holdState !== 'held' ? (
                 <button
                   disabled={!canSubmit}
@@ -374,6 +414,13 @@ export function BookingDrawer() {
                       Retener turno (10 min)
                     </>
                   )}
+                </button>
+              ) : isExpired ? (
+                <button
+                  onClick={closeDrawer}
+                  className="flex h-12 w-full items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-bold text-white hover:bg-slate-800"
+                >
+                  Elegir otro horario
                 </button>
               ) : (
                 <button

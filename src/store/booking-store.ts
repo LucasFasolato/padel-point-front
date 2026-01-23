@@ -1,19 +1,13 @@
 import { create } from 'zustand';
-import { Club, Court, AvailabilitySlot, CreateHoldRequest, HoldReservationResponse } from '@/types';
+import type { Club, Court, AvailabilitySlot, CreateHoldRequest, HoldReservationResponse } from '@/types';
 
 type HoldState = 'idle' | 'creating' | 'held' | 'expired' | 'error';
-
-function toIsoLocal(date: Date) {
-  // No invento TZ acá. Vos ya mandás ISO desde front.
-  // Si armás ISO con Date, queda UTC. Está OK si el back lo interpreta con Luxon TZ.
-  return date.toISOString();
-}
 
 function slotToIso(selectedDate: Date, hhmm: string) {
   const [h, m] = hhmm.split(':').map(Number);
   const d = new Date(selectedDate);
   d.setHours(h, m, 0, 0);
-  return toIsoLocal(d);
+  return d.toISOString(); // UTC ISO (OK con Luxon TZ en back)
 }
 
 interface BookingState {
@@ -39,6 +33,7 @@ interface BookingState {
 
   openDrawer: () => void;
   closeDrawer: () => void;
+  resetFlow: () => void;
 
   // Hold actions
   setHoldCreating: () => void;
@@ -47,7 +42,13 @@ interface BookingState {
   clearHold: () => void;
 
   // Helpers
-  buildHoldPayload: (input: { nombre: string; email?: string; telefono?: string; precio: number }) => CreateHoldRequest | null;
+  buildHoldPayload: (input: {
+    nombre: string;
+    email?: string;
+    telefono?: string;
+    precio: number;
+  }) => CreateHoldRequest | null;
+
   getHoldSecondsLeft: () => number;
 }
 
@@ -112,7 +113,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
       courtId: court.id,
       startAt,
       endAt,
-      clienteNombre: nombre,
+      clienteNombre: nombre.trim(),
       clienteEmail: email?.trim() ? email.trim() : undefined,
       clienteTelefono: telefono?.trim() ? telefono.trim() : undefined,
       precio,
@@ -124,7 +125,6 @@ export const useBookingStore = create<BookingState>((set, get) => ({
     const { hold } = get();
     if (!hold?.expiresAt) return 0;
     const exp = new Date(hold.expiresAt).getTime();
-    const now = Date.now();
-    return Math.max(0, Math.floor((exp - now) / 1000));
+    return Math.max(0, Math.floor((exp - Date.now()) / 1000));
   },
 }));

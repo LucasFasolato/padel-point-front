@@ -1,15 +1,20 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { AvailabilitySlot } from '@/types';
+import type { AvailabilitySlot } from '@/types';
 import { cn } from '@/lib/utils';
-import { Lock, Clock, AlertTriangle } from 'lucide-react';
+import { Lock, Clock, AlertTriangle, Timer } from 'lucide-react';
 
 interface AvailabilityGridProps {
   slots: AvailabilitySlot[];
   loading: boolean;
   onSelect: (slot: AvailabilitySlot) => void;
   price?: number;
+
+  // ✅ mejoras UX
+  selectedSlot?: AvailabilitySlot | null;
+  holdState?: 'idle' | 'creating' | 'held' | 'error';
+  secondsLeft?: number; // opcional (si querés mostrar timer en el slot)
 }
 
 type SlotStatus = 'available' | 'reserved' | 'blocked';
@@ -39,8 +44,17 @@ function getTooltip(slot: AvailabilitySlot): string {
 }
 
 function sortSlots(slots: AvailabilitySlot[]) {
-  // orden simple por horaInicio (HH:mm lexicográfico funciona)
   return [...slots].sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
+}
+
+function slotSignature(s: AvailabilitySlot) {
+  return `${s.courtId}|${s.fecha}|${s.horaInicio}|${s.horaFin}`;
+}
+
+function formatMMSS(totalSeconds: number) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 export function AvailabilityGrid({
@@ -48,6 +62,9 @@ export function AvailabilityGrid({
   loading,
   onSelect,
   price = 32000,
+  selectedSlot = null,
+  holdState = 'idle',
+  secondsLeft,
 }: AvailabilityGridProps) {
   // 1) Loading skeleton
   if (loading) {
@@ -76,25 +93,24 @@ export function AvailabilityGrid({
     );
   }
 
-  // 3) Group by period (mañana/tarde/noche)
   const sorted = sortSlots(slots);
 
-  // elimina slots idénticos (mismo horario)
+  // 3) Dedup por firma (mismo horario exacto)
   const seen = new Set<string>();
   const unique: AvailabilitySlot[] = [];
-
   for (const s of sorted) {
-    const signature = `${s.courtId}|${s.fecha}|${s.horaInicio}|${s.horaFin}`;
-    if (seen.has(signature)) continue;
-    seen.add(signature);
+    const sig = slotSignature(s);
+    if (seen.has(sig)) continue;
+    seen.add(sig);
     unique.push(s);
   }
+
+  // 4) Group
   const groups: Record<'mañana' | 'tarde' | 'noche', AvailabilitySlot[]> = {
     mañana: [],
     tarde: [],
     noche: [],
   };
-
   for (const s of unique) {
     groups[getPeriod(s.horaInicio)].push(s);
   }
@@ -118,7 +134,6 @@ export function AvailabilityGrid({
                 {sec.label}
               </p>
 
-              {/* Micro-leyenda opcional */}
               <div className="hidden items-center gap-3 text-[11px] text-slate-400 sm:flex">
                 <span className="inline-flex items-center gap-1">
                   <span className="h-2 w-2 rounded-full bg-blue-500/70" /> Disponible
@@ -135,15 +150,22 @@ export function AvailabilityGrid({
                 const locked = status !== 'available';
                 const tooltip = getTooltip(slot);
 
+                const isSelected =
+                  holdState === 'held' &&
+                  selectedSlot != null &&
+                  slotSignature(slot) === slotSignature(selectedSlot);
+
                 const subLabel =
-                  status === 'available'
+                  isSelected
+                    ? 'Retenido'
+                    : status === 'available'
                     ? `$ ${price.toLocaleString()}`
                     : status === 'blocked'
                     ? 'Bloqueado'
                     : 'Reservado';
 
-                const keyBase = `${slot.courtId}-${slot.fecha}-${slot.horaInicio}-${slot.horaFin}`;
-                const key = `${keyBase}-${slot.ruleId ?? 'r'}-${idx}`;
+                // key 100% estable: la firma sola debería ser única post-dedup
+                const key = slotSignature(slot);
 
                 return (
                   <motion.button
@@ -158,18 +180,38 @@ export function AvailabilityGrid({
                     className={cn(
                       'group relative flex flex-col items-center justify-center rounded-xl border px-2 py-3 transition-all duration-200',
 
-                      locked
-                        ? 'cursor-not-allowed border-slate-100 bg-slate-50 opacity-80'
-                        : 'border-slate-200 bg-white shadow-sm hover:-translate-y-1 hover:border-blue-500 hover:shadow-md active:scale-95 active:shadow-sm'
+                      // ✅ Selected hold slot
+                      isSelected &&
+                        'border-blue-500 bg-blue-50 shadow-sm',
+
+                      // normal locked / available
+                      !isSelected &&
+                        (locked
+                          ? 'cursor-not-allowed border-slate-100 bg-slate-50 opacity-80'
+                          : 'border-slate-200 bg-white shadow-sm hover:-translate-y-1 hover:border-blue-500 hover:shadow-md active:scale-95 active:shadow-sm')
                     )}
                   >
+                    {/* top-right tiny dot */}
+                    {!locked && !isSelected && (
+                      <div className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-blue-500 opacity-0 transition-opacity group-hover:opacity-100" />
+                    )}
+
+                    {/* Selected badge */}
+                    {isSelected && (
+                      <div className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold text-blue-700 ring-1 ring-blue-200 backdrop-blur">
+                        <Timer size={12} />
+                        {typeof secondsLeft === 'number'
+                          ? formatMMSS(Math.max(0, secondsLeft))
+                          : 'Retenido'}
+                      </div>
+                    )}
+
                     {/* Time */}
                     <span
                       className={cn(
                         'text-lg font-bold tracking-tight',
-                        locked
-                          ? 'text-slate-400'
-                          : 'text-slate-700 group-hover:text-blue-600'
+                        locked ? 'text-slate-400' : 'text-slate-700 group-hover:text-blue-600',
+                        isSelected && 'text-blue-700'
                       )}
                     >
                       {slot.horaInicio}
@@ -183,18 +225,20 @@ export function AvailabilityGrid({
                           {subLabel}
                         </span>
                       ) : (
-                        <span className="text-slate-500 transition-colors group-hover:text-blue-500">
+                        <span
+                          className={cn(
+                            'transition-colors',
+                            isSelected
+                              ? 'text-blue-700'
+                              : 'text-slate-500 group-hover:text-blue-500'
+                          )}
+                        >
                           {subLabel}
                         </span>
                       )}
                     </span>
 
-                    {/* Indicator */}
-                    {!locked && (
-                      <div className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-blue-500 opacity-0 transition-opacity group-hover:opacity-100" />
-                    )}
-
-                    {/* Block reason hint (tiny) */}
+                    {/* Block hint */}
                     {status === 'blocked' && slot.motivoBloqueo && (
                       <div className="absolute left-2 top-2 hidden items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold text-slate-500 backdrop-blur sm:flex">
                         <AlertTriangle size={10} />

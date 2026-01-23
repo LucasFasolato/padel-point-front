@@ -1,5 +1,3 @@
-// src/types/index.ts
-
 // --- ENUMS (Mirroring Backend) ---
 export enum ReservationStatus {
   HOLD = 'hold',
@@ -31,7 +29,7 @@ export interface MediaAsset {
   provider: string; // 'CLOUDINARY'
   publicId: string;
   url: string;
-  secureUrl: string; // <--- We will use this for display
+  secureUrl: string;
   width?: number;
   height?: number;
   active: boolean;
@@ -53,6 +51,8 @@ export interface Club {
   cover?: MediaAsset;
 }
 
+export type PublicMedia = { url: string; secureUrl: string };
+
 export type PublicCourtCard = {
   id: string;
   nombre: string;
@@ -61,8 +61,6 @@ export type PublicCourtCard = {
   activa: boolean;
   primaryPhoto: PublicMedia | null;
 };
-
-export type PublicMedia = { url: string; secureUrl: string };
 
 export type PublicClubOverview = {
   club: {
@@ -93,35 +91,33 @@ export interface Court {
   id: string;
   nombre: string;
   superficie: string;
-  precioPorHora: number; // Decimal string from DB, number in JS
+  precioPorHora: number;
   activa: boolean;
-  clubId: string; // Relation
-  // Computed fields
+  clubId: string;
+
   primaryImage?: MediaAsset | PublicMedia;
-  club?:Club;
+  club?: Club;
 }
 
 export interface Reservation {
   id: string;
   courtId: string;
   court?: Court;
-  startAt: string; // ISO Date
-  endAt: string;   // ISO Date
+  startAt: string;
+  endAt: string;
   status: ReservationStatus;
-  
-  // Hold Data
+
   expiresAt?: string | null;
   checkoutToken?: string | null;
-  
-  // Client Data (No Auth)
+
   clienteNombre: string;
   clienteEmail?: string | null;
   clienteTelefono?: string | null;
-  
+
   precio: number;
 }
 
-// --- DTOs (Data Transfer Objects for Requests) ---
+// --- DTOs ---
 
 export interface AvailabilitySlot {
   fecha: string;        // "2026-01-23"
@@ -146,18 +142,42 @@ export interface CreateHoldRequest {
   precio: number;
 }
 
+// Respuesta de POST /reservations/hold
 export interface HoldReservationResponse {
   id: string;
-  status: ReservationStatus; // 'hold'
-  startAt: string; // ISO (JSON)
-  endAt: string;   // ISO
-  expiresAt: string; // ISO
+  status: ReservationStatus; // hold
+  startAt: string;
+  endAt: string;
+  expiresAt: string;
   precio: number;
   checkoutToken: string;
 }
 
-export interface CheckoutReservation extends Reservation {
-  court: Court & {
-    club: Club;
+// Respuesta de GET /public/reservations/:id?token=...
+export interface CheckoutReservation {
+  id: string;
+  status: 'hold' | 'confirmed' | 'cancelled';
+  startAt: string;
+  endAt: string;
+  expiresAt: string | null;
+  precio: number;
+  checkoutTokenExpiresAt: string | null;
+
+  court: {
+    id: string;
+    nombre: string;
+    superficie: string;
+    precioPorHora: number;
+    club: {
+      id: string;
+      nombre: string;
+      direccion?: string;
+    };
+  };
+
+  cliente: {
+    nombre: string;
+    email: string | null;
+    telefono: string | null;
   };
 }
