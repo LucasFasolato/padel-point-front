@@ -102,15 +102,18 @@ export function BookingDrawer() {
     return () => clearInterval(t);
   }, [isDrawerOpen, holdState, hold?.expiresAt]);
 
-  const secondsLeft =
-  holdState === 'held' && hold?.expiresAt
-    ? Math.max(
-        0,
-        Math.floor((new Date(hold.expiresAt).getTime() - now) / 1000),
-      )
-    : 0;
+  const expMs = hold?.expiresAt ? Date.parse(String(hold.expiresAt)) : NaN;
 
-  const isExpired = holdState === 'held' && secondsLeft <= 0;
+  const secondsLeft =
+    holdState === 'held' && Number.isFinite(expMs)
+      ? Math.max(0, Math.ceil((expMs - now) / 1000))
+      : 0;
+
+  const isExpired =
+    holdState === 'held' && (!Number.isFinite(expMs) || secondsLeft <= 0);
+
+  const canGoCheckout =
+    holdState === 'held' && !!hold?.id && !!hold?.checkoutToken && !isExpired;
 
   // form key: cambia si cambia slot => inputs limpios sin useEffect reseteando state
   const formKey = useMemo(() => {
@@ -143,6 +146,9 @@ export function BookingDrawer() {
 
       const res = await PlayerService.createHold(payload);
       setHoldSuccess(res);
+      toast.success('Turno retenido ✅');
+
+      window.location.href = `/checkout/${res.id}?token=${encodeURIComponent(res.checkoutToken)}`;
       toast.success('Turno retenido por 10 minutos ✅');
     } catch (err: unknown) {
       // sin any: extraemos mensaje de forma segura
