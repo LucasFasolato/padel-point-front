@@ -35,12 +35,14 @@ export const PlayerService = {
     const courtsWithImages = await Promise.all(
       data.map(async (court) => {
         try {
-          const imgRes = await api.get<MediaAsset>(`/public/media/courts/${court.id}/primary`);
+          const imgRes = await api.get<MediaAsset>(
+            `/public/media/courts/${court.id}/primary`,
+          );
           return { ...court, primaryImage: imgRes.data };
         } catch {
           return court;
         }
-      })
+      }),
     );
 
     return courtsWithImages;
@@ -67,7 +69,7 @@ export const PlayerService = {
     return data;
   },
 
-  // CONFIRM -> body { token } (como tu back actual)
+  // CONFIRM -> body { token }
   confirmCheckout: async (id: string, token: string): Promise<CheckoutReservation> => {
     const { data } = await api.post<CheckoutReservation>(`/public/reservations/${id}/confirm`, {
       token,
@@ -75,11 +77,13 @@ export const PlayerService = {
     return data;
   },
 
-  // ✅ RECEIPT (CONFIRMED) -> requiere receiptToken como query param
+  // RECEIPT (CONFIRMED) -> requiere receiptToken
   getReceipt: async (reservationId: string, receiptToken: string): Promise<CheckoutReservation> => {
     const { data } = await api.get<CheckoutReservation>(
       `/public/reservations/${reservationId}/receipt`,
-      { params: { token: receiptToken } }
+      {
+        params: { token: receiptToken },
+      },
     );
     return data;
   },

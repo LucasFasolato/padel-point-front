@@ -1,62 +1,65 @@
+'use client';
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-type CountdownResult = {
-  secondsLeft: number | null;
-  mmss: string;
-  expired: boolean;
+type Args = {
+  expiresAtIso: string | null;
+  serverNowIso: string | null; // ✅ clave: tiempo del servidor/DB
+  enabled: boolean;
 };
 
-function formatMMSS(totalSeconds: number) {
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
+export function useHoldCountdown({ expiresAtIso, serverNowIso, enabled }: Args) {
+  // Tick para re-render (evita setState dentro del body del effect)
+  const [tick, setTick] = useState(0);
 
-export function useHoldCountdown(
-  expiresAtIso: string | null,
-  serverNowIso: string | null,
-  enabled: boolean
-): CountdownResult {
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
-  const timerRef = useRef<number | null>(null);
+  // Anclas para “server time corriendo” según el reloj del cliente
+  const anchorClientMsRef = useRef<number>(0);
+  const anchorServerMsRef = useRef<number>(0);
 
-  const expired = secondsLeft !== null && secondsLeft <= 0;
-
+  // Cuando habilita o cambian timestamps => reseteo de anclas
   useEffect(() => {
-    // reset
-    if (!enabled || !expiresAtIso || !serverNowIso) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSecondsLeft(null);
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-      return;
-    }
+    if (!enabled || !expiresAtIso || !serverNowIso) return;
 
-    const expiresAt = new Date(expiresAtIso).getTime();
-    let serverNow = new Date(serverNowIso).getTime();
+    anchorClientMsRef.current = Date.now();
+    anchorServerMsRef.current = new Date(serverNowIso).getTime();
+  }, [enabled, expiresAtIso, serverNowIso]);
 
-    const tick = () => {
-      const diff = Math.floor((expiresAt - serverNow) / 1000);
-      setSecondsLeft(diff);
-      serverNow += 1000;
-    };
+  // Interval: setState SOLO en callback (buena práctica)
+  useEffect(() => {
+    if (!enabled || !expiresAtIso || !serverNowIso) return;
 
-    tick(); // initial
-    timerRef.current = window.setInterval(tick, 1000);
+    const id = window.setInterval(() => {
+      setTick((t) => (t + 1) % 1_000_000);
+    }, 1000);
 
-    return () => {
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [expiresAtIso, serverNowIso, enabled]);
+    return () => window.clearInterval(id);
+  }, [enabled, expiresAtIso, serverNowIso]);
 
-  return {
-    secondsLeft,
-    mmss: secondsLeft !== null ? formatMMSS(Math.max(0, secondsLeft)) : '--:--',
-    expired,
-  };
+  const ready = Boolean(enabled && expiresAtIso && serverNowIso);
+
+  const timeLeftSec = useMemo(() => {
+    if (!ready) return null;
+
+    const expMs = new Date(expiresAtIso!).getTime();
+
+    // “ahora” basado en serverNow + delta del reloj del cliente
+    const nowMs =
+      // eslint-disable-next-line react-hooks/purity
+      anchorServerMsRef.current + (Date.now() - anchorClientMsRef.current);
+
+    const diffSec = Math.floor((expMs - nowMs) / 1000);
+    return Math.max(0, diffSec);
+  }, [ready, expiresAtIso, tick]);
+
+  const mmss = useMemo(() => {
+    const t = timeLeftSec ?? 0;
+    const m = Math.floor(t / 60);
+    const s = t % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }, [timeLeftSec]);
+
+  // ✅ Solo puede expirar si está ready
+  const expired = ready && timeLeftSec === 0;
+
+  return { mmss, expired, ready, timeLeftSec };
 }

@@ -155,7 +155,6 @@ export function BookingDrawer() {
       const res = await PlayerService.createHold(payload);
       console.log('[HOLD][API_OK]', res);
       setHoldSuccess(res);
-      toast.success('Turno retenido ✅');
 
       // window.location.href = `/checkout/${res.id}?token=${encodeURIComponent(res.checkoutToken)}`;
       router.push(`/checkout/${res.id}?token=${encodeURIComponent(res.checkoutToken)}`);

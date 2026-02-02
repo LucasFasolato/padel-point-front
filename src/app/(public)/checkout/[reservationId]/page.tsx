@@ -70,23 +70,23 @@ export default function CheckoutPage() {
   // ✅ countdown usando serverNow (fuente de verdad)
   const countdownEnabled = reservation?.status === 'hold';
 
-  const { mmss, expired } = useHoldCountdown(
-    reservation?.expiresAt ?? null,
-    reservation?.serverNow ?? null,
-    countdownEnabled
-  );
+  const { mmss, expired, ready } = useHoldCountdown({
+    expiresAtIso: reservation?.expiresAt ?? null,
+    serverNowIso: reservation?.serverNow ?? null,
+    enabled: countdownEnabled,
+  });
 
   const handleConfirm = async () => {
     if (!reservationId || !token) return;
 
-    if (expired) {
+    // ✅ sólo bloqueamos si el contador ya está listo
+    if (ready && expired) {
       toast.error('El hold expiró. Volvé a elegir otro horario.');
       return;
     }
 
     setProcessing(true);
     try {
-      // ✅ tu backend: POST /public/reservations/:id/confirm con body token
       const confirmed = await PlayerService.confirmCheckout(reservationId, token);
 
       // cache para refresh / success
@@ -97,19 +97,15 @@ export default function CheckoutPage() {
         saveReservationCache(reservationId, confirmed);
       } catch {}
 
-      // ✅ al confirmar el backend te devuelve receiptToken
-      const receiptToken = confirmed.receiptToken;
-      if (!receiptToken) {
-        throw new Error('missing receiptToken in response');
-      }
+      // ✅ al confirmar el backend devuelve receiptToken
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const receiptToken = (confirmed as any).receiptToken as string | undefined;
+      if (!receiptToken) throw new Error('missing receiptToken in response');
 
       toast.success('Pago simulado ✅ Reserva confirmada');
 
-      // ✅ Success usa /receipt con query param token=<receiptToken>
-      router.replace(
-        `/checkout/success/${reservationId}?token=${encodeURIComponent(receiptToken)}`
-      );
-    } catch (e) {
+      router.replace(`/checkout/success/${reservationId}?receiptToken=${encodeURIComponent(receiptToken)}`);
+    } catch {
       toast.error('Error al confirmar');
     } finally {
       setProcessing(false);
@@ -154,7 +150,8 @@ export default function CheckoutPage() {
                   {mmss}
                 </div>
 
-                {expired && (
+                {/* ✅ Overlay solo cuando el contador está ready */}
+                {countdownEnabled && ready && expired && (
                   <div className="absolute inset-0 z-10 flex items-center justify-center bg-red-500/20 backdrop-blur-sm">
                     <span className="flex items-center gap-2 text-lg font-bold">
                       <AlertTriangle /> Tiempo agotado
@@ -174,7 +171,9 @@ export default function CheckoutPage() {
           <div className="p-8">
             <div className="space-y-6">
               <div className="text-center">
-                <h1 className="text-2xl font-bold text-slate-900">{reservation.court.nombre}</h1>
+                <h1 className="text-2xl font-bold text-slate-900">
+                  {reservation.court.nombre}
+                </h1>
 
                 <p className="text-slate-500">
                   {format(new Date(reservation.startAt), "EEEE d 'de' MMMM, HH:mm", {
@@ -183,7 +182,9 @@ export default function CheckoutPage() {
                   hs
                 </p>
 
-                <p className="mt-1 text-sm text-slate-400">{reservation.court.club.nombre}</p>
+                <p className="mt-1 text-sm text-slate-400">
+                  {reservation.court.club.nombre}
+                </p>
               </div>
 
               <div className="space-y-3 border-y border-slate-100 py-6">
@@ -201,7 +202,9 @@ export default function CheckoutPage() {
 
                 <div className="flex justify-between pt-2 text-lg font-bold">
                   <span className="text-slate-900">Total</span>
-                  <span className="text-blue-600">{formatCurrency(reservation.precio)}</span>
+                  <span className="text-blue-600">
+                    {formatCurrency(reservation.precio)}
+                  </span>
                 </div>
               </div>
 
@@ -212,13 +215,13 @@ export default function CheckoutPage() {
 
               <button
                 onClick={handleConfirm}
-                disabled={expired || processing || reservation.status !== 'hold'}
+                disabled={(ready && expired) || processing || reservation.status !== 'hold'}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 disabled:bg-slate-300 active:scale-95"
               >
                 {processing ? <Loader2 className="animate-spin" /> : 'Pagar ahora (simulado)'}
               </button>
 
-              {expired && (
+              {(ready && expired) && (
                 <button
                   onClick={() => router.push(`/club/${reservation.court.club.id}`)}
                   className="w-full py-3 font-medium text-slate-500 hover:text-slate-800"

@@ -10,6 +10,7 @@ import {
   MapPin,
   Home,
   Loader2,
+  AlertTriangle,
   ExternalLink,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -20,62 +21,145 @@ import { PlayerService } from '@/services/player-service';
 import type { CheckoutReservation } from '@/types';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 
+function ErrorState() {
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <PublicTopBar backHref="/" title="Reserva confirmada" />
+      <div className="flex h-[70vh] items-center justify-center px-4 text-center">
+        <div className="max-w-md w-full bg-white rounded-3xl border border-slate-100 shadow-xl p-8">
+          <div className="mx-auto mb-5 h-14 w-14 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+            <AlertTriangle size={28} />
+          </div>
+
+          <p className="text-xl font-extrabold text-slate-900">
+            No pudimos cargar tu comprobante
+          </p>
+          <p className="mt-2 text-sm text-slate-500">
+            El link puede estar incompleto o el comprobante pudo haber expirado.
+          </p>
+
+          <div className="mt-6 space-y-3">
+            <Link
+              href="/"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-slate-800"
+            >
+              <Home size={16} /> Ir al inicio
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => {
+                toast.message(
+                  'Tip: entrá desde el link del comprobante (receiptToken) o volvé a reservar.',
+                );
+              }}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50"
+            >
+              <ExternalLink size={16} /> Entendido
+            </button>
+          </div>
+
+          <p className="mt-6 text-xs text-slate-400">
+            Si venís desde el checkout, asegurate de abrir el link con{' '}
+            <span className="font-semibold">receiptToken</span>.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SuccessContent({ reservationId }: { reservationId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const receiptToken = searchParams.get('token');
 
-  const [reservation, setReservation] = useState<CheckoutReservation | null>(null);
+  // ✅ token correcto: receiptToken. Fallback por compatibilidad: token
+  const receiptToken =
+    searchParams.get('receiptToken') ?? searchParams.get('token') ?? '';
+
+  const [reservation, setReservation] = useState<CheckoutReservation | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
 
-  const cacheKey = useMemo(() => `pp:reservation:${reservationId}`, [reservationId]);
+  const cacheKey = useMemo(() => `pp:receipt:${reservationId}`, [reservationId]);
 
   useEffect(() => {
     if (!reservationId) return;
 
     let cancelled = false;
+    let cleanupTimer: number | null = null;
+
     const setSafe = (fn: () => void) => {
       if (!cancelled) fn();
     };
 
-    // 1) Cache-first (anti refresh)
-    try {
-      const cached = sessionStorage.getItem(cacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached) as CheckoutReservation;
-        setSafe(() => {
-          setReservation(parsed);
-          setLoading(false);
-        });
-
-        // limpieza suave (10 min)
-        window.setTimeout(() => {
-          try {
-            sessionStorage.removeItem(cacheKey);
-          } catch {}
-        }, 10 * 60 * 1000);
-
-        return () => {
-          cancelled = true;
-        };
+    const readCache = (): CheckoutReservation | null => {
+      try {
+        const raw = sessionStorage.getItem(cacheKey);
+        if (!raw) return null;
+        return JSON.parse(raw) as CheckoutReservation;
+      } catch {
+        return null;
       }
-    } catch {
-      // si sessionStorage falla, seguimos con fetch
+    };
+
+    const writeCache = (data: CheckoutReservation) => {
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(data));
+      } catch {}
+    };
+
+    const scheduleCleanup = () => {
+      // limpieza suave (10 min) para no dejar basura eterna
+      cleanupTimer = window.setTimeout(() => {
+        try {
+          sessionStorage.removeItem(cacheKey);
+        } catch {}
+      }, 10 * 60 * 1000);
+    };
+
+    // 1) Cache-first
+    const cached = readCache();
+    if (cached) {
+      setSafe(() => {
+        setReservation(cached);
+        setLoading(false);
+      });
+      scheduleCleanup();
+
+      // 1b) Revalidación silenciosa si hay receiptToken (actualiza datos sin “flash”)
+      if (receiptToken) {
+        (async () => {
+          try {
+            const fresh = await PlayerService.getReceipt(
+              reservationId,
+              receiptToken,
+            );
+            writeCache(fresh);
+            setSafe(() => setReservation(fresh));
+          } catch {
+            // si falla, mantenemos cache
+          }
+        })();
+      }
+
+      return () => {
+        cancelled = true;
+        if (cleanupTimer) window.clearTimeout(cleanupTimer);
+      };
     }
 
-    // 2) Fetch receipt (confirmed)
+    // 2) Sin cache -> fetch receipt
     const fetchReceipt = async () => {
       try {
-        if (!receiptToken) throw new Error('missing receipt token');
+        if (!receiptToken) throw new Error('missing receiptToken');
 
         const data = await PlayerService.getReceipt(reservationId, receiptToken);
 
+        writeCache(data);
         setSafe(() => setReservation(data));
-
-        // cache para refresh posterior
-        try {
-          sessionStorage.setItem(cacheKey, JSON.stringify(data));
-        } catch {}
+        scheduleCleanup();
       } catch {
         setSafe(() => setReservation(null));
       } finally {
@@ -87,6 +171,7 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
 
     return () => {
       cancelled = true;
+      if (cleanupTimer) window.clearTimeout(cleanupTimer);
     };
   }, [reservationId, receiptToken, cacheKey]);
 
@@ -98,40 +183,7 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
     );
   }
 
-  if (!reservation) {
-    return (
-      <div className="min-h-screen bg-slate-50">
-        <PublicTopBar backHref="/" title="Reserva confirmada" />
-        <div className="flex h-[70vh] items-center justify-center px-4 text-center text-slate-500">
-          <div className="max-w-sm">
-            <p className="text-lg font-bold text-slate-900">No pudimos cargar tu comprobante</p>
-            <p className="mt-2 text-sm text-slate-500">
-              Puede que el link esté incompleto o el token haya expirado.
-            </p>
-
-            <div className="mt-6 space-y-3">
-              <Link
-                href="/"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-slate-800"
-              >
-                <Home size={16} /> Ir al inicio
-              </Link>
-
-              <button
-                onClick={() => {
-                  toast.message('Tip: entrá desde el link del comprobante o volvé a reservar.');
-                  router.replace('/');
-                }}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50"
-              >
-                <ExternalLink size={16} /> Entendido
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (!reservation) return <ErrorState />;
 
   const clubId = reservation.court.club.id;
 
@@ -152,19 +204,28 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
             <CheckCircle2 size={40} />
           </div>
 
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">¡Reserva Confirmada!</h1>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">
+            ¡Reserva Confirmada!
+          </h1>
           <p className="text-slate-500 mb-8">
-            Tu turno quedó confirmado. Guardá este comprobante (el link dura 14 días).
+            Tu turno quedó confirmado. Guardá este comprobante (el link dura 14
+            días).
           </p>
 
           <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 text-left space-y-4 mb-8">
             <div className="flex items-start gap-3">
               <MapPin className="text-blue-500 shrink-0 mt-1" size={18} />
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase">Club</p>
-                <p className="font-bold text-slate-900">{reservation.court.club.nombre}</p>
+                <p className="text-xs font-bold text-slate-400 uppercase">
+                  Club
+                </p>
+                <p className="font-bold text-slate-900">
+                  {reservation.court.club.nombre}
+                </p>
                 {reservation.court.club.direccion && (
-                  <p className="text-sm text-slate-500">{reservation.court.club.direccion}</p>
+                  <p className="text-sm text-slate-500">
+                    {reservation.court.club.direccion}
+                  </p>
                 )}
               </div>
             </div>
@@ -172,9 +233,13 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
             <div className="flex items-start gap-3">
               <Calendar className="text-blue-500 shrink-0 mt-1" size={18} />
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase">Fecha</p>
+                <p className="text-xs font-bold text-slate-400 uppercase">
+                  Fecha
+                </p>
                 <p className="font-bold text-slate-900 capitalize">
-                  {format(parseISO(reservation.startAt), 'EEEE d MMMM', { locale: es })}
+                  {format(parseISO(reservation.startAt), 'EEEE d MMMM', {
+                    locale: es,
+                  })}
                 </p>
               </div>
             </div>
@@ -182,7 +247,9 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
             <div className="flex items-start gap-3">
               <Clock className="text-blue-500 shrink-0 mt-1" size={18} />
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase">Horario</p>
+                <p className="text-xs font-bold text-slate-400 uppercase">
+                  Horario
+                </p>
                 <p className="font-bold text-slate-900">
                   {format(parseISO(reservation.startAt), 'HH:mm')} –{' '}
                   {format(parseISO(reservation.endAt), 'HH:mm')} hs
@@ -191,9 +258,15 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
             </div>
 
             <div className="pt-2 border-t border-slate-200">
-              <p className="text-xs text-slate-400 uppercase font-bold">Cancha</p>
-              <p className="font-bold text-slate-900">{reservation.court.nombre}</p>
-              <p className="text-sm text-slate-500">{reservation.court.superficie}</p>
+              <p className="text-xs text-slate-400 uppercase font-bold">
+                Cancha
+              </p>
+              <p className="font-bold text-slate-900">
+                {reservation.court.nombre}
+              </p>
+              <p className="text-sm text-slate-500">
+                {reservation.court.superficie}
+              </p>
             </div>
           </div>
 
@@ -213,6 +286,32 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
                 <Home size={16} /> Ir al Inicio
               </span>
             </Link>
+
+            {/* opcional UX: reabrir link (si querés) */}
+            {receiptToken && (
+              <button
+                type="button"
+                onClick={() => {
+                  const url = `${window.location.origin}/checkout/success/${reservationId}?receiptToken=${encodeURIComponent(receiptToken)}`;
+                  navigator.clipboard
+                    .writeText(url)
+                    .then(() => toast.success('Link copiado ✅'))
+                    .catch(() => toast.message('No se pudo copiar el link'));
+                }}
+                className="w-full py-3 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 hover:bg-slate-50"
+              >
+                Copiar link del comprobante
+              </button>
+            )}
+
+            {/* opcional: para cortar loop raro si venís con estado viejo */}
+            <button
+              type="button"
+              onClick={() => router.replace(`/club/${clubId}`)}
+              className="w-full py-3 text-slate-400 font-medium hover:text-slate-700"
+            >
+              Ir al club (sin volver atrás)
+            </button>
           </div>
         </div>
       </div>
