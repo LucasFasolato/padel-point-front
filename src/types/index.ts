@@ -148,9 +148,10 @@ export interface HoldReservationResponse {
   status: ReservationStatus; // hold
   startAt: string;
   endAt: string;
-  expiresAt: string;
+  expiresAt: string | null;    
   precio: number;
   checkoutToken: string;
+  serverNow: string;   
 }
 
 // Respuesta de GET /public/reservations/:id?token=...
@@ -163,6 +164,8 @@ export interface CheckoutReservation {
   precio: number;
   checkoutTokenExpiresAt: string | null;
 
+  serverNow: string;
+  
   court: {
     id: string;
     nombre: string;

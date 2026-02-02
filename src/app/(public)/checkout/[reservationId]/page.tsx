@@ -13,12 +13,6 @@ import { formatCurrency } from '@/lib/utils';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { useHoldCountdown } from '@/hooks/use-hold-countdown';
 
-function mmssFromSeconds(timeLeft: number) {
-  const m = Math.floor(timeLeft / 60);
-  const s = timeLeft % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
 export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -31,25 +25,37 @@ export default function CheckoutPage() {
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     const run = async () => {
       try {
         if (!reservationId || !token) throw new Error('missing token');
         const data = await PlayerService.getCheckout(reservationId, token);
-        setReservation(data);
+        if (!cancelled) setReservation(data);
       } catch {
         toast.error('Reserva no encontrada o token inválido');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
+
     run();
+    return () => {
+      cancelled = true;
+    };
   }, [reservationId, token]);
 
   const countdownEnabled = reservation?.status === 'hold';
-  const { mmss, expired } = useHoldCountdown(reservation?.expiresAt ?? null, countdownEnabled);
+
+  const { mmss, expired } = useHoldCountdown(
+    reservation?.expiresAt ?? null,
+    reservation?.serverNow ?? null,
+    countdownEnabled,
+  );
 
   const handleConfirm = async () => {
     if (!reservationId || !token) return;
+
     if (expired) {
       toast.error('El hold expiró. Volvé a elegir otro horario.');
       return;
@@ -58,16 +64,23 @@ export default function CheckoutPage() {
     setProcessing(true);
     try {
       const confirmed = await PlayerService.confirmCheckout(reservationId, token);
-      sessionStorage.setItem(`pp:reservation:${reservationId}`, JSON.stringify(confirmed));
+
+      sessionStorage.setItem(
+        `pp:reservation:${reservationId}`,
+        JSON.stringify(confirmed),
+      );
+
       toast.success('Pago simulado ✅ Reserva confirmada');
-      router.replace(`/checkout/success/${reservationId}?token=${encodeURIComponent(token)}`);
+      router.replace(
+        `/checkout/success/${reservationId}?token=${encodeURIComponent(token)}`,
+      );
     } catch {
       toast.error('Error al confirmar');
     } finally {
       setProcessing(false);
     }
   };
-  
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -159,7 +172,8 @@ export default function CheckoutPage() {
               </div>
 
               <div className="flex items-center justify-center gap-2 rounded-lg bg-slate-50 py-2 text-xs text-slate-400">
-                <ShieldCheck size={14} className="text-green-500" /> Pagos procesados de forma segura
+                <ShieldCheck size={14} className="text-green-500" /> Pagos procesados de forma
+                segura
               </div>
 
               <button
@@ -167,7 +181,11 @@ export default function CheckoutPage() {
                 disabled={expired || processing || reservation.status !== 'hold'}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 disabled:bg-slate-300 active:scale-95"
               >
-                {processing ? <Loader2 className="animate-spin" /> : 'Pagar ahora (simulado)'}
+                {processing ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  'Pagar ahora (simulado)'
+                )}
               </button>
 
               {expired && (
