@@ -11,6 +11,7 @@ import { PlayerService } from '@/services/player-service';
 import type { CheckoutReservation } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
+import { useHoldCountdown } from '@/hooks/use-hold-countdown';
 
 function mmssFromSeconds(timeLeft: number) {
   const m = Math.floor(timeLeft / 60);
@@ -19,7 +20,6 @@ function mmssFromSeconds(timeLeft: number) {
 }
 
 export default function CheckoutPage() {
-  const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -29,7 +29,6 @@ export default function CheckoutPage() {
   const [reservation, setReservation] = useState<CheckoutReservation | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => {
     const run = async () => {
@@ -46,40 +45,20 @@ export default function CheckoutPage() {
     run();
   }, [reservationId, token]);
 
-  // Countdown (solo holds)
-  useEffect(() => {
-    if (!reservation?.expiresAt || reservation.status !== 'hold') return;
-
-    const tick = () => {
-      const end = new Date(reservation.expiresAt!).getTime();
-      const diff = Math.max(0, Math.floor((end - Date.now()) / 1000));
-      setTimeLeft(diff);
-    };
-
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [reservation?.expiresAt, reservation?.status]);
-
-  const isExpired = reservation?.status === 'hold' && timeLeft <= 0;
-
-  const mmss = useMemo(() => mmssFromSeconds(timeLeft), [timeLeft]);
+  const countdownEnabled = reservation?.status === 'hold';
+  const { mmss, expired } = useHoldCountdown(reservation?.expiresAt ?? null, countdownEnabled);
 
   const handleConfirm = async () => {
     if (!reservationId || !token) return;
-    if (isExpired) {
+    if (expired) {
       toast.error('El hold expiró. Volvé a elegir otro horario.');
       return;
     }
 
     setProcessing(true);
     try {
-      // ✅ ahora vuelve CheckoutReservation confirmada
       const confirmed = await PlayerService.confirmCheckout(reservationId, token);
-
-      // ✅ cache para success (no refetch)
       sessionStorage.setItem(`pp:reservation:${reservationId}`, JSON.stringify(confirmed));
-
       toast.success('Pago simulado ✅ Reserva confirmada');
       router.replace(`/checkout/success/${reservationId}?token=${encodeURIComponent(token)}`);
     } catch {
@@ -88,7 +67,7 @@ export default function CheckoutPage() {
       setProcessing(false);
     }
   };
-
+  
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -126,7 +105,7 @@ export default function CheckoutPage() {
                   {mmss}
                 </div>
 
-                {isExpired && (
+                {expired && (
                   <div className="absolute inset-0 z-10 flex items-center justify-center bg-red-500/20 backdrop-blur-sm">
                     <span className="flex items-center gap-2 text-lg font-bold">
                       <AlertTriangle /> Tiempo agotado
@@ -185,13 +164,13 @@ export default function CheckoutPage() {
 
               <button
                 onClick={handleConfirm}
-                disabled={isExpired || processing || reservation.status !== 'hold'}
+                disabled={expired || processing || reservation.status !== 'hold'}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 disabled:bg-slate-300 active:scale-95"
               >
                 {processing ? <Loader2 className="animate-spin" /> : 'Pagar ahora (simulado)'}
               </button>
 
-              {isExpired && (
+              {expired && (
                 <button
                   onClick={() => router.push(`/club/${reservation.court.club.id}`)}
                   className="w-full py-3 font-medium text-slate-500 hover:text-slate-800"

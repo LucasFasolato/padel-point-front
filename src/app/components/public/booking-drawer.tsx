@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { PlayerService } from '@/services/player-service';
 import { useBookingStore } from '@/store/booking-store';
 import type { CreateHoldRequest } from '@/types';
+import { useRouter } from 'next/navigation';
 
 function formatMMSS(totalSeconds: number) {
   const m = Math.floor(totalSeconds / 60);
@@ -38,6 +39,8 @@ function buildIsoForDayAndTime(day: Date, hhmm: string) {
 }
 
 export function BookingDrawer() {
+
+  const router = useRouter();
   const {
     isDrawerOpen,
     closeDrawer,
@@ -73,6 +76,10 @@ export function BookingDrawer() {
     };
   }, [club, court, selectedDate, selectedSlot]);
 
+  useEffect(() => {
+    console.log('[HOLD][STORE]', { holdState, hold });
+  }, [holdState, hold]);
+  
   // ESC + scroll lock (solo si está abierto)
   useEffect(() => {
     if (!isDrawerOpen) return;
@@ -143,12 +150,15 @@ export function BookingDrawer() {
         clienteTelefono: telefono.trim() ? telefono.trim() : undefined,
         precio: resumen.precio,
       };
-
+      console.log('[HOLD][CLICK] resumen/court/slot', { resumen, court, selectedSlot });
+      console.log('[HOLD][PAYLOAD]', payload);
       const res = await PlayerService.createHold(payload);
+      console.log('[HOLD][API_OK]', res);
       setHoldSuccess(res);
       toast.success('Turno retenido ✅');
 
-      window.location.href = `/checkout/${res.id}?token=${encodeURIComponent(res.checkoutToken)}`;
+      // window.location.href = `/checkout/${res.id}?token=${encodeURIComponent(res.checkoutToken)}`;
+      router.push(`/checkout/${res.id}?token=${encodeURIComponent(res.checkoutToken)}`);
       toast.success('Turno retenido por 10 minutos ✅');
     } catch (err: unknown) {
       // sin any: extraemos mensaje de forma segura
@@ -176,7 +186,8 @@ export function BookingDrawer() {
       return;
     }
     if (!hold?.id || !hold.checkoutToken) return;
-    window.location.href = `/checkout/${hold.id}?token=${encodeURIComponent(hold.checkoutToken)}`;
+    // window.location.href = `/checkout/${hold.id}?token=${encodeURIComponent(hold.checkoutToken)}`;
+    router.push(`/checkout/${hold.id}?token=${encodeURIComponent(hold.checkoutToken)}`);
   };
 
   return (
