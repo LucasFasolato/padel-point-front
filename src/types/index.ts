@@ -165,7 +165,14 @@ export interface CheckoutReservation {
   checkoutTokenExpiresAt: string | null;
 
   serverNow: string;
-  
+
+  notifications?: {
+    email: { status: 'queued' | 'sent' | 'failed'; sentAt: string } | null;
+    whatsapp:
+      | { status: 'queued' | 'sent' | 'failed'; sentAt: string; link: string | null }
+      | null;
+  };
+
   court: {
     id: string;
     nombre: string;
