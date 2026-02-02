@@ -59,7 +59,7 @@ export const PlayerService = {
     return data;
   },
 
-  // CHECKOUT (PUBLIC)
+  // CHECKOUT (HOLD) -> requiere checkout token
   getCheckout: async (reservationId: string, token: string): Promise<CheckoutReservation> => {
     const { data } = await api.get<CheckoutReservation>(`/public/reservations/${reservationId}`, {
       params: { token },
@@ -67,11 +67,19 @@ export const PlayerService = {
     return data;
   },
 
+  // CONFIRM -> body { token } (como tu back actual)
   confirmCheckout: async (id: string, token: string): Promise<CheckoutReservation> => {
-    const { data } = await api.post<CheckoutReservation>(
-      `/public/reservations/${id}/confirm`,
-      null,
-      { params: { token } }
+    const { data } = await api.post<CheckoutReservation>(`/public/reservations/${id}/confirm`, {
+      token,
+    });
+    return data;
+  },
+
+  // ✅ RECEIPT (CONFIRMED) -> requiere receiptToken como query param
+  getReceipt: async (reservationId: string, receiptToken: string): Promise<CheckoutReservation> => {
+    const { data } = await api.get<CheckoutReservation>(
+      `/public/reservations/${reservationId}/receipt`,
+      { params: { token: receiptToken } }
     );
     return data;
   },

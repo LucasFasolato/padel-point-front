@@ -166,6 +166,9 @@ export interface CheckoutReservation {
 
   serverNow: string;
 
+  receiptToken: string | null;
+  receiptTokenExpiresAt: string | null;
+  
   notifications?: {
     email: { status: 'queued' | 'sent' | 'failed'; sentAt: string } | null;
     whatsapp:
