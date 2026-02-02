@@ -1,9 +1,16 @@
 'use client';
 
-import { useEffect, useState, Suspense, use } from 'react';
+import { useEffect, useMemo, useState, Suspense, use } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, Calendar, Clock, MapPin, Home, Loader2 } from 'lucide-react';
+import {
+  CheckCircle2,
+  Calendar,
+  Clock,
+  MapPin,
+  Home,
+  Loader2,
+} from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -18,35 +25,69 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
   const [reservation, setReservation] = useState<CheckoutReservation | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const cacheKey = useMemo(() => `pp:reservation:${reservationId}`, [reservationId]);
+
   useEffect(() => {
     if (!reservationId) return;
 
-    // ✅ 1) cache first (aunque no haya token)
-    const cacheKey = `pp:reservation:${reservationId}`;
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      setReservation(JSON.parse(cached));
-      setLoading(false);
-      // opcional: limpiar para no dejar basura
-      // sessionStorage.removeItem(cacheKey);
-      return;
+    let cancelled = false;
+
+    const setSafe = (fn: () => void) => {
+      if (!cancelled) fn();
+    };
+
+    // ✅ 1) Cache-first: si refresca la success, no depende del token
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached) as CheckoutReservation;
+        setSafe(() => {
+          setReservation(parsed);
+          setLoading(false);
+        });
+
+        // Opcional PRO: limpiar cache después de un rato (no “basura eterna”)
+        window.setTimeout(() => {
+          try {
+            sessionStorage.removeItem(cacheKey);
+          } catch {}
+        }, 10 * 60 * 1000);
+
+        return () => {
+          cancelled = true;
+        };
+      }
+    } catch {
+      // si sessionStorage falla (modo incógnito, etc), seguimos con fetch
     }
 
-    // ✅ 2) fallback fetch
+    // ✅ 2) Fallback fetch: si no hay cache, intentamos con token
     const fetchRes = async () => {
       try {
         if (!token) throw new Error('missing token');
         const data = await PlayerService.getCheckout(reservationId, token);
-        setReservation(data);
+
+        setSafe(() => {
+          setReservation(data);
+        });
+
+        // Cachear para futuros refresh
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        } catch {}
       } catch {
-        setReservation(null);
+        setSafe(() => setReservation(null));
       } finally {
-        setLoading(false);
+        setSafe(() => setLoading(false));
       }
     };
 
     fetchRes();
-  }, [token, reservationId]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, reservationId, cacheKey]);
 
   if (loading) {
     return (
@@ -80,17 +121,28 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
     );
   }
 
+  const clubId = reservation.court.club.id;
+
   return (
     <>
-      <PublicTopBar backHref={`/club/${reservation.court.club.id}`} title="Reserva confirmada" />
+      <PublicTopBar backHref={`/club/${clubId}`} title="Reserva confirmada" />
 
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white max-w-md w-full rounded-3xl shadow-xl overflow-hidden border border-slate-100 text-center p-8">
+          {/* ✅ Badge Confirmada */}
+          <div className="mb-4 flex justify-center">
+            <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-xs font-bold text-green-700">
+              <CheckCircle2 size={16} /> Confirmada
+            </span>
+          </div>
+
           <div className="mx-auto mb-6 h-20 w-20 bg-green-100 rounded-full flex items-center justify-center text-green-600">
             <CheckCircle2 size={40} />
           </div>
 
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">¡Reserva Confirmada!</h1>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">
+            ¡Reserva Confirmada!
+          </h1>
           <p className="text-slate-500 mb-8">
             Tu turno ha sido reservado con éxito. Te esperamos en el club.
           </p>
@@ -100,9 +152,13 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
               <MapPin className="text-blue-500 shrink-0 mt-1" size={18} />
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase">Club</p>
-                <p className="font-bold text-slate-900">{reservation.court.club.nombre}</p>
+                <p className="font-bold text-slate-900">
+                  {reservation.court.club.nombre}
+                </p>
                 {reservation.court.club.direccion && (
-                  <p className="text-sm text-slate-500">{reservation.court.club.direccion}</p>
+                  <p className="text-sm text-slate-500">
+                    {reservation.court.club.direccion}
+                  </p>
                 )}
               </div>
             </div>
@@ -112,7 +168,9 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase">Fecha</p>
                 <p className="font-bold text-slate-900 capitalize">
-                  {format(parseISO(reservation.startAt), 'EEEE d MMMM', { locale: es })}
+                  {format(parseISO(reservation.startAt), 'EEEE d MMMM', {
+                    locale: es,
+                  })}
                 </p>
               </div>
             </div>
@@ -137,7 +195,7 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
 
           <div className="space-y-3">
             <Link
-              href={`/club/${reservation.court.club.id}`}
+              href={`/club/${clubId}`}
               className="block w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors"
             >
               Volver al Club
