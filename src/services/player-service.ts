@@ -68,9 +68,11 @@ export const PlayerService = {
   },
 
   confirmCheckout: async (id: string, token: string): Promise<CheckoutReservation> => {
-    const { data } = await api.post<CheckoutReservation>(`/public/reservations/${id}/confirm`, null, {
-      params: { token },
-    });
+    const { data } = await api.post<CheckoutReservation>(
+      `/public/reservations/${id}/confirm`,
+      null,
+      { params: { token } }
+    );
     return data;
   },
 };
