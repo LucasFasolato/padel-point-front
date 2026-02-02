@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, use, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState, Suspense, use } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   CheckCircle2,
@@ -10,66 +10,23 @@ import {
   MapPin,
   Home,
   Loader2,
-  AlertTriangle,
-  ShieldCheck,
+  ExternalLink,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 import { PlayerService } from '@/services/player-service';
 import type { CheckoutReservation } from '@/types';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 min (ajustable)
-
-type CachedSuccess = {
-  v: 1;
-  savedAt: number; // epoch ms
-  data: CheckoutReservation;
-};
-
-function isFreshCache(raw: string | null): raw is string {
-  if (!raw) return false;
-  try {
-    const parsed = JSON.parse(raw) as CachedSuccess;
-    if (!parsed || parsed.v !== 1) return false;
-    if (!parsed.savedAt || typeof parsed.savedAt !== 'number') return false;
-    if (!parsed.data) return false;
-    return Date.now() - parsed.savedAt <= CACHE_TTL_MS;
-  } catch {
-    return false;
-  }
-}
-
-function getBadge(status: CheckoutReservation['status']) {
-  if (status === 'confirmed') {
-    return {
-      text: 'Confirmada',
-      icon: <CheckCircle2 size={16} />,
-      className: 'bg-green-100 text-green-700',
-    };
-  }
-  if (status === 'cancelled') {
-    return {
-      text: 'Cancelada',
-      icon: <AlertTriangle size={16} />,
-      className: 'bg-red-100 text-red-700',
-    };
-  }
-  return {
-    text: 'Pendiente',
-    icon: <Clock size={16} />,
-    className: 'bg-amber-100 text-amber-700',
-  };
-}
-
 function SuccessContent({ reservationId }: { reservationId: string }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const receiptToken = searchParams.get('token');
 
   const [reservation, setReservation] = useState<CheckoutReservation | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hadToken, setHadToken] = useState<boolean>(!!token);
 
   const cacheKey = useMemo(() => `pp:reservation:${reservationId}`, [reservationId]);
 
@@ -77,63 +34,61 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
     if (!reservationId) return;
 
     let cancelled = false;
-    const safe = (fn: () => void) => {
+    const setSafe = (fn: () => void) => {
       if (!cancelled) fn();
     };
 
-    safe(() => setHadToken(!!token));
-
     // 1) Cache-first (anti refresh)
     try {
-      const raw = sessionStorage.getItem(cacheKey);
-
-      if (isFreshCache(raw)) {
-        const parsed = JSON.parse(raw) as CachedSuccess;
-        safe(() => {
-          setReservation(parsed.data);
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached) as CheckoutReservation;
+        setSafe(() => {
+          setReservation(parsed);
           setLoading(false);
         });
+
+        // limpieza suave (10 min)
+        window.setTimeout(() => {
+          try {
+            sessionStorage.removeItem(cacheKey);
+          } catch {}
+        }, 10 * 60 * 1000);
+
         return () => {
           cancelled = true;
         };
       }
-
-      // Si existe pero expiró TTL, lo limpiamos
-      if (raw) {
-        try {
-          sessionStorage.removeItem(cacheKey);
-        } catch {}
-      }
     } catch {
-      // sessionStorage puede fallar (incógnito / policies). Seguimos con fetch.
+      // si sessionStorage falla, seguimos con fetch
     }
 
-    // 2) Fallback fetch (requiere token)
-    const fetchRes = async () => {
+    // 2) Fetch receipt (confirmed)
+    const fetchReceipt = async () => {
       try {
-        if (!token) throw new Error('missing token');
-        const data = await PlayerService.getCheckout(reservationId, token);
+        if (!receiptToken) throw new Error('missing receipt token');
 
-        safe(() => setReservation(data));
+        const data = await PlayerService.getReceipt(reservationId, receiptToken);
 
-        // Cachear para futuros refresh
+        setSafe(() => setReservation(data));
+
+        // cache para refresh posterior
         try {
-          const payload: CachedSuccess = { v: 1, savedAt: Date.now(), data };
-          sessionStorage.setItem(cacheKey, JSON.stringify(payload));
+          sessionStorage.setItem(cacheKey, JSON.stringify(data));
         } catch {}
       } catch {
-        safe(() => setReservation(null));
+        setSafe(() => setReservation(null));
       } finally {
-        safe(() => setLoading(false));
+        setSafe(() => setLoading(false));
       }
     };
 
-    fetchRes();
+    fetchReceipt();
 
     return () => {
       cancelled = true;
     };
-  }, [token, reservationId, cacheKey]);
+  }, [reservationId, receiptToken, cacheKey]);
 
   if (loading) {
     return (
@@ -143,24 +98,15 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
     );
   }
 
-  // Estado robusto: sin cache y sin token => no podemos recuperar
   if (!reservation) {
     return (
       <div className="min-h-screen bg-slate-50">
         <PublicTopBar backHref="/" title="Reserva confirmada" />
-
         <div className="flex h-[70vh] items-center justify-center px-4 text-center text-slate-500">
           <div className="max-w-sm">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100 text-red-600">
-              <AlertTriangle />
-            </div>
-
-            <p className="text-lg font-bold text-slate-900">No pudimos cargar tu reserva</p>
-
+            <p className="text-lg font-bold text-slate-900">No pudimos cargar tu comprobante</p>
             <p className="mt-2 text-sm text-slate-500">
-              {hadToken
-                ? 'El link parece inválido o vencido.'
-                : 'No hay token y no encontramos cache local (posible refresh en otro dispositivo).'}
+              Puede que el link esté incompleto o el token haya expirado.
             </p>
 
             <div className="mt-6 space-y-3">
@@ -171,9 +117,15 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
                 <Home size={16} /> Ir al inicio
               </Link>
 
-              <p className="text-xs text-slate-400">
-                Tip: si venís desde el checkout, volvé a abrir el link original (con token).
-              </p>
+              <button
+                onClick={() => {
+                  toast.message('Tip: entrá desde el link del comprobante o volvé a reservar.');
+                  router.replace('/');
+                }}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50"
+              >
+                <ExternalLink size={16} /> Entendido
+              </button>
             </div>
           </div>
         </div>
@@ -182,7 +134,6 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
   }
 
   const clubId = reservation.court.club.id;
-  const badge = getBadge(reservation.status);
 
   return (
     <>
@@ -190,12 +141,10 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
 
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white max-w-md w-full rounded-3xl shadow-xl overflow-hidden border border-slate-100 text-center p-8">
-          {/* Badge */}
+          {/* ✅ Badge Confirmada */}
           <div className="mb-4 flex justify-center">
-            <span
-              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold ${badge.className}`}
-            >
-              {badge.icon} {badge.text}
+            <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-xs font-bold text-green-700">
+              <CheckCircle2 size={16} /> Confirmada
             </span>
           </div>
 
@@ -203,19 +152,11 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
             <CheckCircle2 size={40} />
           </div>
 
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">
-            {reservation.status === 'confirmed' ? '¡Reserva Confirmada!' : 'Estado de la reserva'}
-          </h1>
-
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">¡Reserva Confirmada!</h1>
           <p className="text-slate-500 mb-8">
-            {reservation.status === 'confirmed'
-              ? 'Tu turno ha sido reservado con éxito. Te esperamos en el club.'
-              : reservation.status === 'cancelled'
-                ? 'Esta reserva fue cancelada. Podés volver al club y elegir otro horario.'
-                : 'Esta reserva todavía no está confirmada.'}
+            Tu turno quedó confirmado. Guardá este comprobante (el link dura 14 días).
           </p>
 
-          {/* Card */}
           <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 text-left space-y-4 mb-8">
             <div className="flex items-start gap-3">
               <MapPin className="text-blue-500 shrink-0 mt-1" size={18} />
@@ -255,13 +196,6 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
               <p className="text-sm text-slate-500">{reservation.court.superficie}</p>
             </div>
           </div>
-
-          {/* microcopy seguridad */}
-          {reservation.status === 'confirmed' && (
-            <div className="mb-6 flex items-center justify-center gap-2 rounded-lg bg-slate-50 py-2 text-xs text-slate-400">
-              <ShieldCheck size={14} className="text-green-500" /> Confirmación registrada correctamente
-            </div>
-          )}
 
           <div className="space-y-3">
             <Link
