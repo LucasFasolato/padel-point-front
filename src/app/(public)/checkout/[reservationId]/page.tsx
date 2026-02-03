@@ -4,7 +4,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Loader2, Clock, AlertTriangle, ShieldCheck } from 'lucide-react';
+import {
+  Loader2,
+  Clock,
+  AlertTriangle,
+  ShieldCheck,
+  CheckCircle2,
+  XCircle,
+} from 'lucide-react';
 
 import { PlayerService } from '@/services/player-service';
 import type { CheckoutReservation } from '@/types';
@@ -187,6 +194,19 @@ export default function CheckoutPage() {
     };
   }, [reservationId, token]);
 
+  useEffect(() => {
+    if (intentStatus !== 'approved') return;
+    const receiptToken = intent?.receiptToken;
+    if (!receiptToken) {
+      setIntentStatus('failed');
+      setIntentError('El pago fue aprobado pero faltan datos del comprobante.');
+      return;
+    }
+    router.replace(
+      `/checkout/success/${reservationId}?receiptToken=${encodeURIComponent(receiptToken)}`,
+    );
+  }, [intentStatus, intent, reservationId, router]);
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -310,6 +330,20 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
+                {intentStatus === 'approved' && (
+                  <div className="flex flex-col items-center gap-2 text-sm text-emerald-700">
+                    <CheckCircle2 className="h-5 w-5" />
+                    <span>Pago confirmado. Te redirigimos al comprobante...</span>
+                  </div>
+                )}
+
+                {intentStatus === 'failed' && (
+                  <div className="flex flex-col items-center gap-2 text-sm text-rose-600">
+                    <XCircle className="h-5 w-5" />
+                    <span>No pudimos confirmar el pago.</span>
+                  </div>
+                )}
+
                 {intentStatus === 'timeout' && (
                   <div className="flex flex-col items-center gap-2 text-sm text-slate-600">
                     <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -323,6 +357,25 @@ export default function CheckoutPage() {
                   </div>
                 )}
               </div>
+
+              {(intentStatus === 'failed' || intentStatus === 'timeout') && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={createIntent}
+                    className="flex h-11 w-full items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800"
+                  >
+                    Reintentar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/club/${reservation.court.club.id}`)}
+                    className="flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50"
+                  >
+                    Volver
+                  </button>
+                </div>
+              )}
 
               {(ready && expired) && (
                 <button
