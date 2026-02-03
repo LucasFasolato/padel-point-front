@@ -67,6 +67,9 @@ export function BookingDrawer() {
   const holdAbortRef = useRef<AbortController | null>(null);
   const expireToastKeyRef = useRef<string | null>(null);
   const hasExpiredRef = useRef(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const resetLocalState = () => {
     setNombre('');
@@ -122,8 +125,30 @@ export function BookingDrawer() {
   useEffect(() => {
     if (!isDrawerOpen) return;
 
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    window.setTimeout(() => {
+      closeButtonRef.current?.focus();
+    }, 0);
+
     const onKey = (ev: KeyboardEvent) => {
       if (ev.key === 'Escape') closeDrawer();
+      if (ev.key === 'Tab' && panelRef.current) {
+        const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        if (!active) return;
+        if (ev.shiftKey && active === first) {
+          ev.preventDefault();
+          last.focus();
+        } else if (!ev.shiftKey && active === last) {
+          ev.preventDefault();
+          first.focus();
+        }
+      }
     };
 
     const previousOverflow = document.body.style.overflow;
@@ -134,6 +159,7 @@ export function BookingDrawer() {
     return () => {
       window.removeEventListener('keydown', onKey);
       document.body.style.overflow = previousOverflow;
+      previousFocusRef.current?.focus();
     };
   }, [isDrawerOpen, closeDrawer]);
 
@@ -294,7 +320,13 @@ export function BookingDrawer() {
 
       {/* PANEL */}
       <div className="absolute inset-x-0 bottom-0 mx-auto w-full md:inset-0 md:flex md:items-center md:justify-center">
-        <div onClick={(e) => e.stopPropagation()}
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="booking-drawer-title"
+          tabIndex={-1}
+          onClick={(e) => e.stopPropagation()}
           className={cn(
             'w-full bg-white shadow-2xl ring-1 ring-black/10',
             'rounded-t-3xl md:rounded-3xl',
@@ -314,7 +346,10 @@ export function BookingDrawer() {
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 Reserva
               </p>
-              <h3 className="text-lg font-bold text-slate-900 leading-tight">
+              <h3
+                id="booking-drawer-title"
+                className="text-lg font-bold text-slate-900 leading-tight"
+              >
                 Confirmá tu turno
               </h3>
               <p className="mt-1 text-sm text-slate-500">
@@ -323,6 +358,7 @@ export function BookingDrawer() {
             </div>
 
             <button
+              ref={closeButtonRef}
               onClick={closeDrawer}
               className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
               aria-label="Cerrar"
@@ -509,6 +545,7 @@ export function BookingDrawer() {
               {holdState !== 'held' ? (
                 <button
                   disabled={!canSubmit}
+                  aria-disabled={!canSubmit}
                   onClick={onCreateHold}
                   className={cn(
                     'flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold transition',
@@ -540,6 +577,7 @@ export function BookingDrawer() {
                 <button
                   onClick={onGoCheckout}
                   disabled={isOpeningCheckout}
+                  aria-disabled={isOpeningCheckout}
                   className={cn(
                     'flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold text-white transition',
                     isOpeningCheckout
