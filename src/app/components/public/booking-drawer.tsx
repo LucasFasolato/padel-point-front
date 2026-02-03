@@ -56,11 +56,13 @@ export function BookingDrawer() {
     setHoldCreating,
     setHoldSuccess,
     setHoldError,
+    setSelectedSlot,
   } = useBookingStore();
 
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [isOpeningCheckout, setIsOpeningCheckout] = useState(false);
 
   const holdAbortRef = useRef<AbortController | null>(null);
   const expireToastKeyRef = useRef<string | null>(null);
@@ -70,10 +72,34 @@ export function BookingDrawer() {
     setNombre('');
     setEmail('');
     setTelefono('');
+    setIsOpeningCheckout(false);
     if (holdAbortRef.current) {
       holdAbortRef.current.abort();
       holdAbortRef.current = null;
     }
+  };
+
+  const getHoldErrorMessage = (err: unknown) => {
+    const fallback = 'No pudimos reservar. Proba otro horario.';
+
+    if (typeof err === 'object' && err !== null) {
+      const response = (err as { response?: { status?: number; data?: { message?: string } } }).response;
+      if (!response) {
+        return 'No pudimos conectar. Revisa tu internet e intenta de nuevo.';
+      }
+      if (response.status === 409) {
+        return 'Ese horario ya no esta disponible. Elegi otro.';
+      }
+      if (response.status === 410) {
+        return 'La reserva expiro. Volve a intentarlo.';
+      }
+      const serverMessage = response.data?.message;
+      if (serverMessage && /expir/i.test(serverMessage)) {
+        return 'La reserva expiro. Volve a intentarlo.';
+      }
+    }
+
+    return fallback;
   };
 
   const resumen = useMemo(() => {
@@ -125,6 +151,34 @@ export function BookingDrawer() {
   }, [isDrawerOpen]);
 
   useEffect(() => {
+    if (!isDrawerOpen) return;
+    if (!court || !selectedSlot) return;
+    try {
+      sessionStorage.setItem(
+        'pp:last-slot',
+        JSON.stringify({ slot: selectedSlot, courtId: court.id }),
+      );
+    } catch {}
+  }, [isDrawerOpen, selectedSlot, court]);
+
+  useEffect(() => {
+    if (!isDrawerOpen) return;
+    if (selectedSlot || !court) return;
+    try {
+      const raw = sessionStorage.getItem('pp:last-slot');
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        slot: { fecha: string };
+        courtId: string;
+      };
+      const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
+      if (parsed.courtId === court.id && parsed.slot?.fecha === selectedDateKey) {
+        setSelectedSlot(parsed.slot as typeof selectedSlot);
+      }
+    } catch {}
+  }, [isDrawerOpen, selectedSlot, court, selectedDate, setSelectedSlot]);
+
+  useEffect(() => {
     return () => {
       resetLocalState();
     };
@@ -164,14 +218,16 @@ export function BookingDrawer() {
   if (!isDrawerOpen) return null;
 
   const nombreOk = nombre.trim().length >= 2;
+  const isCreatingHold = holdState === 'creating';
 
   const canSubmit =
-    !!resumen && holdState !== 'creating' && holdState !== 'held' && nombreOk;
+    !!resumen && !isCreatingHold && holdState !== 'held' && nombreOk;
 
   const onCreateHold = async () => {
     if (!resumen || !court || !selectedSlot) return;
 
     setHoldCreating();
+    setIsOpeningCheckout(false);
     if (holdAbortRef.current) {
       holdAbortRef.current.abort();
     }
@@ -206,23 +262,8 @@ export function BookingDrawer() {
           (err as { code?: string }).code === 'ERR_CANCELED');
 
       if (canceled) return;
-
-      // sin any: extraemos mensaje de forma segura
-      const e = err as {
-        response?: { data?: { message?: string | string[] } };
-        message?: string;
-      };
-
-      const raw = e?.response?.data?.message;
-      const msg =
-        typeof raw === 'string'
-          ? raw
-          : Array.isArray(raw)
-          ? raw.join(', ')
-          : e?.message || 'No se pudo reservar. Probá otro horario.';
-
-      setHoldError(String(msg));
-      toastManager.error(String(msg));
+      const message = getHoldErrorMessage(err);
+      setHoldError(message);
     } finally {
       if (holdAbortRef.current === controller) {
         holdAbortRef.current = null;
@@ -232,11 +273,14 @@ export function BookingDrawer() {
 
   const onGoCheckout = () => {
     if (isExpired) {
-      toastManager.error('El hold expiro. Elegi otro horario.');
+      toastManager.error('El hold expiro. Elegi otro horario.', {
+        idempotencyKey: 'hold-expired-cta',
+      });
       return;
     }
     if (!hold?.id || !hold.checkoutToken) return;
     // window.location.href = `/checkout/${hold.id}?token=${encodeURIComponent(hold.checkoutToken)}`;
+    setIsOpeningCheckout(true);
     router.push(`/checkout/${hold.id}?token=${encodeURIComponent(hold.checkoutToken)}`);
   };
 
@@ -356,7 +400,7 @@ export function BookingDrawer() {
 
                 {/* Hold activo */}
                 {holdState === 'held' && hold && !isExpired && (
-                  <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 transition-shadow">
                     <div className="flex items-start gap-2">
                       <CheckCircle2
                         className="mt-0.5 text-emerald-600"
@@ -407,6 +451,7 @@ export function BookingDrawer() {
                     value={nombre}
                     onChange={(e) => setNombre(e.target.value)}
                     placeholder="Ej: Lucas"
+                    disabled={isCreatingHold}
                     className={cn(
                       'mt-1 h-11 w-full rounded-xl border bg-white px-3 text-sm text-slate-900 outline-none',
                       nombreOk
@@ -429,6 +474,7 @@ export function BookingDrawer() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="tu@mail.com"
+                    disabled={isCreatingHold}
                     className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
@@ -441,6 +487,7 @@ export function BookingDrawer() {
                     value={telefono}
                     onChange={(e) => setTelefono(e.target.value)}
                     placeholder="+54 9 ..."
+                    disabled={isCreatingHold}
                     className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
@@ -470,10 +517,10 @@ export function BookingDrawer() {
                       : 'cursor-not-allowed bg-slate-200 text-slate-500'
                   )}
                 >
-                  {holdState === 'creating' ? (
+                  {isCreatingHold ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Reteniendo...
+                      Creando bloqueo...
                     </>
                   ) : (
                     <>
@@ -492,9 +539,22 @@ export function BookingDrawer() {
               ) : (
                 <button
                   onClick={onGoCheckout}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-bold text-white transition hover:bg-blue-500"
+                  disabled={isOpeningCheckout}
+                  className={cn(
+                    'flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold text-white transition',
+                    isOpeningCheckout
+                      ? 'bg-blue-300'
+                      : 'bg-blue-600 hover:bg-blue-500'
+                  )}
                 >
-                  Continuar (checkout)
+                  {isOpeningCheckout ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Abriendo checkout...
+                    </>
+                  ) : (
+                    'Continuar (checkout)'
+                  )}
                 </button>
               )}
 
