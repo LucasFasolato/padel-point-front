@@ -23,7 +23,7 @@ import api from '@/lib/api';
 import { Club } from '@/types';
 
 export default function DashboardPage() {
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const { clubs, activeClub, fetchMyClubs, setActiveClub, loading } = useClubStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -65,6 +65,21 @@ export default function DashboardPage() {
       setIsCreating(false);
     }
   };
+
+  if (!token) {
+    return (
+      <div className="flex h-96 flex-col items-center justify-center text-slate-400">
+        <LayoutDashboard size={48} className="mb-4 opacity-50" />
+        <p className="text-sm">Sesión expirada. Iniciá sesión nuevamente.</p>
+        <Link
+          href="/admin/login"
+          className="mt-4 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
+        >
+          Volver
+        </Link>
+      </div>
+    );
+  }
 
   if (user?.role !== 'ADMIN') {
     return (
