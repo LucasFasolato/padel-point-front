@@ -49,11 +49,11 @@ export default function ClubPage() {
   const [errorByCourt, setErrorByCourt] = useState<Record<string, string | null>>({});
   const [initLoading, setInitLoading] = useState(true);
 
-  const toPublicMedia = (asset: { secureUrl?: string | null; url?: string | null } | null): PublicMedia | null => {
-    if (!asset) return null;
+  const toPublicMedia = (asset: { secureUrl?: string | null; url?: string | null } | null): PublicMedia | undefined => {
+    if (!asset) return undefined;
     const secureUrl = asset.secureUrl || asset.url || undefined;
     const url = asset.url || asset.secureUrl || undefined;
-    if (!secureUrl && !url) return null;
+    if (!secureUrl && !url) return undefined;
     return {
       secureUrl: secureUrl ?? '',
       url: url ?? '',
