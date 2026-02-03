@@ -33,6 +33,7 @@ export default function ClubPage() {
     setSelectedSlot,
     setCourt,
     setClub: setStoreClub,
+    setAvailabilityForCourt,
     openDrawer,
   } = useBookingStore();
 
@@ -126,10 +127,12 @@ export default function ClubPage() {
           try {
             const slots = await PlayerService.getAvailability(court.id, dateStr);
             setAvailability((prev) => ({ ...prev, [court.id]: slots }));
+            setAvailabilityForCourt(court.id, slots);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (e: any) {
             const msg = e?.response?.data?.message || 'No pudimos cargar los horarios.';
             setAvailability((prev) => ({ ...prev, [court.id]: [] }));
+            setAvailabilityForCourt(court.id, []);
             setErrorByCourt((prev) => ({ ...prev, [court.id]: msg }));
           } finally {
             setLoadingByCourt((prev) => ({ ...prev, [court.id]: false }));

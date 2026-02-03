@@ -16,6 +16,7 @@ interface BookingState {
   court: Court | null;
   selectedDate: Date;
   selectedSlot: AvailabilitySlot | null;
+  availabilityByCourt: Record<string, AvailabilitySlot[]>;
 
   // Hold flow
   hold: HoldReservationResponse | null;
@@ -30,6 +31,7 @@ interface BookingState {
   setCourt: (court: Court) => void;
   setDate: (date: Date) => void;
   setSelectedSlot: (slot: AvailabilitySlot | null) => void;
+  setAvailabilityForCourt: (courtId: string, slots: AvailabilitySlot[]) => void;
 
   openDrawer: () => void;
   closeDrawer: () => void;
@@ -58,6 +60,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   court: null,
   selectedDate: new Date(),
   selectedSlot: null,
+  availabilityByCourt: {},
 
   hold: null,
   holdState: 'idle',
@@ -70,6 +73,10 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   setCourt: (court) => set({ court }),
   setDate: (date) => set({ selectedDate: date }),
   setSelectedSlot: (slot) => set({ selectedSlot: slot }),
+  setAvailabilityForCourt: (courtId, slots) =>
+    set((state) => ({
+      availabilityByCourt: { ...state.availabilityByCourt, [courtId]: slots },
+    })),
 
   resetFlow: () =>
     set({

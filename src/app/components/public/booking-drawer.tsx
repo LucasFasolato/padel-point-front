@@ -16,8 +16,15 @@ import { cn } from '@/lib/utils';
 import { useHoldCountdown } from '@/hooks/use-hold-countdown';
 import { PlayerService } from '@/services/player-service';
 import { useBookingStore } from '@/store/booking-store';
-import type { CreateHoldRequest } from '@/types';
+import type { AvailabilitySlot, CreateHoldRequest } from '@/types';
 import { useRouter } from 'next/navigation';
+
+type SelectedSlotRef = {
+  courtId: string;
+  fecha: string;
+  horaInicio: string;
+  horaFin: string;
+};
 
 function formatMMSS(totalSeconds: number) {
   const m = Math.floor(totalSeconds / 60);
@@ -49,6 +56,7 @@ export function BookingDrawer() {
     court,
     selectedDate,
     selectedSlot,
+    availabilityByCourt,
 
     hold,
     holdState,
@@ -57,6 +65,7 @@ export function BookingDrawer() {
     setHoldSuccess,
     setHoldError,
     setSelectedSlot,
+    setAvailabilityForCourt,
   } = useBookingStore();
 
   const [nombre, setNombre] = useState('');
@@ -70,6 +79,8 @@ export function BookingDrawer() {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const didRestoreRef = useRef(false);
+  const didFetchRestoreRef = useRef(false);
 
   const resetLocalState = () => {
     setNombre('');
@@ -180,47 +191,92 @@ export function BookingDrawer() {
     if (!isDrawerOpen) return;
     if (!court || !selectedSlot) return;
     try {
-      sessionStorage.setItem(
-        'pp:last-slot',
-        JSON.stringify({ slot: selectedSlot, courtId: court.id }),
-      );
+      const slotRef: SelectedSlotRef = {
+        courtId: selectedSlot.courtId,
+        fecha: selectedSlot.fecha,
+        horaInicio: selectedSlot.horaInicio,
+        horaFin: selectedSlot.horaFin,
+      };
+      sessionStorage.setItem('pp:last-slot', JSON.stringify(slotRef));
     } catch {}
   }, [isDrawerOpen, selectedSlot, court]);
 
   useEffect(() => {
     if (!isDrawerOpen) return;
     if (selectedSlot || !court) return;
-    try {
+    if (didRestoreRef.current) return;
+
+    const restoreFromList = (slots: AvailabilitySlot[]) => {
       const raw = sessionStorage.getItem('pp:last-slot');
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as {
-        slot?: unknown;
-        courtId?: string;
-      };
+      if (!raw) return false;
+      const parsed = JSON.parse(raw) as SelectedSlotRef;
       const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
-      const slot = parsed.slot as
-        | {
-            fecha: string;
-            horaInicio: string;
-            horaFin: string;
-            courtId: string;
-            ocupado: boolean;
-            estado: 'ocupado' | 'libre';
-            motivoBloqueo: string | null;
-            reservationId: string | null;
-          }
-        | undefined;
 
       if (
-        parsed.courtId === court.id &&
-        slot &&
-        slot.fecha === selectedDateKey &&
-        slot.courtId === court.id
+        !parsed ||
+        parsed.courtId !== court.id ||
+        parsed.fecha !== selectedDateKey
       ) {
-        setSelectedSlot(slot);
+        return false;
       }
-    } catch {}
-  }, [isDrawerOpen, selectedSlot, court, selectedDate, setSelectedSlot]);
+
+      const found = slots.find(
+        (slot) =>
+          slot.courtId === parsed.courtId &&
+          slot.fecha === parsed.fecha &&
+          slot.horaInicio === parsed.horaInicio &&
+          slot.horaFin === parsed.horaFin,
+      );
+
+      if (found) {
+        setSelectedSlot(found);
+        return true;
+      }
+
+      return false;
+    };
+
+    const slotsInMemory = availabilityByCourt[court.id] ?? [];
+    if (slotsInMemory.length > 0) {
+      if (restoreFromList(slotsInMemory)) {
+        didRestoreRef.current = true;
+      }
+      return;
+    }
+
+    if (didFetchRestoreRef.current) return;
+    didFetchRestoreRef.current = true;
+
+    let cancelled = false;
+    const fetchAndRestore = async () => {
+      try {
+        const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
+        const slots = await PlayerService.getAvailability(
+          court.id,
+          selectedDateKey,
+        );
+        if (cancelled) return;
+        setAvailabilityForCourt(court.id, slots);
+        if (restoreFromList(slots)) {
+          didRestoreRef.current = true;
+        }
+      } catch {}
+    };
+
+    fetchAndRestore();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isDrawerOpen,
+    selectedSlot,
+    court,
+    selectedDate,
+    availabilityByCourt,
+    setSelectedSlot,
+    setAvailabilityForCourt,
+  ]);
 
   useEffect(() => {
     return () => {
