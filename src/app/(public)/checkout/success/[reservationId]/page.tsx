@@ -12,6 +12,8 @@ import {
   Loader2,
   AlertTriangle,
   ExternalLink,
+  CreditCard,
+  User,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -22,6 +24,30 @@ import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { ReservationNotificationCard } from '@/app/components/public/reservation-notification-card';
 import { useReservationNotifications } from '@/hooks/use-reservation-notifications';
 import { showMessageToast, showSuccessToast } from '@/lib/toast';
+import { formatCurrency } from '@/lib/utils';
+
+function ReceiptSkeleton() {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="bg-white max-w-md w-full rounded-3xl shadow-xl overflow-hidden border border-slate-100 p-8 animate-pulse space-y-6">
+        <div className="h-6 w-32 rounded-full bg-slate-200" />
+        <div className="h-16 w-16 rounded-full bg-slate-200" />
+        <div className="space-y-2">
+          <div className="h-5 w-2/3 rounded-full bg-slate-200" />
+          <div className="h-4 w-1/2 rounded-full bg-slate-200" />
+        </div>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-12 w-full rounded-2xl bg-slate-100" />
+          ))}
+        </div>
+        <div className="h-24 w-full rounded-2xl bg-slate-100" />
+      </div>
+    </div>
+  );
+}
+
+const shortId = (value: string) => value.slice(-6).toUpperCase();
 
 function ErrorState({
   title,
@@ -205,11 +231,7 @@ export function SuccessContent({ reservationId }: { reservationId: string }) {
   });
 
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="animate-spin text-green-600" />
-      </div>
-    );
+    return <ReceiptSkeleton />;
   }
 
   if (!reservation) {
@@ -236,27 +258,26 @@ export function SuccessContent({ reservationId }: { reservationId: string }) {
       <PublicTopBar backHref={`/club/${clubId}`} title="Reserva confirmada" />
 
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white max-w-md w-full rounded-3xl shadow-xl overflow-hidden border border-slate-100 text-center p-8">
-          {/* ✅ Badge Confirmada */}
-          <div className="mb-4 flex justify-center">
-            <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-xs font-bold text-green-700">
-              <CheckCircle2 size={16} /> Confirmada
+        <div className="bg-white max-w-md w-full rounded-3xl shadow-xl overflow-hidden border border-slate-100 p-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+              <CheckCircle2 size={14} /> Pago confirmado
+            </span>
+            <span className="text-xs font-semibold text-slate-400">
+              Reserva #{shortId(reservation.id)}
             </span>
           </div>
 
-          <div className="mx-auto mb-6 h-20 w-20 bg-green-100 rounded-full flex items-center justify-center text-green-600">
-            <CheckCircle2 size={40} />
+          <div className="text-left">
+            <h1 className="text-2xl font-bold text-slate-900">
+              Comprobante de reserva
+            </h1>
+            <p className="text-sm text-slate-500">
+              Guardá este comprobante. El link dura 14 días.
+            </p>
           </div>
 
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">
-            ¡Reserva Confirmada!
-          </h1>
-          <p className="text-slate-500 mb-8">
-            Tu turno quedó confirmado. Guardá este comprobante (el link dura 14
-            días).
-          </p>
-
-          <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 text-left space-y-4 mb-8">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4">
             <div className="flex items-start gap-3">
               <MapPin className="text-blue-500 shrink-0 mt-1" size={18} />
               <div>
@@ -312,6 +333,41 @@ export function SuccessContent({ reservationId }: { reservationId: string }) {
                 {reservation.court.superficie}
               </p>
             </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+              <CreditCard size={16} /> Pago
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-500">Estado</span>
+              <span className="font-semibold text-emerald-700">Confirmado</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-500">Total</span>
+              <span className="text-base font-bold text-slate-900">
+                {formatCurrency(reservation.precio)}
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+              <User size={16} /> Cliente
+            </div>
+            <div className="text-sm text-slate-700">
+              {reservation.cliente.nombre}
+            </div>
+            {reservation.cliente.email && (
+              <div className="text-xs text-slate-500">
+                {reservation.cliente.email}
+              </div>
+            )}
+            {reservation.cliente.telefono && (
+              <div className="text-xs text-slate-500">
+                {reservation.cliente.telefono}
+              </div>
+            )}
           </div>
 
           <div className="mb-8 text-left">
