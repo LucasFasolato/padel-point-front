@@ -16,12 +16,15 @@ export default function BookingsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unauthorized, setUnauthorized] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
   
   // Filtros simples
   const [rangePreset, setRangePreset] = useState<'today' | '7d' | '30d'>('today');
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'hold' | 'confirmed' | 'cancelled' | 'expired' | 'payment_pending'
   >('all');
+  const presetStorageKey = 'admin:bookings:preset';
 
   const dateRange = useMemo(() => {
     const from = format(new Date(), 'yyyy-MM-dd');
@@ -42,6 +45,8 @@ export default function BookingsPage() {
     if (!activeClub) return;
     setLoading(true);
     setError(null);
+    setUnauthorized(false);
+    setSessionExpired(false);
     try {
       // Ajusta este endpoint según tu backend. 
       // Debería ser algo como GET /reservations/by-club/:id?date=...
@@ -54,13 +59,36 @@ export default function BookingsPage() {
         }
       });
       setReservations(res.data);
-    } catch (error) {
-      console.error("Error fetching bookings", error);
-      setError('No pudimos cargar las reservas. Intentá de nuevo.');
+    } catch (err: unknown) {
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const status = (err as { response?: { status?: number } }).response?.status;
+        if (status === 401) {
+          setSessionExpired(true);
+        } else if (status === 403) {
+          setUnauthorized(true);
+        } else {
+          setError('No pudimos cargar las reservas. Intentá de nuevo.');
+        }
+      } else {
+        setError('No pudimos cargar las reservas. Intentá de nuevo.');
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem(presetStorageKey) as
+      | 'today'
+      | '7d'
+      | '30d'
+      | null;
+    if (stored) setRangePreset(stored);
+  }, []);
+
+  useEffect(() => {
+    sessionStorage.setItem(presetStorageKey, rangePreset);
+  }, [rangePreset]);
 
   if (user?.role !== 'ADMIN') {
     return (
@@ -121,7 +149,36 @@ export default function BookingsPage() {
             <option value="7d">Próximos 7 días</option>
             <option value="30d">Próximos 30 días</option>
           </select>
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter('all');
+              setRangePreset('today');
+            }}
+            className="ml-auto rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600 hover:bg-slate-50"
+          >
+            Limpiar filtros
+          </button>
         </div>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        <span className="font-semibold text-slate-600">Estados:</span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
+          HOLD
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">
+          PAYMENT_PENDING
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 font-semibold text-green-700">
+          CONFIRMED
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 font-semibold text-red-600">
+          CANCELLED
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
+          EXPIRED
+        </span>
       </div>
 
       {/* Tabla de Reservas */}
@@ -147,6 +204,34 @@ export default function BookingsPage() {
                             {Array.from({ length: 4 }).map((_, i) => (
                               <div key={i} className="h-10 w-full rounded-xl bg-slate-100 animate-pulse" />
                             ))}
+                          </div>
+                        </td>
+                    </tr>
+                ) : sessionExpired ? (
+                    <tr>
+                        <td colSpan={7} className="py-12 text-center text-slate-500">
+                          Sesión expirada. Iniciá sesión nuevamente.
+                          <div className="mt-4">
+                            <Link
+                              href="/admin/login"
+                              className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
+                            >
+                              Volver
+                            </Link>
+                          </div>
+                        </td>
+                    </tr>
+                ) : unauthorized ? (
+                    <tr>
+                        <td colSpan={7} className="py-12 text-center text-slate-500">
+                          No tenés permisos para ver esta sección.
+                          <div className="mt-4">
+                            <Link
+                              href="/admin/dashboard"
+                              className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
+                            >
+                              Volver
+                            </Link>
                           </div>
                         </td>
                     </tr>
@@ -252,7 +337,7 @@ function StatusBadge({ status }: { status: string }) {
               : status === 'expired'
               ? 'Expirada'
               : status === 'payment_pending'
-              ? 'Pago pendiente'
+              ? 'Pendiente de pago'
               : status}
         </span>
     );
