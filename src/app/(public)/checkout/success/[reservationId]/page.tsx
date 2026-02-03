@@ -304,6 +304,15 @@ export function SuccessContent({ reservationId }: { reservationId: string }) {
   }
 
   const clubId = reservation.court.club.id;
+  const summaryText = [
+    'Comprobante PadelPoint',
+    `Reserva #${shortId(reservation.id)}`,
+    `Club: ${reservation.court.club.nombre}`,
+    `Cancha: ${reservation.court.nombre}`,
+    `Fecha: ${format(parseISO(reservation.startAt), 'EEEE d MMMM', { locale: es })}`,
+    `Horario: ${format(parseISO(reservation.startAt), 'HH:mm')} - ${format(parseISO(reservation.endAt), 'HH:mm')} hs`,
+    `Total: ${formatCurrency(reservation.precio)}`,
+  ].join('\n');
 
   return (
     <>
@@ -452,6 +461,19 @@ export function SuccessContent({ reservationId }: { reservationId: string }) {
               </span>
             </Link>
 
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard
+                  .writeText(summaryText)
+                  .then(() => showSuccessToast('Comprobante copiado'))
+                  .catch(() => showMessageToast('No se pudo copiar el comprobante'));
+              }}
+              className="w-full py-3 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 hover:bg-slate-50"
+            >
+              Copiar comprobante
+            </button>
+
             {/* opcional UX: reabrir link (si querés) */}
             {receiptToken && (
               <button
@@ -460,7 +482,7 @@ export function SuccessContent({ reservationId }: { reservationId: string }) {
                   const url = `${window.location.origin}/checkout/success/${reservationId}?receiptToken=${encodeURIComponent(receiptToken)}`;
                   navigator.clipboard
                     .writeText(url)
-                    .then(() => showSuccessToast('Link copiado ✅'))
+                    .then(() => showSuccessToast('Link copiado'))
                     .catch(() => showMessageToast('No se pudo copiar el link'));
                 }}
                 className="w-full py-3 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 hover:bg-slate-50"
