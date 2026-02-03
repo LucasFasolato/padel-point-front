@@ -20,6 +20,10 @@ type PaymentIntentRow = {
   providerEventId?: string | null;
 };
 
+type PaymentIntentListResponse =
+  | PaymentIntentRow[]
+  | { items: PaymentIntentRow[]; total: number };
+
 export default function PaymentsPage() {
   const { user } = useAuthStore();
   const { activeClub } = useClubStore();
@@ -27,11 +31,17 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [endpointMissing, setEndpointMissing] = useState(false);
+  const [unauthorized, setUnauthorized] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [rows, setRows] = useState<PaymentIntentRow[]>([]);
+  const [total, setTotal] = useState<number | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<'all' | PaymentIntentStatus>('all');
   const [rangePreset, setRangePreset] = useState<'today' | '7d' | '30d'>('today');
   const [reservationSearch, setReservationSearch] = useState('');
+  const [offset, setOffset] = useState(0);
+  const limit = 20;
+  const presetStorageKey = 'admin:payments:preset';
 
   const dateRange = useMemo(() => {
     const from = format(new Date(), 'yyyy-MM-dd');
@@ -46,23 +56,38 @@ export default function PaymentsPage() {
     setLoading(true);
     setError(null);
     setEndpointMissing(false);
+    setUnauthorized(false);
+    setSessionExpired(false);
     try {
-      const res = await api.get<PaymentIntentRow[]>('/payments/intents', {
+      const res = await api.get<PaymentIntentListResponse>('/payments/intents', {
         params: {
           from: dateRange.from,
           to: dateRange.to,
           status: statusFilter === 'all' ? undefined : statusFilter,
           reservationId: reservationSearch.trim() || undefined,
           clubId: activeClub?.id,
+          limit,
+          offset,
         },
       });
-      setRows(res.data ?? []);
+      if (Array.isArray(res.data)) {
+        setRows(res.data ?? []);
+        setTotal(null);
+      } else {
+        setRows(res.data.items ?? []);
+        setTotal(res.data.total ?? 0);
+      }
     } catch (err: unknown) {
       if (typeof err === 'object' && err !== null && 'response' in err) {
         const status = (err as { response?: { status?: number } }).response?.status;
-        if (status === 404 || status === 501) {
+        if (status === 401) {
+          setSessionExpired(true);
+        } else if (status === 403) {
+          setUnauthorized(true);
+        } else if (status === 404 || status === 501) {
           setEndpointMissing(true);
           setRows([]);
+          setTotal(null);
         } else {
           setError('No pudimos cargar los pagos. Intentá de nuevo.');
         }
@@ -75,8 +100,25 @@ export default function PaymentsPage() {
   };
 
   useEffect(() => {
-    fetchPayments();
+    const stored = sessionStorage.getItem(presetStorageKey) as
+      | 'today'
+      | '7d'
+      | '30d'
+      | null;
+    if (stored) setRangePreset(stored);
+  }, []);
+
+  useEffect(() => {
+    sessionStorage.setItem(presetStorageKey, rangePreset);
+  }, [rangePreset]);
+
+  useEffect(() => {
+    setOffset(0);
   }, [rangePreset, statusFilter, reservationSearch, activeClub?.id]);
+
+  useEffect(() => {
+    fetchPayments();
+  }, [rangePreset, statusFilter, reservationSearch, activeClub?.id, offset]);
 
   if (user?.role !== 'ADMIN') {
     return (
@@ -143,7 +185,38 @@ export default function PaymentsPage() {
               className="text-sm text-slate-700 outline-none bg-transparent"
             />
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter('all');
+              setRangePreset('today');
+              setReservationSearch('');
+              setOffset(0);
+            }}
+            className="ml-auto rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600 hover:bg-slate-50"
+          >
+            Limpiar filtros
+          </button>
         </div>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        <span className="font-semibold text-slate-600">Estados:</span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">
+          PAYMENT_PENDING
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 font-semibold text-green-700">
+          CONFIRMED
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-slate-600">
+          HOLD
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 font-semibold text-red-600">
+          CANCELLED
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
+          EXPIRED
+        </span>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -167,6 +240,34 @@ export default function PaymentsPage() {
                       {Array.from({ length: 4 }).map((_, i) => (
                         <div key={i} className="h-10 w-full rounded-xl bg-slate-100 animate-pulse" />
                       ))}
+                    </div>
+                  </td>
+                </tr>
+              ) : sessionExpired ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
+                    Sesión expirada. Iniciá sesión nuevamente.
+                    <div className="mt-4">
+                      <Link
+                        href="/admin/login"
+                        className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
+                      >
+                        Volver
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ) : unauthorized ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
+                    No tenés permisos para ver esta sección.
+                    <div className="mt-4">
+                      <Link
+                        href="/admin/dashboard"
+                        className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
+                      >
+                        Volver
+                      </Link>
                     </div>
                   </td>
                 </tr>
@@ -223,6 +324,27 @@ export default function PaymentsPage() {
           </table>
         </div>
       </div>
+
+      {total !== null && (
+        <div className="mt-4 flex items-center justify-end gap-2 text-sm text-slate-500">
+          <button
+            type="button"
+            onClick={() => setOffset((prev) => Math.max(0, prev - limit))}
+            disabled={offset === 0}
+            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600 disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <button
+            type="button"
+            onClick={() => setOffset((prev) => prev + limit)}
+            disabled={offset + limit >= total}
+            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600 disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -234,11 +356,18 @@ function PaymentStatusBadge({ status }: { status: PaymentIntentStatus }) {
     PENDING: 'bg-blue-100 text-blue-700 border-blue-200',
   };
 
+  const label =
+    status === 'APPROVED'
+      ? 'Confirmada'
+      : status === 'FAILED'
+      ? 'Fallida'
+      : 'Pendiente de pago';
+
   return (
     <span
       className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${styles[status]}`}
     >
-      {status === 'APPROVED' ? 'Aprobado' : status === 'FAILED' ? 'Fallido' : 'Pendiente'}
+      {label}
     </span>
   );
 }
