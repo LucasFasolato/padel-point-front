@@ -6,6 +6,9 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Court } from '@/types';
 import { useCourtStore } from '@/store/court-store';
 import api from '@/lib/api';
+import { MediaService } from '@/lib/media-service';
+import MediaUploader from '@/app/components/admin/media-uploader';
+import { MediaKind, MediaOwnerType, type MediaAsset } from '@/types';
 
 interface Props {
   isOpen: boolean;
@@ -17,6 +20,10 @@ interface Props {
 export default function CourtModal({ isOpen, onClose, courtToEdit, clubId }: Props) {
   const { addCourt, updateCourt } = useCourtStore();
   const [loading, setLoading] = useState(false);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const [primaryAssets, setPrimaryAssets] = useState<MediaAsset[]>([]);
+  const [galleryAssets, setGalleryAssets] = useState<MediaAsset[]>([]);
   
   const [form, setForm] = useState({
     nombre: '',
@@ -43,6 +50,80 @@ export default function CourtModal({ isOpen, onClose, courtToEdit, clubId }: Pro
       });
     }
   }, [courtToEdit, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setPrimaryAssets([]);
+      setGalleryAssets([]);
+      setMediaError(null);
+      setMediaLoading(false);
+      return;
+    }
+
+    if (!courtToEdit?.id) {
+      setPrimaryAssets([]);
+      setGalleryAssets([]);
+      setMediaError(null);
+      return;
+    }
+
+    const fetchMedia = async () => {
+      setMediaLoading(true);
+      setMediaError(null);
+      try {
+        const [primary, gallery] = await Promise.all([
+          MediaService.listAuth({
+            ownerType: MediaOwnerType.COURT,
+            ownerId: courtToEdit.id,
+            kind: MediaKind.COURT_PRIMARY,
+          }),
+          MediaService.listAuth({
+            ownerType: MediaOwnerType.COURT,
+            ownerId: courtToEdit.id,
+            kind: MediaKind.COURT_GALLERY,
+          }),
+        ]);
+        setPrimaryAssets(primary);
+        setGalleryAssets(gallery);
+      } catch {
+        setPrimaryAssets([]);
+        setGalleryAssets([]);
+        setMediaError('No pudimos cargar las imágenes.');
+      } finally {
+        setMediaLoading(false);
+      }
+    };
+
+    fetchMedia();
+  }, [isOpen, courtToEdit?.id]);
+
+  const refreshMedia = async () => {
+    if (!courtToEdit?.id) return;
+    setMediaLoading(true);
+    setMediaError(null);
+    try {
+      const [primary, gallery] = await Promise.all([
+        MediaService.listAuth({
+          ownerType: MediaOwnerType.COURT,
+          ownerId: courtToEdit.id,
+          kind: MediaKind.COURT_PRIMARY,
+        }),
+        MediaService.listAuth({
+          ownerType: MediaOwnerType.COURT,
+          ownerId: courtToEdit.id,
+          kind: MediaKind.COURT_GALLERY,
+        }),
+      ]);
+      setPrimaryAssets(primary);
+      setGalleryAssets(gallery);
+    } catch {
+      setPrimaryAssets([]);
+      setGalleryAssets([]);
+      setMediaError('No pudimos cargar las imágenes.');
+    } finally {
+      setMediaLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,6 +220,58 @@ export default function CourtModal({ isOpen, onClose, courtToEdit, clubId }: Pro
               {loading ? <Loader2 className="animate-spin" /> : 'Guardar'}
             </button>
           </form>
+
+          <div className="mt-6 border-t border-slate-100 pt-6">
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-slate-900">Imágenes de la cancha</h3>
+              <p className="text-xs text-slate-500">
+                Cargá una imagen principal y una galería opcional.
+              </p>
+            </div>
+
+            {!courtToEdit?.id ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-xs text-slate-500">
+                Guardá la cancha para poder cargar imágenes.
+              </div>
+            ) : mediaLoading ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-xs text-slate-500">
+                Cargando imágenes...
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {mediaError && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+                    {mediaError}
+                    <button
+                      type="button"
+                      onClick={refreshMedia}
+                      className="ml-3 font-semibold text-amber-800 underline"
+                    >
+                      Reintentar
+                    </button>
+                  </div>
+                )}
+                <MediaUploader
+                  ownerType={MediaOwnerType.COURT}
+                  ownerId={courtToEdit.id}
+                  kind={MediaKind.COURT_PRIMARY}
+                  mode="single"
+                  title="Imagen principal"
+                  existingAssets={primaryAssets}
+                  onChanged={refreshMedia}
+                />
+                <MediaUploader
+                  ownerType={MediaOwnerType.COURT}
+                  ownerId={courtToEdit.id}
+                  kind={MediaKind.COURT_GALLERY}
+                  mode="multi"
+                  title="Galería"
+                  existingAssets={galleryAssets}
+                  onChanged={refreshMedia}
+                />
+              </div>
+            )}
+          </div>
 
         </Dialog.Content>
       </Dialog.Portal>
