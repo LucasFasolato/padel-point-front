@@ -102,7 +102,7 @@ export default function HomePage() {
             <Link href="/admin/login" className="text-sm font-medium text-slate-500 hover:text-slate-900">
               Soy Dueño
             </Link>
-            <Link href="/login" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-600">
+            <Link href="/admin/login" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-600">
               Ingresar
             </Link>
           </div>
