@@ -194,12 +194,30 @@ export function BookingDrawer() {
       const raw = sessionStorage.getItem('pp:last-slot');
       if (!raw) return;
       const parsed = JSON.parse(raw) as {
-        slot: { fecha: string };
-        courtId: string;
+        slot?: unknown;
+        courtId?: string;
       };
       const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
-      if (parsed.courtId === court.id && parsed.slot?.fecha === selectedDateKey) {
-        setSelectedSlot(parsed.slot as typeof selectedSlot);
+      const slot = parsed.slot as
+        | {
+            fecha: string;
+            horaInicio: string;
+            horaFin: string;
+            courtId: string;
+            ocupado: boolean;
+            estado: 'ocupado' | 'libre';
+            motivoBloqueo: string | null;
+            reservationId: string | null;
+          }
+        | undefined;
+
+      if (
+        parsed.courtId === court.id &&
+        slot &&
+        slot.fecha === selectedDateKey &&
+        slot.courtId === court.id
+      ) {
+        setSelectedSlot(slot);
       }
     } catch {}
   }, [isDrawerOpen, selectedSlot, court, selectedDate, setSelectedSlot]);
