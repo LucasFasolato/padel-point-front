@@ -34,9 +34,14 @@ export default function CheckoutPage() {
   const [reservation, setReservation] = useState<CheckoutReservation | null>(null);
   const [loading, setLoading] = useState(true);
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
-  const [intentStatus, setIntentStatus] = useState<'idle' | 'loading' | 'pending'>('idle');
+  const [intentStatus, setIntentStatus] = useState<
+    'idle' | 'loading' | 'pending' | 'failed' | 'timeout' | 'approved'
+  >('idle');
   const [intentError, setIntentError] = useState<string | null>(null);
   const intentAbortRef = useRef<AbortController | null>(null);
+  const pollingRef = useRef<number | null>(null);
+  const timeoutRef = useRef<number | null>(null);
+  const pollingAbortRef = useRef<AbortController | null>(null);
 
   const cacheKey = useMemo(() => `pp:reservation:${reservationId}`, [reservationId]);
 
@@ -109,17 +114,75 @@ export default function CheckoutPage() {
       );
       if (!data?.id) throw new Error('missing intent id');
       setIntent(data);
-      setIntentStatus('pending');
+      if (data.status === 'approved') {
+        setIntentStatus('approved');
+      } else {
+        setIntentStatus('pending');
+        startPolling(data.id);
+      }
     } catch {
-      setIntentStatus('idle');
+      setIntentStatus('failed');
       setIntentError('No pudimos iniciar el pago. Intentá de nuevo.');
     }
+  };
+
+  const clearPolling = () => {
+    if (pollingRef.current) window.clearInterval(pollingRef.current);
+    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    pollingRef.current = null;
+    timeoutRef.current = null;
+    if (pollingAbortRef.current) {
+      pollingAbortRef.current.abort();
+      pollingAbortRef.current = null;
+    }
+  };
+
+  const startPolling = (intentId: string) => {
+    clearPolling();
+
+    const poll = async () => {
+      if (!intentId) return;
+      if (pollingAbortRef.current) pollingAbortRef.current.abort();
+      pollingAbortRef.current = new AbortController();
+
+      try {
+        const { data } = await api.get<PaymentIntent>(
+          `/payments/intents/${intentId}`,
+          {
+            params: { reservationId, token },
+            signal: pollingAbortRef.current.signal,
+          },
+        );
+        if (!data?.status) return;
+        setIntent(data);
+        if (data.status === 'approved') {
+          setIntentStatus('approved');
+          clearPolling();
+        } else if (data.status === 'failed' || data.status === 'expired') {
+          setIntentStatus('failed');
+          clearPolling();
+        } else {
+          setIntentStatus('pending');
+        }
+      } catch {
+        // ignore; timeout will handle slow connections
+      }
+    };
+
+    poll();
+
+    pollingRef.current = window.setInterval(poll, 2000);
+    timeoutRef.current = window.setTimeout(() => {
+      setIntentStatus('timeout');
+      clearPolling();
+    }, 35000);
   };
 
   useEffect(() => {
     if (!reservationId || !token) return;
     createIntent();
     return () => {
+      clearPolling();
       if (intentAbortRef.current) intentAbortRef.current.abort();
     };
   }, [reservationId, token]);
@@ -247,7 +310,14 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {intentStatus === 'idle' && intentError && (
+                {intentStatus === 'timeout' && (
+                  <div className="flex flex-col items-center gap-2 text-sm text-slate-600">
+                    <AlertTriangle className="h-5 w-5 text-amber-500" />
+                    <span>El pago está tardando más de lo esperado.</span>
+                  </div>
+                )}
+
+                {(intentStatus === 'idle' || intentStatus === 'failed') && intentError && (
                   <div className="text-sm text-rose-600">
                     {intentError}
                   </div>
