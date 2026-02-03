@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { format } from 'date-fns';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 import { PlayerService } from '@/services/player-service';
 import type {
@@ -154,10 +154,40 @@ export default function ClubPage() {
 
   if (initLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-sm font-medium text-slate-400">Cargando club...</p>
+      <div className="min-h-screen bg-slate-50">
+        <div className="animate-pulse">
+          <div className="h-44 w-full bg-slate-200" />
+          <div className="mx-auto max-w-md space-y-4 px-4 pt-6 sm:max-w-3xl">
+            <div className="h-10 w-2/3 rounded-full bg-slate-200" />
+            <div className="h-6 w-1/3 rounded-full bg-slate-200" />
+            <div className="h-12 w-full rounded-2xl bg-slate-200" />
+            <div className="space-y-4 pt-6">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-100"
+                >
+                  <div className="flex items-center justify-between border-b border-slate-50 bg-slate-50/50 px-5 py-4">
+                    <div className="space-y-2">
+                      <div className="h-4 w-32 rounded-full bg-slate-200" />
+                      <div className="h-3 w-24 rounded-full bg-slate-200" />
+                    </div>
+                    <div className="h-6 w-20 rounded-full bg-slate-200" />
+                  </div>
+                  <div className="p-5">
+                    <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+                      {Array.from({ length: 10 }).map((__, idx) => (
+                        <div
+                          key={idx}
+                          className="h-20 rounded-xl border border-slate-200 bg-slate-100"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
