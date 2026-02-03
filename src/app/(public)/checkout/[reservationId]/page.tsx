@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Loader2, Clock, AlertTriangle, ShieldCheck } from 'lucide-react';
-import { toast } from 'sonner';
+import { toastManager } from '@/lib/toast';
 
 import { PlayerService } from '@/services/player-service';
 import type { CheckoutReservation } from '@/types';
@@ -53,7 +53,7 @@ export default function CheckoutPage() {
           saveReservationCache(reservationId, data);
         } catch {}
       } catch {
-        toast.error('Reserva no encontrada o token inválido');
+        toastManager.error('Reserva no encontrada o token invalido');
         setSafe(() => setReservation(null));
       } finally {
         setSafe(() => setLoading(false));
@@ -81,7 +81,7 @@ export default function CheckoutPage() {
 
     // ✅ sólo bloqueamos si el contador ya está listo
     if (ready && expired) {
-      toast.error('El hold expiró. Volvé a elegir otro horario.');
+      toastManager.error('El hold expiro. Volve a elegir otro horario.');
       return;
     }
 
@@ -102,11 +102,11 @@ export default function CheckoutPage() {
       const receiptToken = (confirmed as any).receiptToken as string | undefined;
       if (!receiptToken) throw new Error('missing receiptToken in response');
 
-      toast.success('Pago simulado ✅ Reserva confirmada');
+      toastManager.success('Pago simulado. Reserva confirmada.');
 
       router.replace(`/checkout/success/${reservationId}?receiptToken=${encodeURIComponent(receiptToken)}`);
     } catch {
-      toast.error('Error al confirmar');
+      toastManager.error('Error al confirmar');
     } finally {
       setProcessing(false);
     }

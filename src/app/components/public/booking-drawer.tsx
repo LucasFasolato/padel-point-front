@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
-import { toast } from 'sonner';
+import { toastManager } from '@/lib/toast';
 import {
   Loader2,
   X,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { useHoldCountdown } from '@/hooks/use-hold-countdown';
 import { PlayerService } from '@/services/player-service';
 import { useBookingStore } from '@/store/booking-store';
 import type { CreateHoldRequest } from '@/types';
@@ -61,8 +62,19 @@ export function BookingDrawer() {
   const [email, setEmail] = useState('');
   const [telefono, setTelefono] = useState('');
 
-  // Tick para contador (sin setState “cascada” rara)
-  const [now, setNow] = useState(() => Date.now());
+  const holdAbortRef = useRef<AbortController | null>(null);
+  const expireToastKeyRef = useRef<string | null>(null);
+  const hasExpiredRef = useRef(false);
+
+  const resetLocalState = () => {
+    setNombre('');
+    setEmail('');
+    setTelefono('');
+    if (holdAbortRef.current) {
+      holdAbortRef.current.abort();
+      holdAbortRef.current = null;
+    }
+  };
 
   const resumen = useMemo(() => {
     if (!club || !court || !selectedSlot) return null;
@@ -99,25 +111,46 @@ export function BookingDrawer() {
     };
   }, [isDrawerOpen, closeDrawer]);
 
-  // Countdown tick solo si hay hold activo
   useEffect(() => {
-    if (!isDrawerOpen) return;
-    if (holdState !== 'held') return;
-    if (!hold?.expiresAt) return;
+    if (isDrawerOpen) {
+      expireToastKeyRef.current = `hold-expired-${Date.now()}`;
+      hasExpiredRef.current = false;
+    }
+  }, [isDrawerOpen]);
 
-    const t = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(t);
-  }, [isDrawerOpen, holdState, hold?.expiresAt]);
+  useEffect(() => {
+    if (!isDrawerOpen) {
+      resetLocalState();
+    }
+  }, [isDrawerOpen]);
 
-  const expMs = hold?.expiresAt ? Date.parse(String(hold.expiresAt)) : NaN;
+  useEffect(() => {
+    return () => {
+      resetLocalState();
+    };
+  }, []);
 
-  const secondsLeft =
-    holdState === 'held' && Number.isFinite(expMs)
-      ? Math.max(0, Math.ceil((expMs - now) / 1000))
-      : 0;
+  const countdownEnabled = isDrawerOpen && holdState === 'held';
 
-  const isExpired =
-    holdState === 'held' && (!Number.isFinite(expMs) || secondsLeft <= 0);
+  const { timeLeftSec, expired } = useHoldCountdown({
+    expiresAtIso: hold?.expiresAt ?? null,
+    serverNowIso: hold?.serverNow ?? null,
+    enabled: countdownEnabled,
+    onExpire: () => {
+      if (!isDrawerOpen || hasExpiredRef.current) return;
+      hasExpiredRef.current = true;
+      if (holdAbortRef.current) {
+        holdAbortRef.current.abort();
+        holdAbortRef.current = null;
+      }
+      toastManager.error('La reserva expiro. Volve a intentarlo.', {
+        idempotencyKey: expireToastKeyRef.current ?? 'hold-expired',
+      });
+    },
+  });
+
+  const secondsLeft = timeLeftSec ?? 0;
+  const isExpired = countdownEnabled && expired;
 
   const canGoCheckout =
     holdState === 'held' && !!hold?.id && !!hold?.checkoutToken && !isExpired;
@@ -139,6 +172,11 @@ export function BookingDrawer() {
     if (!resumen || !court || !selectedSlot) return;
 
     setHoldCreating();
+    if (holdAbortRef.current) {
+      holdAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    holdAbortRef.current = controller;
 
     try {
       const payload: CreateHoldRequest = {
@@ -152,14 +190,23 @@ export function BookingDrawer() {
       };
       console.log('[HOLD][CLICK] resumen/court/slot', { resumen, court, selectedSlot });
       console.log('[HOLD][PAYLOAD]', payload);
-      const res = await PlayerService.createHold(payload);
+      const res = await PlayerService.createHold(payload, controller.signal);
       console.log('[HOLD][API_OK]', res);
       setHoldSuccess(res);
 
       // window.location.href = `/checkout/${res.id}?token=${encodeURIComponent(res.checkoutToken)}`;
       router.push(`/checkout/${res.id}?token=${encodeURIComponent(res.checkoutToken)}`);
-      toast.success('Turno retenido por 10 minutos ✅');
+      toastManager.success('Turno retenido por 10 minutos.');
     } catch (err: unknown) {
+      const canceled =
+        controller.signal.aborted ||
+        (typeof err === 'object' &&
+          err !== null &&
+          'code' in err &&
+          (err as { code?: string }).code === 'ERR_CANCELED');
+
+      if (canceled) return;
+
       // sin any: extraemos mensaje de forma segura
       const e = err as {
         response?: { data?: { message?: string | string[] } };
@@ -175,13 +222,17 @@ export function BookingDrawer() {
           : e?.message || 'No se pudo reservar. Probá otro horario.';
 
       setHoldError(String(msg));
-      toast.error(String(msg));
+      toastManager.error(String(msg));
+    } finally {
+      if (holdAbortRef.current === controller) {
+        holdAbortRef.current = null;
+      }
     }
   };
 
   const onGoCheckout = () => {
     if (isExpired) {
-      toast.error('El hold expiró. Elegí otro horario.');
+      toastManager.error('El hold expiro. Elegi otro horario.');
       return;
     }
     if (!hold?.id || !hold.checkoutToken) return;

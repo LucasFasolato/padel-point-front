@@ -323,7 +323,6 @@ export function SuccessContent({ reservationId }: { reservationId: string }) {
               errorMessage={notificationError}
               canResend={canResend}
               isResending={isResending}
-              source={notification?.source ?? 'mock'}
               onResend={resend}
             />
           </div>

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Search, MapPin, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
-import { toast } from 'sonner';
+import { toastManager } from '@/lib/toast';
 
 import { Club } from '@/types';
 import ClubCard from '@/app/components/club-card';
@@ -43,7 +43,9 @@ export default function HomePage() {
         'No pudimos cargar los clubes.';
       setError(msg);
       setClubs([]);
-      toast.error('No pudimos cargar los clubes', { description: 'Probá de nuevo.' });
+      toastManager.error('No pudimos cargar los clubes', {
+        idempotencyKey: 'clubs-load-error',
+      });
     } finally {
       setHasLoaded(true);
       setLoading(false);
@@ -69,7 +71,9 @@ export default function HomePage() {
         'No pudimos buscar clubes.';
       setError(msg);
       setClubs([]);
-      toast.error('No pudimos buscar clubes', { description: 'Probá de nuevo.' });
+      toastManager.error('No pudimos buscar clubes', {
+        idempotencyKey: 'clubs-search-error',
+      });
     } finally {
       setHasLoaded(true);
       setLoading(false);

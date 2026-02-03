@@ -9,13 +9,10 @@ import type {
   ReservationNotificationStatus,
 } from '@/types';
 
-type NotificationSource = 'api' | 'mock';
-
 type NotificationState = {
   status: ReservationNotificationStatus;
   lastAttemptAt: string | null;
   message: string | null;
-  source: NotificationSource;
 };
 
 type UseReservationNotificationsArgs = {
@@ -24,30 +21,27 @@ type UseReservationNotificationsArgs = {
   enabled?: boolean;
 };
 
-const statuses: ReservationNotificationStatus[] = ['sent', 'pending', 'error'];
-
-const getMockStatus = (reservationId: string): ReservationNotificationStatus => {
-  const hash = reservationId
-    .split('')
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return statuses[hash % statuses.length];
-};
-
 const normalizeResponse = (
   response: ReservationNotificationResponse,
 ): NotificationState => ({
   status: response.status,
   lastAttemptAt: response.lastAttemptAt ?? null,
   message: response.message ?? null,
-  source: 'api',
 });
 
-const getMockState = (reservationId: string): NotificationState => ({
-  status: getMockStatus(reservationId),
-  lastAttemptAt: new Date().toISOString(),
-  message: 'Mock: notificación registrada.',
-  source: 'mock',
-});
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = (error as { response?: { status?: number } }).response;
+    const status = response?.status;
+    if (status === 401 || status === 403) {
+      return 'Token invalido o expirado.';
+    }
+    if (status === 404) {
+      return 'No encontramos la notificacion asociada a este receiptToken.';
+    }
+  }
+  return fallback;
+};
 
 export function useReservationNotifications({
   reservationId,
@@ -57,8 +51,8 @@ export function useReservationNotifications({
   const [notification, setNotification] = useState<NotificationState | null>(
     null,
   );
-  const [loading, setLoading] = useState(true);
-  const [resending, setResending] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+  const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const hasToken = Boolean(receiptToken);
@@ -80,8 +74,12 @@ export function useReservationNotifications({
   const handleMissingToken = useCallback(() => {
     setSafeState(() => {
       setError('Falta receiptToken para consultar o reenviar notificaciones.');
-      setNotification(null);
-      setLoading(false);
+      setNotification({
+        status: 'error',
+        lastAttemptAt: null,
+        message: null,
+      });
+      setIsFetching(false);
     });
   }, [setSafeState]);
 
@@ -93,7 +91,7 @@ export function useReservationNotifications({
     }
 
     setSafeState(() => {
-      setLoading(true);
+      setIsFetching(true);
       setError(null);
     });
 
@@ -107,12 +105,21 @@ export function useReservationNotifications({
       setSafeState(() => {
         setNotification(normalizeResponse(data));
       });
-    } catch {
+    } catch (err: unknown) {
+      const message = getErrorMessage(
+        err,
+        'No pudimos consultar el estado de la notificacion.',
+      );
       setSafeState(() => {
-        setNotification(getMockState(reservationId));
+        setError(message);
+        setNotification({
+          status: 'error',
+          lastAttemptAt: null,
+          message: null,
+        });
       });
     } finally {
-      setSafeState(() => setLoading(false));
+      setSafeState(() => setIsFetching(false));
     }
   }, [active, handleMissingToken, hasToken, receiptToken, reservationId, setSafeState]);
 
@@ -124,40 +131,48 @@ export function useReservationNotifications({
     if (!active) return;
     if (!hasToken) {
       handleMissingToken();
-      showErrorToast('Falta receiptToken para reenviar la notificación.');
+      showErrorToast('Falta receiptToken para reenviar la notificacion.');
       return;
     }
 
     setSafeState(() => {
-      setResending(true);
+      setIsResending(true);
       setNotification((prev) =>
         prev
-          ? { ...prev, status: 'pending', message: 'Reintentando envío...' }
-          : { ...getMockState(reservationId), status: 'pending' },
+          ? { ...prev, status: 'pending', message: 'Reintentando envio...' }
+          : {
+              status: 'pending',
+              lastAttemptAt: null,
+              message: 'Reintentando envio...',
+            },
       );
     });
 
     try {
       const { data } = await api.post<ReservationNotificationResponse>(
-        `/public/reservations/${reservationId}/notifications`,
+        `/public/reservations/${reservationId}/notifications/resend`,
         {
           token: receiptToken,
         },
       );
       setSafeState(() => setNotification(normalizeResponse(data)));
-      showSuccessToast('Notificación reenviada ✅');
-    } catch {
-      setSafeState(() =>
+      showSuccessToast('Notificacion reenviada.');
+    } catch (err: unknown) {
+      const message = getErrorMessage(
+        err,
+        'No pudimos reenviar la notificacion.',
+      );
+      setSafeState(() => {
+        setError(message);
         setNotification({
           status: 'error',
           lastAttemptAt: new Date().toISOString(),
-          message: 'No pudimos reenviar la notificación.',
-          source: 'mock',
-        }),
-      );
-      showErrorToast('No pudimos reenviar la notificación.');
+          message: null,
+        });
+      });
+      showErrorToast(message);
     } finally {
-      setSafeState(() => setResending(false));
+      setSafeState(() => setIsResending(false));
     }
   }, [active, handleMissingToken, hasToken, receiptToken, reservationId, setSafeState]);
 
@@ -165,10 +180,18 @@ export function useReservationNotifications({
 
   return {
     notification,
-    loading,
+    loading: isFetching || isResending,
+    state:
+      isFetching || isResending
+        ? 'loading'
+        : error || notification?.status === 'error'
+          ? 'error'
+          : notification?.status === 'sent'
+            ? 'sent'
+            : 'error',
     error,
     resend,
     canResend,
-    isResending: resending,
+    isResending,
   };
 }

@@ -6,15 +6,22 @@ type Args = {
   expiresAtIso: string | null;
   serverNowIso: string | null; // ✅ clave: tiempo del servidor/DB
   enabled: boolean;
+  onExpire?: () => void;
 };
 
-export function useHoldCountdown({ expiresAtIso, serverNowIso, enabled }: Args) {
+export function useHoldCountdown({
+  expiresAtIso,
+  serverNowIso,
+  enabled,
+  onExpire,
+}: Args) {
   // Tick para re-render (evita setState dentro del body del effect)
   const [tick, setTick] = useState(0);
 
   // Anclas para “server time corriendo” según el reloj del cliente
   const anchorClientMsRef = useRef<number>(0);
   const anchorServerMsRef = useRef<number>(0);
+  const hasExpiredRef = useRef(false);
 
   // Cuando habilita o cambian timestamps => reseteo de anclas
   useEffect(() => {
@@ -22,6 +29,7 @@ export function useHoldCountdown({ expiresAtIso, serverNowIso, enabled }: Args) 
 
     anchorClientMsRef.current = Date.now();
     anchorServerMsRef.current = new Date(serverNowIso).getTime();
+    hasExpiredRef.current = false;
   }, [enabled, expiresAtIso, serverNowIso]);
 
   // Interval: setState SOLO en callback (buena práctica)
@@ -60,6 +68,12 @@ export function useHoldCountdown({ expiresAtIso, serverNowIso, enabled }: Args) 
 
   // ✅ Solo puede expirar si está ready
   const expired = ready && timeLeftSec === 0;
+
+  useEffect(() => {
+    if (!expired || hasExpiredRef.current) return;
+    hasExpiredRef.current = true;
+    onExpire?.();
+  }, [expired, onExpire]);
 
   return { mmss, expired, ready, timeLeftSec };
 }

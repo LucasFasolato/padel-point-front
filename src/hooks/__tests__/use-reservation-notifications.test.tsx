@@ -34,6 +34,7 @@ describe('useReservationNotifications', () => {
     });
 
     expect(result.current.notification?.status).toBe('sent');
+    expect(result.current.state).toBe('sent');
   });
 
   it('returns an error when receiptToken is missing', async () => {
@@ -51,5 +52,7 @@ describe('useReservationNotifications', () => {
     expect(result.current.error).toBe(
       'Falta receiptToken para consultar o reenviar notificaciones.',
     );
+    expect(result.current.notification?.status).toBe('error');
+    expect(result.current.state).toBe('error');
   });
 });

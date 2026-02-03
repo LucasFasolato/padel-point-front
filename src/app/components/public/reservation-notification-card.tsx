@@ -15,7 +15,6 @@ type ReservationNotificationCardProps = {
   errorMessage: string | null;
   canResend: boolean;
   isResending: boolean;
-  source: 'api' | 'mock';
   onResend: () => void;
 };
 
@@ -51,10 +50,9 @@ export function ReservationNotificationCard({
   errorMessage,
   canResend,
   isResending,
-  source,
   onResend,
 }: ReservationNotificationCardProps) {
-  if (loading) {
+  if (loading && !isResending) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 animate-pulse space-y-4">
         <div className="h-4 w-28 rounded-full bg-slate-200" />
@@ -87,7 +85,6 @@ export function ReservationNotificationCard({
       <div>
         <p className="text-base font-bold text-slate-900">
           {config.description}
-          {source === 'mock' ? ' (mock)' : ''}
         </p>
         {message && (
           <p className="text-sm text-slate-500 mt-1">{message}</p>
@@ -122,12 +119,12 @@ export function ReservationNotificationCard({
               <Loader2 className="animate-spin" size={16} /> Reenviando...
             </>
           ) : (
-            'Reenviar'
+            (status === 'error' ? 'Reintentar' : 'Reenviar')
           )}
         </button>
       ) : (
         <p className="text-xs text-slate-400">
-          No se puede reenviar sin un receiptToken válido.
+          No se puede reenviar sin un receiptToken valido.
         </p>
       )}
     </div>

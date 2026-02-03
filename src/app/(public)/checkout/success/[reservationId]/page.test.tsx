@@ -29,7 +29,6 @@ vi.mock('@/hooks/use-reservation-notifications', () => ({
       status: 'sent',
       lastAttemptAt: null,
       message: 'Mock',
-      source: 'mock',
     },
     loading: false,
     error: null,

@@ -56,8 +56,15 @@ export const PlayerService = {
   },
 
   // HOLD
-  createHold: async (payload: CreateHoldRequest): Promise<HoldReservationResponse> => {
-    const { data } = await api.post<HoldReservationResponse>('/reservations/hold', payload);
+  createHold: async (
+    payload: CreateHoldRequest,
+    signal?: AbortSignal,
+  ): Promise<HoldReservationResponse> => {
+    const { data } = await api.post<HoldReservationResponse>(
+      '/reservations/hold',
+      payload,
+      signal ? { signal } : undefined,
+    );
     return data;
   },
 
