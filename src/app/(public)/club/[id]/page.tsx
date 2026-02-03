@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { format } from 'date-fns';
 import { AlertCircle } from 'lucide-react';
 
@@ -199,6 +200,12 @@ export default function ClubPage() {
         <AlertCircle className="mb-2 h-10 w-10 text-slate-300" />
         <h2 className="text-lg font-bold text-slate-700">Club no encontrado</h2>
         <p className="text-slate-500">Es posible que el enlace sea incorrecto o el club no exista.</p>
+        <Link
+          href="/"
+          className="mt-5 inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-bold text-white hover:bg-blue-600"
+        >
+          Volver al inicio
+        </Link>
       </div>
     );
   }
@@ -237,6 +244,12 @@ export default function ClubPage() {
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center">
             <p className="font-medium text-slate-900">No hay canchas configuradas</p>
             <p className="text-sm text-slate-500">Este club aún no tiene pistas activas.</p>
+            <Link
+              href="/"
+              className="mt-4 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+            >
+              Ver otros clubes
+            </Link>
           </div>
         )}
       </div>
