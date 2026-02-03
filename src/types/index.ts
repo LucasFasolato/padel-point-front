@@ -194,3 +194,11 @@ export interface CheckoutReservation {
     telefono: string | null;
   };
 }
+
+export type ReservationNotificationStatus = 'sent' | 'pending' | 'error';
+
+export type ReservationNotificationResponse = {
+  status: ReservationNotificationStatus;
+  lastAttemptAt: string | null;
+  message?: string | null;
+};

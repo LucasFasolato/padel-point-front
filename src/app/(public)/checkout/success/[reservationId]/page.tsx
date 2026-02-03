@@ -15,13 +15,21 @@ import {
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { toast } from 'sonner';
 
 import { PlayerService } from '@/services/player-service';
 import type { CheckoutReservation } from '@/types';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
+import { ReservationNotificationCard } from '@/app/components/public/reservation-notification-card';
+import { useReservationNotifications } from '@/hooks/use-reservation-notifications';
+import { showMessageToast, showSuccessToast } from '@/lib/toast';
 
-function ErrorState() {
+function ErrorState({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
   return (
     <div className="min-h-screen bg-slate-50">
       <PublicTopBar backHref="/" title="Reserva confirmada" />
@@ -31,11 +39,9 @@ function ErrorState() {
             <AlertTriangle size={28} />
           </div>
 
-          <p className="text-xl font-extrabold text-slate-900">
-            No pudimos cargar tu comprobante
-          </p>
+          <p className="text-xl font-extrabold text-slate-900">{title}</p>
           <p className="mt-2 text-sm text-slate-500">
-            El link puede estar incompleto o el comprobante pudo haber expirado.
+            {description}
           </p>
 
           <div className="mt-6 space-y-3">
@@ -49,7 +55,7 @@ function ErrorState() {
             <button
               type="button"
               onClick={() => {
-                toast.message(
+                showMessageToast(
                   'Tip: entrá desde el link del comprobante (receiptToken) o volvé a reservar.',
                 );
               }}
@@ -69,7 +75,7 @@ function ErrorState() {
   );
 }
 
-function SuccessContent({ reservationId }: { reservationId: string }) {
+export function SuccessContent({ reservationId }: { reservationId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -81,6 +87,7 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
     null,
   );
   const [loading, setLoading] = useState(true);
+  const [missingReceiptToken, setMissingReceiptToken] = useState(false);
 
   const cacheKey = useMemo(() => `pp:receipt:${reservationId}`, [reservationId]);
 
@@ -93,6 +100,11 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
     const setSafe = (fn: () => void) => {
       if (!cancelled) fn();
     };
+
+    const hasToken = Boolean(receiptToken);
+    if (!hasToken) {
+      setSafe(() => setMissingReceiptToken(true));
+    }
 
     const readCache = (): CheckoutReservation | null => {
       try {
@@ -129,7 +141,7 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
       scheduleCleanup();
 
       // 1b) Revalidación silenciosa si hay receiptToken (actualiza datos sin “flash”)
-      if (receiptToken) {
+      if (hasToken) {
         (async () => {
           try {
             const fresh = await PlayerService.getReceipt(
@@ -167,13 +179,30 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
       }
     };
 
-    fetchReceipt();
+    if (hasToken) {
+      fetchReceipt();
+    } else {
+      setSafe(() => setLoading(false));
+    }
 
     return () => {
       cancelled = true;
       if (cleanupTimer) window.clearTimeout(cleanupTimer);
     };
   }, [reservationId, receiptToken, cacheKey]);
+
+  const {
+    notification,
+    loading: notificationLoading,
+    error: notificationError,
+    resend,
+    canResend,
+    isResending,
+  } = useReservationNotifications({
+    reservationId,
+    receiptToken,
+    enabled: Boolean(reservation),
+  });
 
   if (loading) {
     return (
@@ -183,7 +212,22 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
     );
   }
 
-  if (!reservation) return <ErrorState />;
+  if (!reservation) {
+    return (
+      <ErrorState
+        title={
+          missingReceiptToken
+            ? 'Falta receiptToken en el link'
+            : 'No pudimos cargar tu comprobante'
+        }
+        description={
+          missingReceiptToken
+            ? 'El comprobante necesita un receiptToken válido para poder mostrarse.'
+            : 'El link puede estar incompleto o el comprobante pudo haber expirado.'
+        }
+      />
+    );
+  }
 
   const clubId = reservation.court.club.id;
 
@@ -270,6 +314,20 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
             </div>
           </div>
 
+          <div className="mb-8 text-left">
+            <ReservationNotificationCard
+              status={notification?.status ?? 'pending'}
+              lastAttemptAt={notification?.lastAttemptAt ?? null}
+              message={notification?.message ?? null}
+              loading={notificationLoading}
+              errorMessage={notificationError}
+              canResend={canResend}
+              isResending={isResending}
+              source={notification?.source ?? 'mock'}
+              onResend={resend}
+            />
+          </div>
+
           <div className="space-y-3">
             <Link
               href={`/club/${clubId}`}
@@ -295,8 +353,8 @@ function SuccessContent({ reservationId }: { reservationId: string }) {
                   const url = `${window.location.origin}/checkout/success/${reservationId}?receiptToken=${encodeURIComponent(receiptToken)}`;
                   navigator.clipboard
                     .writeText(url)
-                    .then(() => toast.success('Link copiado ✅'))
-                    .catch(() => toast.message('No se pudo copiar el link'));
+                    .then(() => showSuccessToast('Link copiado ✅'))
+                    .catch(() => showMessageToast('No se pudo copiar el link'));
                 }}
                 className="w-full py-3 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 hover:bg-slate-50"
               >
