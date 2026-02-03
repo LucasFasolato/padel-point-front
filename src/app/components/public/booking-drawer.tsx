@@ -74,6 +74,8 @@ export function BookingDrawer() {
   const [isOpeningCheckout, setIsOpeningCheckout] = useState(false);
 
   const holdAbortRef = useRef<AbortController | null>(null);
+  const holdSuccessToastIdRef = useRef<string | number | null>(null);
+  const holdSuccessToastKeyRef = useRef<string | null>(null);
   const expireToastKeyRef = useRef<string | null>(null);
   const hasExpiredRef = useRef(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -87,6 +89,10 @@ export function BookingDrawer() {
     setEmail('');
     setTelefono('');
     setIsOpeningCheckout(false);
+    if (holdSuccessToastIdRef.current) {
+      toastManager.dismiss(holdSuccessToastIdRef.current);
+      holdSuccessToastIdRef.current = null;
+    }
     if (holdAbortRef.current) {
       holdAbortRef.current.abort();
       holdAbortRef.current = null;
@@ -177,6 +183,8 @@ export function BookingDrawer() {
   useEffect(() => {
     if (isDrawerOpen) {
       expireToastKeyRef.current = `hold-expired-${Date.now()}`;
+      holdSuccessToastKeyRef.current = `hold-success-${Date.now()}`;
+      holdSuccessToastIdRef.current = null;
       hasExpiredRef.current = false;
     }
   }, [isDrawerOpen]);
@@ -293,6 +301,10 @@ export function BookingDrawer() {
     onExpire: () => {
       if (!isDrawerOpen || hasExpiredRef.current) return;
       hasExpiredRef.current = true;
+      if (holdSuccessToastIdRef.current) {
+        toastManager.dismiss(holdSuccessToastIdRef.current);
+        holdSuccessToastIdRef.current = null;
+      }
       if (holdAbortRef.current) {
         holdAbortRef.current.abort();
         holdAbortRef.current = null;
@@ -352,7 +364,12 @@ export function BookingDrawer() {
 
       // window.location.href = `/checkout/${res.id}?token=${encodeURIComponent(res.checkoutToken)}`;
       router.push(`/checkout/${res.id}?token=${encodeURIComponent(res.checkoutToken)}`);
-      toastManager.success('Turno retenido por 10 minutos.');
+      if (!hasExpiredRef.current) {
+        const toastId = toastManager.success('Turno retenido por 10 minutos.', {
+          idempotencyKey: holdSuccessToastKeyRef.current ?? 'hold-success',
+        });
+        holdSuccessToastIdRef.current = toastId ?? null;
+      }
     } catch (err: unknown) {
       const canceled =
         controller.signal.aborted ||

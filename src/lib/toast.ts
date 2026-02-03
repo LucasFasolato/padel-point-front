@@ -32,9 +32,9 @@ const showToast = (level: ToastLevel, message: string, options?: ToastOptions) =
     cleanupKeys(now, ttlMs);
   }
 
-  if (level === 'success') toast.success(message);
-  if (level === 'error') toast.error(message);
-  if (level === 'info') toast.message(message);
+  if (level === 'success') return toast.success(message);
+  if (level === 'error') return toast.error(message);
+  if (level === 'info') return toast.message(message);
 };
 
 export const toastManager = {
@@ -44,6 +44,9 @@ export const toastManager = {
     showToast('error', message, options),
   info: (message: string, options?: ToastOptions) =>
     showToast('info', message, options),
+  dismiss: (id?: string | number) => {
+    toast.dismiss(id);
+  },
 };
 
 export const showSuccessToast = (message: string) =>
