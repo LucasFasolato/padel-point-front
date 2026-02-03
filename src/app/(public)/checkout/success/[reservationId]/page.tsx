@@ -52,13 +52,19 @@ const shortId = (value: string) => value.slice(-6).toUpperCase();
 function ErrorState({
   title,
   description,
+  actionLabel = 'Volver al inicio',
+  actionHref = '/',
+  onRetry,
 }: {
   title: string;
   description: string;
+  actionLabel?: string;
+  actionHref?: string;
+  onRetry?: () => void;
 }) {
   return (
     <div className="min-h-screen bg-slate-50">
-      <PublicTopBar backHref="/" title="Reserva confirmada" />
+      <PublicTopBar backHref="/" title="Comprobante" />
       <div className="flex h-[70vh] items-center justify-center px-4 text-center">
         <div className="max-w-md w-full bg-white rounded-3xl border border-slate-100 shadow-xl p-8">
           <div className="mx-auto mb-5 h-14 w-14 rounded-full bg-red-100 flex items-center justify-center text-red-600">
@@ -71,11 +77,20 @@ function ErrorState({
           </p>
 
           <div className="mt-6 space-y-3">
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50"
+              >
+                Reintentar
+              </button>
+            )}
             <Link
-              href="/"
+              href={actionHref}
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-slate-800"
             >
-              <Home size={16} /> Ir al inicio
+              <Home size={16} /> {actionLabel}
             </Link>
 
             <button
@@ -114,6 +129,7 @@ export function SuccessContent({ reservationId }: { reservationId: string }) {
   );
   const [loading, setLoading] = useState(true);
   const [missingReceiptToken, setMissingReceiptToken] = useState(false);
+  const [receiptError, setReceiptError] = useState<'invalid' | 'notfound' | 'error' | null>(null);
 
   const cacheKey = useMemo(() => `pp:receipt:${reservationId}`, [reservationId]);
 
@@ -176,11 +192,18 @@ export function SuccessContent({ reservationId }: { reservationId: string }) {
             );
             writeCache(fresh);
             setSafe(() => setReservation(fresh));
-          } catch {
-            // si falla, mantenemos cache
+        } catch (err: unknown) {
+          if (typeof err === 'object' && err !== null && 'response' in err) {
+            const status = (err as { response?: { status?: number } }).response?.status;
+            if (status === 401 || status === 403) {
+              setSafe(() => setReceiptError('invalid'));
+            } else if (status === 404) {
+              setSafe(() => setReceiptError('notfound'));
+            }
           }
-        })();
-      }
+        }
+      })();
+    }
 
       return () => {
         cancelled = true;
@@ -198,7 +221,19 @@ export function SuccessContent({ reservationId }: { reservationId: string }) {
         writeCache(data);
         setSafe(() => setReservation(data));
         scheduleCleanup();
-      } catch {
+      } catch (err: unknown) {
+        if (typeof err === 'object' && err !== null && 'response' in err) {
+          const status = (err as { response?: { status?: number } }).response?.status;
+          if (status === 401 || status === 403) {
+            setSafe(() => setReceiptError('invalid'));
+          } else if (status === 404) {
+            setSafe(() => setReceiptError('notfound'));
+          } else {
+            setSafe(() => setReceiptError('error'));
+          }
+        } else {
+          setSafe(() => setReceiptError('error'));
+        }
         setSafe(() => setReservation(null));
       } finally {
         setSafe(() => setLoading(false));
@@ -235,18 +270,35 @@ export function SuccessContent({ reservationId }: { reservationId: string }) {
   }
 
   if (!reservation) {
+    if (missingReceiptToken) {
+      return (
+        <ErrorState
+          title="Falta un dato del comprobante"
+          description="Falta un dato del comprobante. Volvé a abrir el link desde el checkout."
+        />
+      );
+    }
+    if (receiptError === 'invalid') {
+      return (
+        <ErrorState
+          title="El link del comprobante no es válido"
+          description="El link del comprobante no es válido o expiró."
+        />
+      );
+    }
+    if (receiptError === 'notfound') {
+      return (
+        <ErrorState
+          title="No encontramos tu comprobante"
+          description="No encontramos tu comprobante."
+        />
+      );
+    }
     return (
       <ErrorState
-        title={
-          missingReceiptToken
-            ? 'Falta receiptToken en el link'
-            : 'No pudimos cargar tu comprobante'
-        }
-        description={
-          missingReceiptToken
-            ? 'El comprobante necesita un receiptToken válido para poder mostrarse.'
-            : 'El link puede estar incompleto o el comprobante pudo haber expirado.'
-        }
+        title="No pudimos cargar tu comprobante"
+        description="Tuvimos un problema cargando el comprobante. Reintentá."
+        onRetry={() => window.location.reload()}
       />
     );
   }
@@ -255,7 +307,7 @@ export function SuccessContent({ reservationId }: { reservationId: string }) {
 
   return (
     <>
-      <PublicTopBar backHref={`/club/${clubId}`} title="Reserva confirmada" />
+      <PublicTopBar backHref={`/club/${clubId}`} title="Comprobante" />
 
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white max-w-md w-full rounded-3xl shadow-xl overflow-hidden border border-slate-100 p-8 space-y-6">
