@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Loader2, Clock, AlertTriangle, ShieldCheck } from 'lucide-react';
-import { toastManager } from '@/lib/toast';
 
 import { PlayerService } from '@/services/player-service';
 import type { CheckoutReservation } from '@/types';
@@ -13,6 +12,15 @@ import { formatCurrency } from '@/lib/utils';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { useHoldCountdown } from '@/hooks/use-hold-countdown';
 import { saveReservationCache } from '@/lib/checkout-cache';
+import api from '@/lib/api';
+
+type PaymentIntentStatus = 'pending' | 'approved' | 'failed' | 'expired';
+
+type PaymentIntent = {
+  id: string;
+  status: PaymentIntentStatus;
+  receiptToken?: string | null;
+};
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -25,7 +33,10 @@ export default function CheckoutPage() {
 
   const [reservation, setReservation] = useState<CheckoutReservation | null>(null);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
+  const [intent, setIntent] = useState<PaymentIntent | null>(null);
+  const [intentStatus, setIntentStatus] = useState<'idle' | 'loading' | 'pending'>('idle');
+  const [intentError, setIntentError] = useState<string | null>(null);
+  const intentAbortRef = useRef<AbortController | null>(null);
 
   const cacheKey = useMemo(() => `pp:reservation:${reservationId}`, [reservationId]);
 
@@ -53,7 +64,7 @@ export default function CheckoutPage() {
           saveReservationCache(reservationId, data);
         } catch {}
       } catch {
-        toastManager.error('Reserva no encontrada o token invalido');
+        setIntentError('Reserva no encontrada o token inválido.');
         setSafe(() => setReservation(null));
       } finally {
         setSafe(() => setLoading(false));
@@ -76,41 +87,42 @@ export default function CheckoutPage() {
     enabled: countdownEnabled,
   });
 
-  const handleConfirm = async () => {
+  const createIntent = async () => {
     if (!reservationId || !token) return;
 
-    // ✅ sólo bloqueamos si el contador ya está listo
     if (ready && expired) {
-      toastManager.error('El hold expiro. Volve a elegir otro horario.');
+      setIntentStatus('idle');
+      setIntentError('El hold expiró. Volvé a elegir otro horario.');
       return;
     }
 
-    setProcessing(true);
+    setIntentStatus('loading');
+    setIntentError(null);
+    if (intentAbortRef.current) intentAbortRef.current.abort();
+    intentAbortRef.current = new AbortController();
+
     try {
-      const confirmed = await PlayerService.confirmCheckout(reservationId, token);
-
-      // cache para refresh / success
-      try {
-        sessionStorage.setItem(cacheKey, JSON.stringify(confirmed));
-      } catch {}
-      try {
-        saveReservationCache(reservationId, confirmed);
-      } catch {}
-
-      // ✅ al confirmar el backend devuelve receiptToken
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const receiptToken = (confirmed as any).receiptToken as string | undefined;
-      if (!receiptToken) throw new Error('missing receiptToken in response');
-
-      toastManager.success('Pago simulado. Reserva confirmada.');
-
-      router.replace(`/checkout/success/${reservationId}?receiptToken=${encodeURIComponent(receiptToken)}`);
+      const { data } = await api.post<PaymentIntent>(
+        '/payments/intents',
+        { reservationId, token },
+        { signal: intentAbortRef.current.signal },
+      );
+      if (!data?.id) throw new Error('missing intent id');
+      setIntent(data);
+      setIntentStatus('pending');
     } catch {
-      toastManager.error('Error al confirmar');
-    } finally {
-      setProcessing(false);
+      setIntentStatus('idle');
+      setIntentError('No pudimos iniciar el pago. Intentá de nuevo.');
     }
   };
+
+  useEffect(() => {
+    if (!reservationId || !token) return;
+    createIntent();
+    return () => {
+      if (intentAbortRef.current) intentAbortRef.current.abort();
+    };
+  }, [reservationId, token]);
 
   if (loading) {
     return (
@@ -123,7 +135,7 @@ export default function CheckoutPage() {
   if (!reservation) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-500">
-        Reserva inválida
+        {intentError ?? 'Reserva inválida'}
       </div>
     );
   }
@@ -213,13 +225,34 @@ export default function CheckoutPage() {
                 segura
               </div>
 
-              <button
-                onClick={handleConfirm}
-                disabled={(ready && expired) || processing || reservation.status !== 'hold'}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 disabled:bg-slate-300 active:scale-95"
-              >
-                {processing ? <Loader2 className="animate-spin" /> : 'Pagar ahora (simulado)'}
-              </button>
+              <div className="rounded-2xl border border-slate-100 bg-white p-4 text-center">
+                {intentStatus === 'loading' && (
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        Estamos preparando tu pago...
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Esto puede tardar unos segundos.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {intentStatus === 'pending' && (
+                  <div className="flex flex-col items-center gap-2 text-sm text-slate-600">
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                    <span>Esperando confirmación del pago...</span>
+                  </div>
+                )}
+
+                {intentStatus === 'idle' && intentError && (
+                  <div className="text-sm text-rose-600">
+                    {intentError}
+                  </div>
+                )}
+              </div>
 
               {(ready && expired) && (
                 <button
