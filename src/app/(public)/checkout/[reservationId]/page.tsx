@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   XCircle,
 } from 'lucide-react';
+import axios from 'axios';
 
 import { PlayerService } from '@/services/player-service';
 import type { CheckoutReservation } from '@/types';
@@ -27,6 +28,23 @@ type PaymentIntent = {
   id: string;
   status: PaymentIntentStatus;
   receiptToken?: string | null;
+};
+
+const getApiErrorMessage = (error: unknown) => {
+  if (!axios.isAxiosError(error)) return '';
+  const data = error.response?.data;
+  if (!data) return '';
+  if (typeof data === 'string') return data;
+  if (Array.isArray((data as { message?: string[] }).message)) {
+    return (data as { message?: string[] }).message?.join(' ') ?? '';
+  }
+  if (typeof (data as { message?: string }).message === 'string') {
+    return (data as { message?: string }).message ?? '';
+  }
+  if (typeof (data as { error?: string }).error === 'string') {
+    return (data as { error?: string }).error ?? '';
+  }
+  return '';
 };
 
 export default function CheckoutPage() {
@@ -116,7 +134,7 @@ export default function CheckoutPage() {
     try {
       const { data } = await api.post<PaymentIntent>(
         '/payments/intents',
-        { reservationId, token },
+        { reservationId },
         { signal: intentAbortRef.current.signal },
       );
       if (!data?.id) throw new Error('missing intent id');
@@ -127,9 +145,15 @@ export default function CheckoutPage() {
         setIntentStatus('pending');
         startPolling(data.id);
       }
-    } catch {
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      const message = getApiErrorMessage(error).toLowerCase();
+      if (status === 400 && message.includes('token') && message.includes('should not exist')) {
+        setIntentError('Ocurri? un problema interno al iniciar el pago. Actualiz? la p?gina o reintent?.');
+      } else {
+        setIntentError('No pudimos iniciar el pago. Intent? de nuevo.');
+      }
       setIntentStatus('failed');
-      setIntentError('No pudimos iniciar el pago. Intentá de nuevo.');
     }
   };
 
