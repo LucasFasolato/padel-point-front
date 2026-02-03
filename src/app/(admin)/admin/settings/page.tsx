@@ -4,10 +4,16 @@ import React, { useEffect, useState } from 'react';
 import { useClubStore } from '@/store/club-store';
 import { Save, MapPin, Phone, Mail, Building, Loader2, AlertTriangle } from 'lucide-react';
 import api from '@/lib/api';
+import { MediaService } from '@/lib/media-service';
+import MediaUploader from '@/app/components/admin/media-uploader';
+import { MediaKind, MediaOwnerType, type MediaAsset } from '@/types';
 
 export default function SettingsPage() {
   const { activeClub, setActiveClub, fetchMyClubs } = useClubStore();
   const [loading, setLoading] = useState(false);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [logoAssets, setLogoAssets] = useState<MediaAsset[]>([]);
+  const [coverAssets, setCoverAssets] = useState<MediaAsset[]>([]);
   
   // Estado local del formulario
   const [form, setForm] = useState({
@@ -28,6 +34,67 @@ export default function SettingsPage() {
       });
     }
   }, [activeClub]);
+
+  useEffect(() => {
+    if (!activeClub?.id) {
+      setLogoAssets([]);
+      setCoverAssets([]);
+      return;
+    }
+
+    const fetchMedia = async () => {
+      setMediaLoading(true);
+      try {
+        const [logo, cover] = await Promise.all([
+          MediaService.listAuth({
+            ownerType: MediaOwnerType.CLUB,
+            ownerId: activeClub.id,
+            kind: MediaKind.CLUB_LOGO,
+          }),
+          MediaService.listAuth({
+            ownerType: MediaOwnerType.CLUB,
+            ownerId: activeClub.id,
+            kind: MediaKind.CLUB_COVER,
+          }),
+        ]);
+        setLogoAssets(logo);
+        setCoverAssets(cover);
+      } catch {
+        setLogoAssets([]);
+        setCoverAssets([]);
+      } finally {
+        setMediaLoading(false);
+      }
+    };
+
+    fetchMedia();
+  }, [activeClub?.id]);
+
+  const refreshMedia = async () => {
+    if (!activeClub?.id) return;
+    setMediaLoading(true);
+    try {
+      const [logo, cover] = await Promise.all([
+        MediaService.listAuth({
+          ownerType: MediaOwnerType.CLUB,
+          ownerId: activeClub.id,
+          kind: MediaKind.CLUB_LOGO,
+        }),
+        MediaService.listAuth({
+          ownerType: MediaOwnerType.CLUB,
+          ownerId: activeClub.id,
+          kind: MediaKind.CLUB_COVER,
+        }),
+      ]);
+      setLogoAssets(logo);
+      setCoverAssets(cover);
+    } catch {
+      setLogoAssets([]);
+      setCoverAssets([]);
+    } finally {
+      setMediaLoading(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +121,7 @@ export default function SettingsPage() {
   if (!activeClub) return (
     <div className="flex h-96 flex-col items-center justify-center text-slate-400">
         <Building size={48} className="mb-4 opacity-50"/>
-        <p>Selecciona un club en el Overview para configurarlo.</p>
+        <p>Seleccion? un club en el Overview para configurarlo y gestionar im?genes.</p>
     </div>
   );
 
@@ -138,6 +205,50 @@ export default function SettingsPage() {
                 </button>
             </div>
           </form>
+        </div>
+
+        {/* Im?genes del Club */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="mb-6 flex items-center gap-3 border-b border-slate-100 pb-4">
+            <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
+              <Building size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Im?genes del club</h2>
+              <p className="text-sm text-slate-500">Logo y portada visibles en el perfil p?blico.</p>
+            </div>
+          </div>
+
+          {!activeClub?.id ? (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+              Seleccion? un club para gestionar im?genes.
+            </div>
+          ) : mediaLoading ? (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+              Cargando im?genes...
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <MediaUploader
+                ownerType={MediaOwnerType.CLUB}
+                ownerId={activeClub.id}
+                kind={MediaKind.CLUB_LOGO}
+                mode="single"
+                title="Logo"
+                existingAssets={logoAssets}
+                onChanged={refreshMedia}
+              />
+              <MediaUploader
+                ownerType={MediaOwnerType.CLUB}
+                ownerId={activeClub.id}
+                kind={MediaKind.CLUB_COVER}
+                mode="single"
+                title="Portada"
+                existingAssets={coverAssets}
+                onChanged={refreshMedia}
+              />
+            </div>
+          )}
         </div>
 
         {/* Zona de Peligro (Placeholder Visual) */}
