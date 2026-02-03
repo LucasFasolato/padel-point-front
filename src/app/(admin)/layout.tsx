@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useClubStore } from '@/store/club-store';
-import { LayoutDashboard, CalendarDays, Settings, LogOut, Users, Map } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Settings, LogOut, Users, Map, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AuthGuard from '@/app/components/admin/auth-guard';
 
@@ -56,6 +56,7 @@ function Sidebar() {
                 {activeClub ? (
                     <>
                         <NavItem href="/admin/bookings" icon={<CalendarDays size={20} />} label="Bookings" active={pathname.includes('bookings')} />
+                        <NavItem href="/admin/payments" icon={<CreditCard size={20} />} label="Payments" active={pathname.includes('payments')} />
                         <NavItem href="/admin/courts" icon={<Map size={20} />} label="Courts" active={pathname.includes('courts')} />
                         <NavItem href="/admin/members" icon={<Users size={20} />} label="Members" active={pathname.includes('members')} />
                         <NavItem href="/admin/settings" icon={<Settings size={20} />} label="Settings" active={pathname.includes('settings')} />
