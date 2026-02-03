@@ -326,7 +326,10 @@ export default function CheckoutPage() {
                 {intentStatus === 'pending' && (
                   <div className="flex flex-col items-center gap-2 text-sm text-slate-600">
                     <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                    <span>Esperando confirmación del pago...</span>
+                    <div className="text-center">
+                      <p>Esperando confirmación del pago...</p>
+                      <p className="text-xs text-slate-500">No cierres esta ventana.</p>
+                    </div>
                   </div>
                 )}
 
