@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { AlertCircle } from 'lucide-react';
 
 import { PlayerService } from '@/services/player-service';
+import { MediaService } from '@/lib/media-service';
 import type {
   Club,
   Court,
@@ -47,6 +48,17 @@ export default function ClubPage() {
   const [loadingByCourt, setLoadingByCourt] = useState<Record<string, boolean>>({});
   const [errorByCourt, setErrorByCourt] = useState<Record<string, string | null>>({});
   const [initLoading, setInitLoading] = useState(true);
+
+  const toPublicMedia = (asset: { secureUrl?: string | null; url?: string | null } | null): PublicMedia | null => {
+    if (!asset) return null;
+    const secureUrl = asset.secureUrl || asset.url || undefined;
+    const url = asset.url || asset.secureUrl || undefined;
+    if (!secureUrl && !url) return null;
+    return {
+      secureUrl: secureUrl ?? '',
+      url: url ?? '',
+    };
+  };
 
   // 1) Initial Load (Overview: club + media + courts)
   useEffect(() => {
@@ -92,6 +104,31 @@ export default function ClubPage() {
         }));
 
         setCourts(mappedCourts);
+
+        // Fetch public media assets (logo/cover + court primary images)
+        try {
+          const [logoAsset, coverAsset, primaryAssets] = await Promise.all([
+            MediaService.getClubLogo(overview.club.id),
+            MediaService.getClubCover(overview.club.id),
+            Promise.all(
+              mappedCourts.map((court) => MediaService.getCourtPrimary(court.id))
+            ),
+          ]);
+
+          setAssets({
+            logo: toPublicMedia(logoAsset),
+            cover: toPublicMedia(coverAsset),
+          });
+
+          setCourts((prev) =>
+            prev.map((court, idx) => ({
+              ...court,
+              primaryImage: toPublicMedia(primaryAssets[idx]),
+            }))
+          );
+        } catch {
+          // Ignore media errors; keep overview data
+        }
       } catch (e) {
         console.error('Failed to load club overview', e);
       } finally {
