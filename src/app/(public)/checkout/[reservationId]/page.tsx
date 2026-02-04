@@ -21,6 +21,13 @@ import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { useHoldCountdown } from '@/hooks/use-hold-countdown';
 import { saveReservationCache } from '@/lib/checkout-cache';
 import api from '@/lib/api';
+import { useAuthStore } from '@/store/auth-store';
+
+type PlayerProfile = {
+  displayName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+};
 
 type PaymentIntentStatus = 'pending' | 'approved' | 'failed' | 'expired';
 
@@ -56,6 +63,12 @@ export default function CheckoutPage() {
   // ✅ en checkout sigue viniendo el checkoutToken por query param "token"
   const token = searchParams.get('token') ?? '';
 
+  const { token: authToken } = useAuthStore();
+  const [profile, setProfile] = useState<PlayerProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState(false);
+  const profileAbortRef = useRef<AbortController | null>(null);
+
   const [reservation, setReservation] = useState<CheckoutReservation | null>(null);
   const [loading, setLoading] = useState(true);
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
@@ -69,6 +82,49 @@ export default function CheckoutPage() {
   const pollingAbortRef = useRef<AbortController | null>(null);
 
   const cacheKey = useMemo(() => `pp:reservation:${reservationId}`, [reservationId]);
+
+  useEffect(() => {
+    if (!authToken) {
+      setProfile(null);
+      setProfileError(false);
+      return;
+    }
+
+    setProfileLoading(true);
+    setProfileError(false);
+    if (profileAbortRef.current) profileAbortRef.current.abort();
+    profileAbortRef.current = new AbortController();
+
+    const run = async () => {
+      try {
+        const res = await api.get<PlayerProfile>('/me/profile', {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+          signal: profileAbortRef.current?.signal,
+        });
+        setProfile(res.data ?? null);
+      } catch (err: unknown) {
+        if (profileAbortRef.current?.signal.aborted) return;
+        if (typeof err === 'object' && err !== null && 'response' in err) {
+          const status = (err as { response?: { status?: number } }).response?.status;
+          if (status === 401) {
+            setProfile(null);
+            return;
+          }
+        }
+        setProfileError(true);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    run();
+
+    return () => {
+      if (profileAbortRef.current) profileAbortRef.current.abort();
+    };
+  }, [authToken]);
 
   useEffect(() => {
     let cancelled = false;
@@ -289,6 +345,56 @@ export default function CheckoutPage() {
           {/* Body */}
           <div className="p-8">
             <div className="space-y-6">
+              {authToken && (
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-bold text-slate-900">Tus datos</h2>
+                    {profile && (!profile.displayName || !profile.phone) && (
+                      <button
+                        type="button"
+                        onClick={() => router.push('/me/profile')}
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-500"
+                      >
+                        Completar perfil
+                      </button>
+                    )}
+                  </div>
+
+                  {profileLoading ? (
+                    <div className="mt-4 space-y-2">
+                      <div className="h-4 w-2/3 rounded bg-slate-200 animate-pulse" />
+                      <div className="h-4 w-1/2 rounded bg-slate-200 animate-pulse" />
+                      <div className="h-4 w-1/3 rounded bg-slate-200 animate-pulse" />
+                    </div>
+                  ) : profile ? (
+                    <div className="mt-3 space-y-2 text-sm text-slate-600">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Email</span>
+                        <span className="font-medium text-slate-900">
+                          {profile.email || 'Falta completar'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Nombre</span>
+                        <span className="font-medium text-slate-900">
+                          {profile.displayName || 'Falta completar'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Teléfono</span>
+                        <span className="font-medium text-slate-900">
+                          {profile.phone || 'Falta completar'}
+                        </span>
+                      </div>
+                    </div>
+                  ) : profileError ? (
+                    <p className="mt-3 text-xs text-slate-400">
+                      No pudimos cargar tus datos.
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
               <div className="text-center">
                 <h1 className="text-2xl font-bold text-slate-900">
                   {reservation.court.nombre}
