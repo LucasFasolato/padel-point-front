@@ -119,6 +119,7 @@ export default function MyReservationsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
   const [receiptInlineErrorId, setReceiptInlineErrorId] = useState<string | null>(null);
+  const [calendarErrorId, setCalendarErrorId] = useState<string | null>(null);
 
   const initialAbortRef = useRef<AbortController | null>(null);
   const moreAbortRef = useRef<AbortController | null>(null);
@@ -346,6 +347,91 @@ export default function MyReservationsPage() {
     }
   };
 
+  const formatIcsDate = (iso: string) => {
+    const date = new Date(iso);
+    const pad = (value: number) => String(value).padStart(2, '0');
+    return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}T${pad(
+      date.getUTCHours(),
+    )}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}Z`;
+  };
+
+  const formatFileStamp = (iso: string) => {
+    const date = new Date(iso);
+    const pad = (value: number) => String(value).padStart(2, '0');
+    return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(
+      date.getHours(),
+    )}${pad(date.getMinutes())}`;
+  };
+
+  const buildCalendarData = (item: ReservationListItem) => {
+    if (!item.startAt || !item.endAt) return null;
+    const club = item.clubName || 'Club PadelPoint';
+    const court = item.courtName || 'Cancha';
+    const summary = `Pádel - ${club} (${court})`;
+    const description = [
+      `Reserva: ${item.reservationId}`,
+      `Estado: ${statusLabels[item.status] ?? item.status}`,
+      'PadelPoint',
+    ].join('\\n');
+    const location = club;
+    const dtStart = formatIcsDate(item.startAt);
+    const dtEnd = formatIcsDate(item.endAt);
+
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//PadelPoint//Reservas//ES',
+      'CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      `UID:${item.reservationId}@padelpoint`,
+      `DTSTAMP:${formatIcsDate(new Date().toISOString())}`,
+      `DTSTART:${dtStart}`,
+      `DTEND:${dtEnd}`,
+      `SUMMARY:${summary}`,
+      `DESCRIPTION:${description}`,
+      `LOCATION:${location}`,
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\\r\\n');
+
+    const fileName = `padelpoint-reserva-${formatFileStamp(item.startAt)}.ics`;
+
+    const googleUrl = new URL('https://calendar.google.com/calendar/render');
+    googleUrl.searchParams.set('action', 'TEMPLATE');
+    googleUrl.searchParams.set('text', summary);
+    googleUrl.searchParams.set(
+      'dates',
+      `${dtStart.replace(/Z$/, '')}/${dtEnd.replace(/Z$/, '')}`,
+    );
+    googleUrl.searchParams.set('details', description);
+    googleUrl.searchParams.set('location', location);
+
+    return { ics, fileName, googleUrl: googleUrl.toString() };
+  };
+
+  const downloadCalendar = (item: ReservationListItem) => {
+    const data = buildCalendarData(item);
+    if (!data) {
+      setCalendarErrorId(item.reservationId);
+      return;
+    }
+    setCalendarErrorId(null);
+
+    const blob = new Blob([data.ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = data.fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+
+    toastManager.success('Listo. Se descargó el evento.', {
+      idempotencyKey: `reservation-calendar-${item.reservationId}`,
+    });
+  };
+
   const handleReceipt = async (reservationId: string) => {
     if (!token || receiptLoadingId === reservationId) return;
     setReceiptInlineErrorId(null);
@@ -531,6 +617,7 @@ export default function MyReservationsPage() {
             {filteredItems.map((item) => {
               const amountLabel = formatAmount(item.amount);
               const shareText = buildShareText(item);
+              const calendarData = buildCalendarData(item);
               const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
               return (
                 <button
@@ -626,6 +713,33 @@ export default function MyReservationsPage() {
                               : 'Ver comprobante'}
                           </button>
                         )}
+                        {['CONFIRMED', 'PAYMENT_PENDING'].includes(item.status) && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                downloadCalendar(item);
+                              }}
+                              className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                              aria-label="Agregar la reserva al calendario"
+                            >
+                              Agregar al calendario
+                            </button>
+                            {calendarData && (
+                              <a
+                                href={calendarData.googleUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(event) => event.stopPropagation()}
+                                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                aria-label="Abrir en Google Calendar"
+                              >
+                                Google Calendar
+                              </a>
+                            )}
+                          </>
+                        )}
                         {['CONFIRMED', 'CANCELLED', 'EXPIRED'].includes(item.status) && (
                           <button
                             type="button"
@@ -645,6 +759,11 @@ export default function MyReservationsPage() {
                         {receiptInlineErrorId === item.reservationId && (
                           <span className="text-xs text-slate-400">
                             El comprobante todavía no está disponible.
+                          </span>
+                        )}
+                        {calendarErrorId === item.reservationId && (
+                          <span className="text-xs text-slate-400">
+                            No pudimos generar el evento.
                           </span>
                         )}
                       </div>
