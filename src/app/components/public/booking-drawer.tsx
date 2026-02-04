@@ -10,20 +10,29 @@ import {
   CheckCircle2,
   AlertTriangle,
   Lock,
+  User,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useHoldCountdown } from '@/hooks/use-hold-countdown';
 import { PlayerService } from '@/services/player-service';
 import { useBookingStore } from '@/store/booking-store';
+import { useAuthStore } from '@/store/auth-store';
 import type { AvailabilitySlot, CreateHoldRequest } from '@/types';
 import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
 
 type SelectedSlotRef = {
   courtId: string;
   fecha: string;
   horaInicio: string;
   horaFin: string;
+};
+
+type PlayerProfile = {
+  displayName?: string | null;
+  phone?: string | null;
+  email?: string | null;
 };
 
 function formatMMSS(totalSeconds: number) {
@@ -47,7 +56,6 @@ function buildIsoForDayAndTime(day: Date, hhmm: string) {
 }
 
 export function BookingDrawer() {
-
   const router = useRouter();
   const {
     isDrawerOpen,
@@ -68,6 +76,14 @@ export function BookingDrawer() {
     setAvailabilityForCourt,
   } = useBookingStore();
 
+  const { token: authToken } = useAuthStore();
+
+  // Profile state for autofill
+  const [profile, setProfile] = useState<PlayerProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profilePrefilled, setProfilePrefilled] = useState(false);
+  const profileAbortRef = useRef<AbortController | null>(null);
+
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -83,12 +99,15 @@ export function BookingDrawer() {
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const didRestoreRef = useRef(false);
   const didFetchRestoreRef = useRef(false);
+  const didPrefillRef = useRef(false);
 
   const resetLocalState = () => {
     setNombre('');
     setEmail('');
     setTelefono('');
     setIsOpeningCheckout(false);
+    setProfilePrefilled(false);
+    didPrefillRef.current = false;
     if (holdSuccessToastIdRef.current) {
       toastManager.dismiss(holdSuccessToastIdRef.current);
       holdSuccessToastIdRef.current = null;
@@ -137,7 +156,68 @@ export function BookingDrawer() {
   useEffect(() => {
     console.log('[HOLD][STORE]', { holdState, hold });
   }, [holdState, hold]);
-  
+
+  // ✅ Fetch profile when drawer opens (if logged in)
+  useEffect(() => {
+    if (!isDrawerOpen || !authToken) {
+      setProfile(null);
+      setProfileLoading(false);
+      return;
+    }
+
+    setProfileLoading(true);
+    if (profileAbortRef.current) profileAbortRef.current.abort();
+    profileAbortRef.current = new AbortController();
+
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get<PlayerProfile>('/me/profile', {
+          headers: { Authorization: `Bearer ${authToken}` },
+          signal: profileAbortRef.current?.signal,
+        });
+        setProfile(res.data ?? null);
+      } catch (err: unknown) {
+        if (profileAbortRef.current?.signal.aborted) return;
+        // 401 = not logged in, silently ignore
+        setProfile(null);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    fetchProfile();
+
+    return () => {
+      if (profileAbortRef.current) profileAbortRef.current.abort();
+    };
+  }, [isDrawerOpen, authToken]);
+
+  // ✅ Prefill form fields when profile loads (only once per drawer open)
+  useEffect(() => {
+    if (!isDrawerOpen || !profile || didPrefillRef.current) return;
+    if (holdState === 'held') return; // Don't overwrite if hold already created
+
+    let didPrefill = false;
+
+    if (profile.displayName && !nombre.trim()) {
+      setNombre(profile.displayName);
+      didPrefill = true;
+    }
+    if (profile.email && !email.trim()) {
+      setEmail(profile.email);
+      didPrefill = true;
+    }
+    if (profile.phone && !telefono.trim()) {
+      setTelefono(profile.phone);
+      didPrefill = true;
+    }
+
+    if (didPrefill) {
+      setProfilePrefilled(true);
+      didPrefillRef.current = true;
+    }
+  }, [isDrawerOpen, profile, nombre, email, telefono, holdState]);
+
   // ESC + scroll lock (solo si está abierto)
   useEffect(() => {
     if (!isDrawerOpen) return;
@@ -186,6 +266,7 @@ export function BookingDrawer() {
       holdSuccessToastKeyRef.current = `hold-success-${Date.now()}`;
       holdSuccessToastIdRef.current = null;
       hasExpiredRef.current = false;
+      didPrefillRef.current = false;
     }
   }, [isDrawerOpen]);
 
@@ -362,7 +443,6 @@ export function BookingDrawer() {
       console.log('[HOLD][API_OK]', res);
       setHoldSuccess(res);
 
-      // window.location.href = `/checkout/${res.id}?token=${encodeURIComponent(res.checkoutToken)}`;
       router.push(`/checkout/${res.id}?token=${encodeURIComponent(res.checkoutToken)}`);
       if (!hasExpiredRef.current) {
         const toastId = toastManager.success('Turno retenido por 10 minutos.', {
@@ -396,7 +476,6 @@ export function BookingDrawer() {
       return;
     }
     if (!hold?.id || !hold.checkoutToken) return;
-    // window.location.href = `/checkout/${hold.id}?token=${encodeURIComponent(hold.checkoutToken)}`;
     setIsOpeningCheckout(true);
     router.push(`/checkout/${hold.id}?token=${encodeURIComponent(hold.checkoutToken)}`);
   };
@@ -570,6 +649,21 @@ export function BookingDrawer() {
 
               {/* Form */}
               <div key={formKey} className="space-y-3">
+                {/* ✅ Profile prefill indicator */}
+                {profileLoading && (
+                  <div className="flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Cargando tus datos...
+                  </div>
+                )}
+
+                {profilePrefilled && !profileLoading && (
+                  <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs text-emerald-700 ring-1 ring-emerald-100">
+                    <User size={14} />
+                    Completamos tus datos automáticamente. Podés editarlos si querés.
+                  </div>
+                )}
+
                 <div>
                   <label className="text-xs font-semibold text-slate-600">
                     Nombre <span className="text-rose-500">*</span>
@@ -619,12 +713,30 @@ export function BookingDrawer() {
                   />
                 </div>
 
-                <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-100">
-                  <p className="text-xs text-slate-500">
-                    Tip: si ponés email, después podés ver tus reservas en “Mis
-                    turnos”.
-                  </p>
-                </div>
+                {!authToken && (
+                  <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-100">
+                    <p className="text-xs text-slate-500">
+                      Tip: si{' '}
+                      <button
+                        type="button"
+                        onClick={() => router.push('/login')}
+                        className="font-semibold text-blue-600 hover:text-blue-500"
+                      >
+                        iniciás sesión
+                      </button>
+                      , completamos tus datos automáticamente.
+                    </p>
+                  </div>
+                )}
+
+                {authToken && !profilePrefilled && !profileLoading && (
+                  <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-100">
+                    <p className="text-xs text-slate-500">
+                      Tip: si ponés email, después podés ver tus reservas en &quot;Mis
+                      turnos&quot;.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
