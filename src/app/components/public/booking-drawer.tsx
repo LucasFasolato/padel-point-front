@@ -411,10 +411,11 @@ export function BookingDrawer() {
   if (!isDrawerOpen) return null;
 
   const nombreOk = nombre.trim().length >= 2;
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const isCreatingHold = holdState === 'creating';
 
   const canSubmit =
-    !!resumen && !isCreatingHold && holdState !== 'held' && nombreOk;
+    !!resumen && !isCreatingHold && holdState !== 'held' && nombreOk && emailOk;
 
   const onCreateHold = async () => {
     if (!resumen || !court || !selectedSlot) return;
@@ -689,15 +690,31 @@ export function BookingDrawer() {
 
                 <div>
                   <label className="text-xs font-semibold text-slate-600">
-                    Email <span className="text-slate-400">(opcional)</span>
+                    Email <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="tu@mail.com"
                     disabled={isCreatingHold}
-                    className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                    className={cn(
+                      'mt-1 h-11 w-full rounded-xl border bg-white px-3 text-sm text-slate-900 outline-none',
+                      emailOk || !email.trim()
+                        ? 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                        : 'border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/15'
+                    )}
                   />
+                  {email.trim() && !emailOk && (
+                    <p className="mt-1 text-[11px] text-rose-500">
+                      Ingresá un email válido.
+                    </p>
+                  )}
+                  {!email.trim() && (
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Requerido para enviarte la confirmación.
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -729,11 +746,10 @@ export function BookingDrawer() {
                   </div>
                 )}
 
-                {authToken && !profilePrefilled && !profileLoading && (
+                {authToken && profilePrefilled && (
                   <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-100">
                     <p className="text-xs text-slate-500">
-                      Tip: si ponés email, después podés ver tus reservas en &quot;Mis
-                      turnos&quot;.
+                      Te enviaremos la confirmación por email.
                     </p>
                   </div>
                 )}
