@@ -48,6 +48,7 @@ export default function ClubPage() {
   const [loadingByCourt, setLoadingByCourt] = useState<Record<string, boolean>>({});
   const [errorByCourt, setErrorByCourt] = useState<Record<string, string | null>>({});
   const [initLoading, setInitLoading] = useState(true);
+  const [prefillHint, setPrefillHint] = useState<string | null>(null);
 
   const toPublicMedia = (asset: { secureUrl?: string | null; url?: string | null } | null): PublicMedia | undefined => {
     if (!asset) return undefined;
@@ -181,6 +182,39 @@ export default function ClubPage() {
     fetchAvailability();
   }, [selectedDate, courts]);
 
+  // 2.5) Prefill from "Reservar de nuevo"
+  useEffect(() => {
+    if (initLoading || !club || courts.length === 0) return;
+
+    let payload: { clubId?: string; courtId?: string | null; startAt?: string } | null = null;
+    try {
+      const raw = sessionStorage.getItem('padel-prefill-reservation');
+      if (!raw) return;
+      payload = JSON.parse(raw);
+    } catch {
+      return;
+    }
+
+    if (!payload?.clubId || payload.clubId !== club.id || !payload.startAt) {
+      return;
+    }
+
+    const targetCourt = payload.courtId
+      ? courts.find((court) => court.id === payload.courtId) || null
+      : null;
+
+    setDate(new Date(payload.startAt));
+    if (targetCourt) {
+      setCourt(targetCourt);
+    }
+
+    setPrefillHint('Preseleccionamos tu última reserva. Podés ajustar fecha y horario.');
+
+    try {
+      sessionStorage.removeItem('padel-prefill-reservation');
+    } catch {}
+  }, [initLoading, club, courts, setDate, setCourt]);
+
   // 3) Interaction Handler
   const handleSlotSelect = useCallback(
     (slot: AvailabilitySlot, court: Court) => {
@@ -268,6 +302,11 @@ export default function ClubPage() {
             {courts.length} {courts.length === 1 ? 'Pista' : 'Pistas'}
           </span>
         </div>
+        {prefillHint && (
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+            {prefillHint}
+          </div>
+        )}
 
         {courts.map((court) => (
           <CourtCard

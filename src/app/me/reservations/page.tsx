@@ -19,6 +19,8 @@ type ReservationListItem = {
   status: ReservationStatus;
   startAt: string;
   endAt: string | null;
+  clubId: string | null;
+  courtId: string | null;
   clubName: string | null;
   courtName: string | null;
   amount: number | null;
@@ -387,6 +389,28 @@ export default function MyReservationsPage() {
     }
   };
 
+  const handleRebook = (item: ReservationListItem) => {
+    if (!item.clubId) {
+      toastManager.error('No pudimos abrir el club de esta reserva.', {
+        idempotencyKey: `reservation-rebook-missing-club-${item.reservationId}`,
+      });
+      return;
+    }
+
+    const payload = {
+      clubId: item.clubId,
+      courtId: item.courtId ?? null,
+      startAt: item.startAt,
+      source: 'me-reservations',
+    };
+
+    try {
+      sessionStorage.setItem('padel-prefill-reservation', JSON.stringify(payload));
+    } catch {}
+
+    router.push(`/club/${item.clubId}`);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-5xl px-6 py-16">
@@ -600,6 +624,19 @@ export default function MyReservationsPage() {
                             {receiptLoadingId === item.reservationId
                               ? 'Abriendo...'
                               : 'Ver comprobante'}
+                          </button>
+                        )}
+                        {['CONFIRMED', 'CANCELLED', 'EXPIRED'].includes(item.status) && (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleRebook(item);
+                            }}
+                            className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            aria-label="Reservar de nuevo esta cancha"
+                          >
+                            Reservar de nuevo
                           </button>
                         )}
                         {copiedId === item.reservationId && (
