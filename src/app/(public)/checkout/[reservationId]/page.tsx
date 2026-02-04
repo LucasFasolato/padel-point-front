@@ -240,7 +240,7 @@ export default function CheckoutPage() {
           ? `/payments/intents/${intentId}`
           : `/payments/public/intents/${intentId}`;
         const { data } = await api.get<PaymentIntent>(intentEndpoint, {
-          params: { reservationId, checkoutToken: token },
+          params: { checkoutToken: token },
           signal: pollingAbortRef.current.signal,
         });
         if (!data?.status) return;
