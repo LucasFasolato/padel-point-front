@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Search, MapPin, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { toastManager } from '@/lib/toast';
+import { useAuthStore } from '@/store/auth-store';
 
 import { Club } from '@/types';
 import ClubCard from '@/app/components/club-card';
@@ -28,6 +29,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const { token, user } = useAuthStore();
 
   const loadFeatured = async () => {
     setLoading(true);
@@ -99,6 +101,15 @@ export default function HomePage() {
             <span className="text-xl font-bold tracking-tight text-slate-900">PadelPoint</span>
           </div>
           <div className="flex items-center gap-4">
+            {token && user?.role === 'USER' ? (
+              <Link href="/me/reservations" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+                Mis reservas
+              </Link>
+            ) : (
+              <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+                Iniciar sesión
+              </Link>
+            )}
             <Link href="/admin/login" className="text-sm font-medium text-slate-500 hover:text-slate-900">
               Soy Dueño
             </Link>
