@@ -188,9 +188,12 @@ export default function CheckoutPage() {
     intentAbortRef.current = new AbortController();
 
     try {
+      const intentEndpoint = authToken
+        ? '/payments/intents'
+        : '/payments/public/intents';
       const { data } = await api.post<PaymentIntent>(
-        '/payments/intents',
-        { reservationId },
+        intentEndpoint,
+        { reservationId, checkoutToken: token },
         { signal: intentAbortRef.current.signal },
       );
       if (!data?.id) throw new Error('missing intent id');
@@ -233,13 +236,13 @@ export default function CheckoutPage() {
       pollingAbortRef.current = new AbortController();
 
       try {
-        const { data } = await api.get<PaymentIntent>(
-          `/payments/intents/${intentId}`,
-          {
-            params: { reservationId, token },
-            signal: pollingAbortRef.current.signal,
-          },
-        );
+        const intentEndpoint = authToken
+          ? `/payments/intents/${intentId}`
+          : `/payments/public/intents/${intentId}`;
+        const { data } = await api.get<PaymentIntent>(intentEndpoint, {
+          params: { reservationId, checkoutToken: token },
+          signal: pollingAbortRef.current.signal,
+        });
         if (!data?.status) return;
         setIntent(data);
         if (data.status === 'approved') {
