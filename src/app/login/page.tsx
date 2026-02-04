@@ -46,9 +46,12 @@ export default function LoginPage() {
         { signal: controller.signal }
       );
 
-      const token = res.data.accessToken || res.data.access_token || res.data.token;
+      const token = res.data?.accessToken ?? res.data?.token;
       if (!token) {
-        throw new Error('El servidor no devolvió un token válido.');
+        toastManager.error('No pudimos iniciar sesión. Intentá nuevamente.', {
+          idempotencyKey: 'login-missing-token',
+        });
+        return;
       }
 
       const user =

@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils"; // Make sure you import 'cn'
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Padel Point",
@@ -19,10 +16,13 @@ export default function RootLayout({
   return (
     <html lang="es">
       {/* 👇 We apply the classes here instead of globals.css */}
-      <body className={cn(
-          inter.className, 
-          "bg-slate-50 text-slate-900 antialiased"
-      )}>
+      <body
+        className={cn("bg-slate-50 text-slate-900 antialiased")}
+        style={{
+          fontFamily:
+            'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
+        }}
+      >
         {children}
         <Toaster 
           position="top-center" 
