@@ -199,11 +199,26 @@ export default function CheckoutPage() {
       if (!data?.id) throw new Error('missing intent id');
       setIntent(data);
       if (data.status === 'approved') {
+        // Ya viene aprobado (caso: reserva ya confirmada)
         setIntentStatus('approved');
-      } else {
-        setIntentStatus('pending');
-        startPolling(data.id);
+        return;
       }
+
+      // ✅ MODO DEMO / AUTO-APPROVE
+      // No polleamos: confirmamos explícitamente
+      setIntentStatus('pending');
+
+      const { data: confirmed } = await api.post<{
+        ok: boolean;
+        intent: PaymentIntent;
+      }>(`/payments/public/intents/${data.id}/simulate-success`, {
+        checkoutToken: token,
+      });
+
+      // confirmed.intent ya trae receiptToken (backend)
+      setIntent(confirmed.intent);
+      setIntentStatus('approved');
+
     } catch (error) {
       const status = axios.isAxiosError(error) ? error.response?.status : undefined;
       const message = getApiErrorMessage(error).toLowerCase();
