@@ -202,3 +202,7 @@ export type ReservationNotificationResponse = {
   lastAttemptAt: string | null;
   message?: string | null;
 };
+
+export type PublicCourt = Omit<Court, 'club' | 'clubId'> & {
+  club: Pick<Club, 'id' | 'nombre'>;
+};

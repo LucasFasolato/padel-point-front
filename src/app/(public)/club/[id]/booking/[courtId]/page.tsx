@@ -3,12 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation'; // Added useParams
 import api from '@/lib/api';
-import { Court } from '@/types';
+import type { PublicCourt } from '@/types';
 import { format, addDays, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn, formatCurrency } from '@/lib/utils';
 import { ChevronLeft, XCircle, Loader2 } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
+import { Home } from 'lucide-react';
 
 // Define the interface for your Availability Slot
 interface AvailabilitySlot {
@@ -27,7 +28,7 @@ export default function BookingPage() {
   const courtId = params.courtId as string;
   
   // State
-  const [court, setCourt] = useState<Court | null>(null);
+  const [court, setCourt] = useState<PublicCourt | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +47,7 @@ export default function BookingPage() {
     const init = async () => {
       try {
         // Matches your PublicCourtsController
-        const res = await api.get(`/public/courts/${courtId}`);
+        const res = await api.get<PublicCourt>(`/public/courts/${courtId}`);
         setCourt(res.data);
       } catch (error) {
         console.error("Court not found", error);
@@ -135,16 +136,61 @@ export default function BookingPage() {
     <div className="min-h-screen bg-slate-50 pb-20">
       {/* Top Navigation */}
       <header className="sticky top-0 z-10 bg-white/80 px-4 py-4 backdrop-blur-md shadow-sm">
-        <div className="mx-auto flex max-w-lg items-center gap-3">
-          <button onClick={() => router.back()} className="rounded-full p-2 hover:bg-slate-100 transition-colors">
-            <ChevronLeft className="h-6 w-6 text-slate-700" />
-          </button>
-          <div>
-            <h1 className="text-lg font-bold text-slate-900">{court.nombre}</h1>
-            <p className="text-xs text-slate-500">{formatCurrency(court.precioPorHora)} / hour</p>
+        <div className="mx-auto max-w-lg">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => router.back()}
+                className="rounded-full p-2 hover:bg-slate-100 transition-colors"
+                aria-label="Volver"
+              >
+                <ChevronLeft className="h-6 w-6 text-slate-700" />
+              </button>
+
+              <div>
+                <h1 className="text-lg font-bold text-slate-900">{court.nombre}</h1>
+                <p className="text-xs text-slate-500">
+                  {formatCurrency(court.precioPorHora)} / hora
+                </p>
+              </div>
+            </div>
+
+            {/* Home */}
+            <button
+              onClick={() => router.push('/')}
+              className="rounded-full px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              Home
+            </button>
           </div>
+
+          {/* Breadcrumb */}
+          <nav className="mt-2 text-xs text-slate-500">
+            <button
+              type="button"
+              onClick={() => router.push('/')}
+              className="font-semibold hover:text-slate-900"
+            >
+              Inicio
+            </button>
+
+            <span className="mx-2 text-slate-300">/</span>
+
+            <button
+              type="button"
+              onClick={() => router.push(`/club/${court.club.id}`)}
+              className="font-semibold text-slate-600 hover:text-slate-900"
+            >
+              {court.club.nombre}
+            </button>
+
+            <span className="mx-2 text-slate-300">/</span>
+
+            <span className="font-semibold text-slate-900">{court.nombre}</span>
+          </nav>
         </div>
       </header>
+
 
       <main className="mx-auto max-w-lg px-4 pt-6">
         
