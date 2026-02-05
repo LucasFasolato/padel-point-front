@@ -95,6 +95,12 @@ function Sidebar() {
               active={pathname.includes('metrics')}
             />
             <NavItem
+              href="/admin/availability"
+              icon={<BarChart3 size={20} />}
+              label="Availability"
+              active={pathname.includes('availability')}
+            />
+            <NavItem
               href="/admin/settings"
               icon={<Settings size={20} />}
               label="Settings"
