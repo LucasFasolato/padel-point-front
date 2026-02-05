@@ -5,19 +5,7 @@ import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Loader2,
-  X,
-  Timer,
-  CheckCircle2,
-  AlertTriangle,
-  Lock,
-  User,
-  Calendar,
-  Clock,
-  MapPin,
-  CreditCard,
-} from 'lucide-react';
+import { X, Lock } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { toastManager } from '@/lib/toast';
@@ -28,8 +16,9 @@ import { useAuthStore } from '@/store/auth-store';
 import type { AvailabilitySlot, CreateHoldRequest } from '@/types';
 import api from '@/lib/api';
 import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { Alert } from '@/app/components/ui/alert';
+import { BookingSummary } from './booking-summary';
+import { BookingForm } from './booking-form';
+import { HoldCountdown } from './hold-countdown';
 
 type SelectedSlotRef = {
   courtId: string;
@@ -43,12 +32,6 @@ type PlayerProfile = {
   phone?: string | null;
   email?: string | null;
 };
-
-function formatMMSS(totalSeconds: number) {
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
 
 function buildIsoForDayAndTime(day: Date, hhmm: string) {
   const [hh, mm] = hhmm.split(':').map((n) => Number(n));
@@ -536,218 +519,36 @@ export function BookingDrawer() {
                 <div className="grid gap-5 md:grid-cols-2 md:gap-6">
                   {/* LEFT: Summary */}
                   <div className="space-y-4">
-                    {/* Booking Card */}
-                    {resumen ? (
-                      <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/50 ring-1 ring-slate-200/80">
-                        {/* Club & Court */}
-                        <div className="border-b border-slate-200/60 px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <MapPin size={14} className="text-slate-400" />
-                            <div>
-                              <p className="text-sm font-bold text-slate-900">{resumen.club}</p>
-                              <p className="text-xs text-slate-500">{resumen.court}</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Date & Time */}
-                        <div className="grid grid-cols-2 divide-x divide-slate-200/60">
-                          <div className="flex items-center gap-2.5 px-4 py-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-slate-200/50">
-                              <Calendar size={14} className="text-slate-500" />
-                            </div>
-                            <div>
-                              <p className="text-[11px] font-semibold uppercase text-slate-400">Día</p>
-                              <p className="text-sm font-semibold capitalize text-slate-900">
-                                {resumen.dateLabelShort}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2.5 px-4 py-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-slate-200/50">
-                              <Clock size={14} className="text-slate-500" />
-                            </div>
-                            <div>
-                              <p className="text-[11px] font-semibold uppercase text-slate-400">Horario</p>
-                              <p className="text-sm font-semibold text-slate-900">
-                                {resumen.start} – {resumen.end}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Price */}
-                        <div className="flex items-center justify-between border-t border-slate-200/60 bg-white/50 px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <CreditCard size={14} className="text-slate-400" />
-                            <span className="text-xs font-medium text-slate-500">Total a pagar</span>
-                          </div>
-                          <p className="text-lg font-extrabold text-slate-900">
-                            ${resumen.precio.toLocaleString('es-AR')}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-2xl bg-slate-50 p-6 text-center ring-1 ring-slate-100">
-                        <p className="text-sm text-slate-500">Elegí un horario para continuar.</p>
-                      </div>
-                    )}
+                    <BookingSummary resumen={resumen} />
 
                     {/* Status Cards */}
-                    <AnimatePresence mode="wait">
-                      {/* Expired */}
-                      {isExpired && (
-                        <motion.div
-                          key="expired"
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="rounded-2xl border border-rose-200 bg-rose-50 p-4"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100">
-                              <AlertTriangle className="text-rose-600" size={18} />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-rose-900">El turno expiró</p>
-                              <p className="mt-0.5 text-sm text-rose-700/80">
-                                Elegí otro horario para continuar.
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* Hold Active */}
-                      {holdState === 'held' && hold && !isExpired && (
-                        <motion.div
-                          key="held"
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-start gap-3">
-                              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100">
-                                <CheckCircle2 className="text-emerald-600" size={18} />
-                              </div>
-                              <div>
-                                <p className="font-semibold text-emerald-900">Turno retenido</p>
-                                <p className="mt-0.5 text-sm text-emerald-700/80">
-                                  Completá el pago antes de que expire.
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 font-mono text-sm font-bold text-emerald-700 shadow-sm ring-1 ring-emerald-200">
-                              <Timer size={14} />
-                              {formatMMSS(secondsLeft)}
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* Error */}
-                      {holdState === 'error' && holdError && (
-                        <motion.div
-                          key="error"
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="rounded-2xl border border-amber-200 bg-amber-50 p-4"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100">
-                              <AlertTriangle className="text-amber-600" size={18} />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-amber-900">No se pudo reservar</p>
-                              <p className="mt-0.5 text-sm text-amber-700/80">{holdError}</p>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    <HoldCountdown
+                      holdState={holdState}
+                      hold={hold}
+                      holdError={holdError}
+                      isExpired={isExpired}
+                      secondsLeft={secondsLeft}
+                      onRetry={onCreateHold}
+                    />
                   </div>
 
                   {/* RIGHT: Form */}
-                  <div key={formKey} className="space-y-4">
-                    {/* Profile Loading / Prefilled indicators */}
-                    <AnimatePresence mode="wait">
-                      {profileLoading && (
-                        <motion.div
-                          key="loading"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-xs text-slate-600"
-                        >
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          Cargando tus datos...
-                        </motion.div>
-                      )}
-                      {profilePrefilled && !profileLoading && (
-                        <motion.div
-                          key="prefilled"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-xs text-emerald-700 ring-1 ring-emerald-100"
-                        >
-                          <User size={14} />
-                          Completamos tus datos. Podés editarlos si querés.
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    {/* Name */}
-                    <Input
-                      label="Nombre"
-                      value={nombre}
-                      onChange={(e) => setNombre(e.target.value)}
-                      placeholder="Ej: Lucas"
-                      disabled={isCreatingHold}
-                      error={!nombreOk && nombre.trim() ? 'Mínimo 2 caracteres.' : undefined}
-                      required
+                  <div key={formKey}>
+                    <BookingForm
+                      nombre={nombre}
+                      setNombre={setNombre}
+                      email={email}
+                      setEmail={setEmail}
+                      telefono={telefono}
+                      setTelefono={setTelefono}
+                      isCreatingHold={isCreatingHold}
+                      nombreOk={nombreOk}
+                      emailOk={emailOk}
+                      profileLoading={profileLoading}
+                      profilePrefilled={profilePrefilled}
+                      authToken={authToken}
+                      onLoginClick={() => router.push('/login')}
                     />
-
-                    {/* Email */}
-                    <Input
-                      label="Email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="tu@email.com"
-                      disabled={isCreatingHold}
-                      error={email.trim() && !emailOk ? 'Ingresá un email válido.' : undefined}
-                      hint={!email.trim() ? 'Te enviaremos la confirmación.' : undefined}
-                      required
-                    />
-
-                    {/* Phone */}
-                    <Input
-                      label="Teléfono (opcional)"
-                      value={telefono}
-                      onChange={(e) => setTelefono(e.target.value)}
-                      placeholder="+54 9 341..."
-                      disabled={isCreatingHold}
-                    />
-
-                    {/* Login hint */}
-                    {!authToken && (
-                      <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100">
-                        <p className="text-xs text-slate-500">
-                          <button
-                            type="button"
-                            onClick={() => router.push('/login')}
-                            className="font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
-                          >
-                            Iniciá sesión
-                          </button>{' '}
-                          para completar tus datos automáticamente.
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

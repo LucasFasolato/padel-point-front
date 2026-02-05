@@ -22,7 +22,7 @@ import { useBookingStore } from '@/store/booking-store';
 import { ClubHero } from '@/app/components/public/club-hero';
 import { DateNavigator } from '@/app/components/public/date-navigator';
 import { CourtCard } from '@/app/components/public/court-card';
-import { BookingDrawer } from '@/app/components/public/booking-drawer';
+import { BookingDrawer } from '@/app/components/public/booking';
 
 export default function ClubPage() {
   const router = useRouter();
