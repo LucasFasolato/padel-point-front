@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { toastManager } from '@/lib/toast';
+import { es } from 'date-fns/locale';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Loader2,
   X,
@@ -11,15 +13,19 @@ import {
   AlertTriangle,
   Lock,
   User,
+  Calendar,
+  Clock,
+  MapPin,
+  CreditCard,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { toastManager } from '@/lib/toast';
 import { useHoldCountdown } from '@/hooks/use-hold-countdown';
 import { PlayerService } from '@/services/player-service';
 import { useBookingStore } from '@/store/booking-store';
 import { useAuthStore } from '@/store/auth-store';
 import type { AvailabilitySlot, CreateHoldRequest } from '@/types';
-import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 
 type SelectedSlotRef = {
@@ -55,6 +61,43 @@ function buildIsoForDayAndTime(day: Date, hhmm: string) {
   return dt.toISOString();
 }
 
+// Animation variants
+import type { Variants } from 'framer-motion';
+
+const overlayVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1 },
+  exit: { opacity: 0 },
+};
+
+const drawerVariants: Variants = {
+  hidden: { y: '100%', opacity: 0.5 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: { type: 'spring', damping: 30, stiffness: 400 },
+  },
+  exit: {
+    y: '100%',
+    opacity: 0.5,
+    transition: { duration: 0.2 },
+  },
+};
+
+const desktopVariants: Variants = {
+  hidden: { scale: 0.95, opacity: 0 },
+  visible: {
+    scale: 1,
+    opacity: 1,
+    transition: { type: 'spring', damping: 25, stiffness: 350 },
+  },
+  exit: {
+    scale: 0.95,
+    opacity: 0,
+    transition: { duration: 0.15 },
+  },
+};
+
 export function BookingDrawer() {
   const router = useRouter();
   const {
@@ -65,7 +108,6 @@ export function BookingDrawer() {
     selectedDate,
     selectedSlot,
     availabilityByCourt,
-
     hold,
     holdState,
     holdError,
@@ -78,17 +120,19 @@ export function BookingDrawer() {
 
   const { token: authToken } = useAuthStore();
 
-  // Profile state for autofill
+  // Profile state
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profilePrefilled, setProfilePrefilled] = useState(false);
   const profileAbortRef = useRef<AbortController | null>(null);
 
+  // Form state
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [telefono, setTelefono] = useState('');
   const [isOpeningCheckout, setIsOpeningCheckout] = useState(false);
 
+  // Refs
   const holdAbortRef = useRef<AbortController | null>(null);
   const holdSuccessToastIdRef = useRef<string | number | null>(null);
   const holdSuccessToastKeyRef = useRef<string | null>(null);
@@ -119,25 +163,15 @@ export function BookingDrawer() {
   };
 
   const getHoldErrorMessage = (err: unknown) => {
-    const fallback = 'No pudimos reservar. Proba otro horario.';
-
+    const fallback = 'No pudimos reservar. Probá otro horario.';
     if (typeof err === 'object' && err !== null) {
       const response = (err as { response?: { status?: number; data?: { message?: string } } }).response;
-      if (!response) {
-        return 'No pudimos conectar. Revisa tu internet e intenta de nuevo.';
-      }
-      if (response.status === 409) {
-        return 'Ese horario ya no esta disponible. Elegi otro.';
-      }
-      if (response.status === 410) {
-        return 'La reserva expiro. Volve a intentarlo.';
-      }
+      if (!response) return 'No pudimos conectar. Revisá tu internet e intentá de nuevo.';
+      if (response.status === 409) return 'Ese horario ya no está disponible. Elegí otro.';
+      if (response.status === 410) return 'La reserva expiró. Volvé a intentarlo.';
       const serverMessage = response.data?.message;
-      if (serverMessage && /expir/i.test(serverMessage)) {
-        return 'La reserva expiro. Volve a intentarlo.';
-      }
+      if (serverMessage && /expir/i.test(serverMessage)) return 'La reserva expiró. Volvé a intentarlo.';
     }
-
     return fallback;
   };
 
@@ -146,18 +180,15 @@ export function BookingDrawer() {
     return {
       club: club.nombre,
       court: court.nombre,
-      dateLabel: format(selectedDate, 'EEEE dd/MM'),
+      dateLabel: format(selectedDate, "EEEE d 'de' MMMM", { locale: es }),
+      dateLabelShort: format(selectedDate, 'EEE dd/MM', { locale: es }),
       start: selectedSlot.horaInicio,
       end: selectedSlot.horaFin,
       precio: court.precioPorHora,
     };
   }, [club, court, selectedDate, selectedSlot]);
 
-  useEffect(() => {
-    console.log('[HOLD][STORE]', { holdState, hold });
-  }, [holdState, hold]);
-
-  // ✅ Fetch profile when drawer opens (if logged in)
+  // Fetch profile when drawer opens
   useEffect(() => {
     if (!isDrawerOpen || !authToken) {
       setProfile(null);
@@ -176,9 +207,7 @@ export function BookingDrawer() {
           signal: profileAbortRef.current?.signal,
         });
         setProfile(res.data ?? null);
-      } catch (err: unknown) {
-        if (profileAbortRef.current?.signal.aborted) return;
-        // 401 = not logged in, silently ignore
+      } catch {
         setProfile(null);
       } finally {
         setProfileLoading(false);
@@ -186,19 +215,17 @@ export function BookingDrawer() {
     };
 
     fetchProfile();
-
     return () => {
       if (profileAbortRef.current) profileAbortRef.current.abort();
     };
   }, [isDrawerOpen, authToken]);
 
-  // ✅ Prefill form fields when profile loads (only once per drawer open)
+  // Prefill form
   useEffect(() => {
     if (!isDrawerOpen || !profile || didPrefillRef.current) return;
-    if (holdState === 'held') return; // Don't overwrite if hold already created
+    if (holdState === 'held') return;
 
     let didPrefill = false;
-
     if (profile.displayName && !nombre.trim()) {
       setNombre(profile.displayName);
       didPrefill = true;
@@ -211,27 +238,24 @@ export function BookingDrawer() {
       setTelefono(profile.phone);
       didPrefill = true;
     }
-
     if (didPrefill) {
       setProfilePrefilled(true);
       didPrefillRef.current = true;
     }
   }, [isDrawerOpen, profile, nombre, email, telefono, holdState]);
 
-  // ESC + scroll lock (solo si está abierto)
+  // ESC + scroll lock
   useEffect(() => {
     if (!isDrawerOpen) return;
 
     previousFocusRef.current = document.activeElement as HTMLElement | null;
-    window.setTimeout(() => {
-      closeButtonRef.current?.focus();
-    }, 0);
+    window.setTimeout(() => closeButtonRef.current?.focus(), 0);
 
     const onKey = (ev: KeyboardEvent) => {
       if (ev.key === 'Escape') closeDrawer();
       if (ev.key === 'Tab' && panelRef.current) {
         const focusables = panelRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         );
         if (focusables.length === 0) return;
         const first = focusables[0];
@@ -249,7 +273,6 @@ export function BookingDrawer() {
     };
 
     const previousOverflow = document.body.style.overflow;
-
     window.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
 
@@ -260,6 +283,7 @@ export function BookingDrawer() {
     };
   }, [isDrawerOpen, closeDrawer]);
 
+  // Toast keys
   useEffect(() => {
     if (isDrawerOpen) {
       expireToastKeyRef.current = `hold-expired-${Date.now()}`;
@@ -270,15 +294,14 @@ export function BookingDrawer() {
     }
   }, [isDrawerOpen]);
 
+  // Reset on close
   useEffect(() => {
-    if (!isDrawerOpen) {
-      resetLocalState();
-    }
+    if (!isDrawerOpen) resetLocalState();
   }, [isDrawerOpen]);
 
+  // Save slot to session
   useEffect(() => {
-    if (!isDrawerOpen) return;
-    if (!court || !selectedSlot) return;
+    if (!isDrawerOpen || !court || !selectedSlot) return;
     try {
       const slotRef: SelectedSlotRef = {
         courtId: selectedSlot.courtId,
@@ -290,9 +313,9 @@ export function BookingDrawer() {
     } catch {}
   }, [isDrawerOpen, selectedSlot, court]);
 
+  // Restore slot
   useEffect(() => {
-    if (!isDrawerOpen) return;
-    if (selectedSlot || !court) return;
+    if (!isDrawerOpen || selectedSlot || !court) return;
     if (didRestoreRef.current) return;
 
     const restoreFromList = (slots: AvailabilitySlot[]) => {
@@ -301,35 +324,26 @@ export function BookingDrawer() {
       const parsed = JSON.parse(raw) as SelectedSlotRef;
       const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
 
-      if (
-        !parsed ||
-        parsed.courtId !== court.id ||
-        parsed.fecha !== selectedDateKey
-      ) {
-        return false;
-      }
+      if (!parsed || parsed.courtId !== court.id || parsed.fecha !== selectedDateKey) return false;
 
       const found = slots.find(
         (slot) =>
           slot.courtId === parsed.courtId &&
           slot.fecha === parsed.fecha &&
           slot.horaInicio === parsed.horaInicio &&
-          slot.horaFin === parsed.horaFin,
+          slot.horaFin === parsed.horaFin
       );
 
       if (found) {
         setSelectedSlot(found);
         return true;
       }
-
       return false;
     };
 
     const slotsInMemory = availabilityByCourt[court.id] ?? [];
     if (slotsInMemory.length > 0) {
-      if (restoreFromList(slotsInMemory)) {
-        didRestoreRef.current = true;
-      }
+      if (restoreFromList(slotsInMemory)) didRestoreRef.current = true;
       return;
     }
 
@@ -340,41 +354,22 @@ export function BookingDrawer() {
     const fetchAndRestore = async () => {
       try {
         const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
-        const slots = await PlayerService.getAvailability(
-          court.id,
-          selectedDateKey,
-        );
+        const slots = await PlayerService.getAvailability(court.id, selectedDateKey);
         if (cancelled) return;
         setAvailabilityForCourt(court.id, slots);
-        if (restoreFromList(slots)) {
-          didRestoreRef.current = true;
-        }
+        if (restoreFromList(slots)) didRestoreRef.current = true;
       } catch {}
     };
 
     fetchAndRestore();
+    return () => { cancelled = true; };
+  }, [isDrawerOpen, selectedSlot, court, selectedDate, availabilityByCourt, setSelectedSlot, setAvailabilityForCourt]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    isDrawerOpen,
-    selectedSlot,
-    court,
-    selectedDate,
-    availabilityByCourt,
-    setSelectedSlot,
-    setAvailabilityForCourt,
-  ]);
+  // Cleanup
+  useEffect(() => () => resetLocalState(), []);
 
-  useEffect(() => {
-    return () => {
-      resetLocalState();
-    };
-  }, []);
-
+  // Countdown
   const countdownEnabled = isDrawerOpen && holdState === 'held';
-
   const { timeLeftSec, expired } = useHoldCountdown({
     expiresAtIso: hold?.expiresAt ?? null,
     serverNowIso: hold?.serverNow ?? null,
@@ -390,7 +385,7 @@ export function BookingDrawer() {
         holdAbortRef.current.abort();
         holdAbortRef.current = null;
       }
-      toastManager.error('La reserva expiro. Volve a intentarlo.', {
+      toastManager.error('La reserva expiró. Volvé a intentarlo.', {
         idempotencyKey: expireToastKeyRef.current ?? 'hold-expired',
       });
     },
@@ -398,33 +393,23 @@ export function BookingDrawer() {
 
   const secondsLeft = timeLeftSec ?? 0;
   const isExpired = countdownEnabled && expired;
-
-  const canGoCheckout =
-    holdState === 'held' && !!hold?.id && !!hold?.checkoutToken && !isExpired;
-
-  // form key: cambia si cambia slot => inputs limpios sin useEffect reseteando state
+  const canGoCheckout = holdState === 'held' && !!hold?.id && !!hold?.checkoutToken && !isExpired;
   const formKey = useMemo(() => {
     if (!selectedSlot || !court) return 'empty';
     return `${court.id}-${selectedSlot.fecha}-${selectedSlot.horaInicio}-${selectedSlot.horaFin}`;
   }, [selectedSlot, court]);
 
-  if (!isDrawerOpen) return null;
-
   const nombreOk = nombre.trim().length >= 2;
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const isCreatingHold = holdState === 'creating';
-
-  const canSubmit =
-    !!resumen && !isCreatingHold && holdState !== 'held' && nombreOk && emailOk;
+  const canSubmit = !!resumen && !isCreatingHold && holdState !== 'held' && nombreOk && emailOk;
 
   const onCreateHold = async () => {
     if (!resumen || !court || !selectedSlot) return;
 
     setHoldCreating();
     setIsOpeningCheckout(false);
-    if (holdAbortRef.current) {
-      holdAbortRef.current.abort();
-    }
+    if (holdAbortRef.current) holdAbortRef.current.abort();
     const controller = new AbortController();
     holdAbortRef.current = controller;
 
@@ -434,17 +419,15 @@ export function BookingDrawer() {
         startAt: buildIsoForDayAndTime(selectedDate, selectedSlot.horaInicio),
         endAt: buildIsoForDayAndTime(selectedDate, selectedSlot.horaFin),
         clienteNombre: nombre.trim(),
-        clienteEmail: email.trim() ? email.trim() : undefined,
-        clienteTelefono: telefono.trim() ? telefono.trim() : undefined,
+        clienteEmail: email.trim() || undefined,
+        clienteTelefono: telefono.trim() || undefined,
         precio: resumen.precio,
       };
-      console.log('[HOLD][CLICK] resumen/court/slot', { resumen, court, selectedSlot });
-      console.log('[HOLD][PAYLOAD]', payload);
-      const res = await PlayerService.createHold(payload, controller.signal);
-      console.log('[HOLD][API_OK]', res);
-      setHoldSuccess(res);
 
+      const res = await PlayerService.createHold(payload, controller.signal);
+      setHoldSuccess(res);
       router.push(`/checkout/${res.id}?token=${encodeURIComponent(res.checkoutToken)}`);
+
       if (!hasExpiredRef.current) {
         const toastId = toastManager.success('Turno retenido por 10 minutos.', {
           idempotencyKey: holdSuccessToastKeyRef.current ?? 'hold-success',
@@ -454,26 +437,18 @@ export function BookingDrawer() {
     } catch (err: unknown) {
       const canceled =
         controller.signal.aborted ||
-        (typeof err === 'object' &&
-          err !== null &&
-          'code' in err &&
-          (err as { code?: string }).code === 'ERR_CANCELED');
-
+        (typeof err === 'object' && err !== null && 'code' in err && (err as { code?: string }).code === 'ERR_CANCELED');
       if (canceled) return;
       const message = getHoldErrorMessage(err);
       setHoldError(message);
     } finally {
-      if (holdAbortRef.current === controller) {
-        holdAbortRef.current = null;
-      }
+      if (holdAbortRef.current === controller) holdAbortRef.current = null;
     }
   };
 
   const onGoCheckout = () => {
     if (isExpired) {
-      toastManager.error('El hold expiro. Elegi otro horario.', {
-        idempotencyKey: 'hold-expired-cta',
-      });
+      toastManager.error('El hold expiró. Elegí otro horario.', { idempotencyKey: 'hold-expired-cta' });
       return;
     }
     if (!hold?.id || !hold.checkoutToken) return;
@@ -481,354 +456,411 @@ export function BookingDrawer() {
     router.push(`/checkout/${hold.id}?token=${encodeURIComponent(hold.checkoutToken)}`);
   };
 
+  // Use desktop on md+
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50">
-      {/* overlay */}
-      <div
-        className="absolute inset-0 bg-slate-900/50 backdrop-blur-[2px]"
-        onClick={closeDrawer}
-      />
+    <AnimatePresence>
+      {isDrawerOpen && (
+        <div className="fixed inset-0 z-50">
+          {/* Overlay */}
+          <motion.div
+            variants={overlayVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={closeDrawer}
+          />
 
-      {/* PANEL */}
-      <div className="absolute inset-x-0 bottom-0 mx-auto w-full md:inset-0 md:flex md:items-center md:justify-center">
-        <div
-          ref={panelRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="booking-drawer-title"
-          tabIndex={-1}
-          onClick={(e) => e.stopPropagation()}
-          className={cn(
-            'w-full bg-white shadow-2xl ring-1 ring-black/10',
-            'rounded-t-3xl md:rounded-3xl',
-            'md:max-w-3xl',
-            'max-h-[90vh] md:max-h-[80vh]',
-            'flex flex-col'
-          )}
-        >
-          {/* grab handle (mobile) */}
-          <div className="md:hidden flex justify-center pt-3">
-            <div className="h-1.5 w-12 rounded-full bg-slate-200" />
-          </div>
-
-          {/* header */}
-          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 md:px-6">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                Reserva
-              </p>
-              <h3
-                id="booking-drawer-title"
-                className="text-lg font-bold text-slate-900 leading-tight"
-              >
-                Confirmá tu turno
-              </h3>
-              <p className="mt-1 text-sm text-slate-500">
-                Lo retenemos 10 minutos para que nadie más lo tome.
-              </p>
-            </div>
-
-            <button
-              ref={closeButtonRef}
-              onClick={closeDrawer}
-              className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-              aria-label="Cerrar"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          {/* body */}
-          <div className="flex-1 overflow-auto px-5 py-5 md:px-6">
-            <div className="grid gap-5 md:grid-cols-2">
-              {/* Summary */}
-              <div className="space-y-3">
-                <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
-                  {resumen ? (
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">
-                          {resumen.club}
-                        </p>
-                        <p className="text-sm text-slate-600">{resumen.court}</p>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="rounded-xl bg-white px-3 py-2 ring-1 ring-slate-100">
-                          <p className="text-[11px] font-semibold text-slate-500">
-                            Día
-                          </p>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {resumen.dateLabel}
-                          </p>
-                        </div>
-                        <div className="rounded-xl bg-white px-3 py-2 ring-1 ring-slate-100">
-                          <p className="text-[11px] font-semibold text-slate-500">
-                            Horario
-                          </p>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {resumen.start} – {resumen.end}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between rounded-xl bg-white px-3 py-2 ring-1 ring-slate-100">
-                        <p className="text-[11px] font-semibold text-slate-500">
-                          Total
-                        </p>
-                        <p className="text-base font-extrabold text-slate-900">
-                          $ {resumen.precio.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-500">
-                      Elegí un horario para continuar.
-                    </p>
-                  )}
-                </div>
-
-                {/* Expirado */}
-                {isExpired && (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="mt-0.5 text-rose-600" size={18} />
-                      <div>
-                        <p className="text-sm font-semibold text-rose-900">
-                          El turno expiró
-                        </p>
-                        <p className="text-xs text-rose-800/80">
-                          Elegí otro horario para continuar.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Hold activo */}
-                {holdState === 'held' && hold && !isExpired && (
-                  <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 transition-shadow">
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2
-                        className="mt-0.5 text-emerald-600"
-                        size={18}
-                      />
-                      <div>
-                        <p className="text-sm font-semibold text-emerald-900">
-                          Hold activo
-                        </p>
-                        <p className="text-xs text-emerald-800/80">
-                          Te queda tiempo para confirmar.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-emerald-900 ring-1 ring-emerald-200">
-                      <Timer size={14} className="text-emerald-700" />
-                      {formatMMSS(secondsLeft)}
-                    </div>
-                  </div>
-                )}
-
-                {/* Error */}
-                {holdState === 'error' && holdError && (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle
-                        className="mt-0.5 text-amber-600"
-                        size={18}
-                      />
-                      <div>
-                        <p className="text-sm font-semibold text-amber-900">
-                          No se pudo reservar
-                        </p>
-                        <p className="text-xs text-amber-800/80">{holdError}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Form */}
-              <div key={formKey} className="space-y-3">
-                {/* ✅ Profile prefill indicator */}
-                {profileLoading && (
-                  <div className="flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-700">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Cargando tus datos...
-                  </div>
-                )}
-
-                {profilePrefilled && !profileLoading && (
-                  <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs text-emerald-700 ring-1 ring-emerald-100">
-                    <User size={14} />
-                    Completamos tus datos automáticamente. Podés editarlos si querés.
-                  </div>
-                )}
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">
-                    Nombre <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
-                    placeholder="Ej: Lucas"
-                    disabled={isCreatingHold}
-                    className={cn(
-                      'mt-1 h-11 w-full rounded-xl border bg-white px-3 text-sm text-slate-900 outline-none',
-                      nombreOk
-                        ? 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-                        : 'border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/15'
-                    )}
-                  />
-                  {!nombreOk && (
-                    <p className="mt-1 text-[11px] text-slate-400">
-                      Mínimo 2 caracteres.
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">
-                    Email <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tu@mail.com"
-                    disabled={isCreatingHold}
-                    className={cn(
-                      'mt-1 h-11 w-full rounded-xl border bg-white px-3 text-sm text-slate-900 outline-none',
-                      emailOk || !email.trim()
-                        ? 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-                        : 'border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/15'
-                    )}
-                  />
-                  {email.trim() && !emailOk && (
-                    <p className="mt-1 text-[11px] text-rose-500">
-                      Ingresá un email válido.
-                    </p>
-                  )}
-                  {!email.trim() && (
-                    <p className="mt-1 text-[11px] text-slate-400">
-                      Requerido para enviarte la confirmación.
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">
-                    Teléfono <span className="text-slate-400">(opcional)</span>
-                  </label>
-                  <input
-                    value={telefono}
-                    onChange={(e) => setTelefono(e.target.value)}
-                    placeholder="+54 9 ..."
-                    disabled={isCreatingHold}
-                    className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
-
-                {!authToken && (
-                  <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-100">
-                    <p className="text-xs text-slate-500">
-                      Tip: si{' '}
-                      <button
-                        type="button"
-                        onClick={() => router.push('/login')}
-                        className="font-semibold text-blue-600 hover:text-blue-500"
-                      >
-                        iniciás sesión
-                      </button>
-                      , completamos tus datos automáticamente.
-                    </p>
-                  </div>
-                )}
-
-                {authToken && profilePrefilled && (
-                  <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-100">
-                    <p className="text-xs text-slate-500">
-                      Te enviaremos la confirmación por email.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* footer */}
-          <div className="border-t border-slate-100 bg-white px-5 py-4 md:px-6">
-            <div className="grid gap-3 md:grid-cols-2">
-              {/* CTA principal */}
-              {holdState !== 'held' ? (
-                <button
-                  disabled={!canSubmit}
-                  aria-disabled={!canSubmit}
-                  onClick={onCreateHold}
-                  className={cn(
-                    'flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold transition',
-                    canSubmit
-                      ? 'bg-slate-900 text-white hover:bg-blue-600'
-                      : 'cursor-not-allowed bg-slate-200 text-slate-500'
-                  )}
-                >
-                  {isCreatingHold ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Creando bloqueo...
-                    </>
-                  ) : (
-                    <>
-                      <Lock size={16} />
-                      Retener turno (10 min)
-                    </>
-                  )}
-                </button>
-              ) : isExpired ? (
-                <button
-                  onClick={closeDrawer}
-                  className="flex h-12 w-full items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-bold text-white hover:bg-slate-800"
-                >
-                  Elegir otro horario
-                </button>
-              ) : (
-                <button
-                  onClick={onGoCheckout}
-                  disabled={isOpeningCheckout}
-                  aria-disabled={isOpeningCheckout}
-                  className={cn(
-                    'flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold text-white transition',
-                    isOpeningCheckout
-                      ? 'bg-blue-300'
-                      : 'bg-blue-600 hover:bg-blue-500'
-                  )}
-                >
-                  {isOpeningCheckout ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Abriendo checkout...
-                    </>
-                  ) : (
-                    'Continuar (checkout)'
-                  )}
-                </button>
+          {/* Panel Container */}
+          <div className="absolute inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4">
+            <motion.div
+              ref={panelRef}
+              variants={isDesktop ? desktopVariants : drawerVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="booking-drawer-title"
+              tabIndex={-1}
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                'w-full bg-white shadow-2xl',
+                'rounded-t-3xl md:rounded-2xl',
+                'md:max-w-2xl',
+                'max-h-[92vh] md:max-h-[85vh]',
+                'flex flex-col',
+                'ring-1 ring-black/5'
               )}
+            >
+              {/* Grab Handle (mobile) */}
+              <div className="flex justify-center pt-3 md:hidden">
+                <div className="h-1 w-10 rounded-full bg-slate-200" />
+              </div>
 
-              <button
-                onClick={closeDrawer}
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50"
-              >
-                Cancelar
-              </button>
-            </div>
+              {/* Header */}
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 pb-4 pt-4 md:px-6 md:pt-5">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600">
+                    Reserva
+                  </p>
+                  <h3 id="booking-drawer-title" className="mt-1 text-xl font-bold text-slate-900">
+                    Confirmá tu turno
+                  </h3>
+                </div>
+                <motion.button
+                  ref={closeButtonRef}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={closeDrawer}
+                  className="mt-1 rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                  aria-label="Cerrar"
+                >
+                  <X size={20} />
+                </motion.button>
+              </div>
 
-            <p className="mt-3 text-[11px] text-slate-400">
-              Al retener el turno, queda bloqueado temporalmente para vos.
-            </p>
+              {/* Body */}
+              <div className="flex-1 overflow-auto px-5 py-5 md:px-6">
+                <div className="grid gap-5 md:grid-cols-2 md:gap-6">
+                  {/* LEFT: Summary */}
+                  <div className="space-y-4">
+                    {/* Booking Card */}
+                    {resumen ? (
+                      <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/50 ring-1 ring-slate-200/80">
+                        {/* Club & Court */}
+                        <div className="border-b border-slate-200/60 px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <MapPin size={14} className="text-slate-400" />
+                            <div>
+                              <p className="text-sm font-bold text-slate-900">{resumen.club}</p>
+                              <p className="text-xs text-slate-500">{resumen.court}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Date & Time */}
+                        <div className="grid grid-cols-2 divide-x divide-slate-200/60">
+                          <div className="flex items-center gap-2.5 px-4 py-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-slate-200/50">
+                              <Calendar size={14} className="text-slate-500" />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase text-slate-400">Día</p>
+                              <p className="text-sm font-semibold capitalize text-slate-900">
+                                {resumen.dateLabelShort}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2.5 px-4 py-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-slate-200/50">
+                              <Clock size={14} className="text-slate-500" />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase text-slate-400">Horario</p>
+                              <p className="text-sm font-semibold text-slate-900">
+                                {resumen.start} – {resumen.end}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Price */}
+                        <div className="flex items-center justify-between border-t border-slate-200/60 bg-white/50 px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <CreditCard size={14} className="text-slate-400" />
+                            <span className="text-xs font-medium text-slate-500">Total a pagar</span>
+                          </div>
+                          <p className="text-lg font-extrabold text-slate-900">
+                            ${resumen.precio.toLocaleString('es-AR')}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl bg-slate-50 p-6 text-center ring-1 ring-slate-100">
+                        <p className="text-sm text-slate-500">Elegí un horario para continuar.</p>
+                      </div>
+                    )}
+
+                    {/* Status Cards */}
+                    <AnimatePresence mode="wait">
+                      {/* Expired */}
+                      {isExpired && (
+                        <motion.div
+                          key="expired"
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="rounded-2xl border border-rose-200 bg-rose-50 p-4"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100">
+                              <AlertTriangle className="text-rose-600" size={18} />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-rose-900">El turno expiró</p>
+                              <p className="mt-0.5 text-sm text-rose-700/80">
+                                Elegí otro horario para continuar.
+                              </p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* Hold Active */}
+                      {holdState === 'held' && hold && !isExpired && (
+                        <motion.div
+                          key="held"
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100">
+                                <CheckCircle2 className="text-emerald-600" size={18} />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-emerald-900">Turno retenido</p>
+                                <p className="mt-0.5 text-sm text-emerald-700/80">
+                                  Completá el pago antes de que expire.
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 font-mono text-sm font-bold text-emerald-700 shadow-sm ring-1 ring-emerald-200">
+                              <Timer size={14} />
+                              {formatMMSS(secondsLeft)}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* Error */}
+                      {holdState === 'error' && holdError && (
+                        <motion.div
+                          key="error"
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="rounded-2xl border border-amber-200 bg-amber-50 p-4"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100">
+                              <AlertTriangle className="text-amber-600" size={18} />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-amber-900">No se pudo reservar</p>
+                              <p className="mt-0.5 text-sm text-amber-700/80">{holdError}</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* RIGHT: Form */}
+                  <div key={formKey} className="space-y-4">
+                    {/* Profile Loading / Prefilled indicators */}
+                    <AnimatePresence mode="wait">
+                      {profileLoading && (
+                        <motion.div
+                          key="loading"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-xs text-slate-600"
+                        >
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Cargando tus datos...
+                        </motion.div>
+                      )}
+                      {profilePrefilled && !profileLoading && (
+                        <motion.div
+                          key="prefilled"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-xs text-emerald-700 ring-1 ring-emerald-100"
+                        >
+                          <User size={14} />
+                          Completamos tus datos. Podés editarlos si querés.
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Name */}
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                        Nombre <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        value={nombre}
+                        onChange={(e) => setNombre(e.target.value)}
+                        placeholder="Ej: Lucas"
+                        disabled={isCreatingHold}
+                        className={cn(
+                          'h-12 w-full rounded-xl border bg-white px-4 text-sm text-slate-900 outline-none transition-all',
+                          'placeholder:text-slate-400',
+                          nombreOk || !nombre.trim()
+                            ? 'border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10'
+                            : 'border-rose-300 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10'
+                        )}
+                      />
+                      {!nombreOk && nombre.trim() && (
+                        <p className="mt-1 text-[11px] text-rose-500">Mínimo 2 caracteres.</p>
+                      )}
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                        Email <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="tu@email.com"
+                        disabled={isCreatingHold}
+                        className={cn(
+                          'h-12 w-full rounded-xl border bg-white px-4 text-sm text-slate-900 outline-none transition-all',
+                          'placeholder:text-slate-400',
+                          emailOk || !email.trim()
+                            ? 'border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10'
+                            : 'border-rose-300 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10'
+                        )}
+                      />
+                      {email.trim() && !emailOk && (
+                        <p className="mt-1 text-[11px] text-rose-500">Ingresá un email válido.</p>
+                      )}
+                      {!email.trim() && (
+                        <p className="mt-1 text-[11px] text-slate-400">Te enviaremos la confirmación.</p>
+                      )}
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                        Teléfono <span className="text-slate-400">(opcional)</span>
+                      </label>
+                      <input
+                        value={telefono}
+                        onChange={(e) => setTelefono(e.target.value)}
+                        placeholder="+54 9 341..."
+                        disabled={isCreatingHold}
+                        className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                      />
+                    </div>
+
+                    {/* Login hint */}
+                    {!authToken && (
+                      <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100">
+                        <p className="text-xs text-slate-500">
+                          <button
+                            type="button"
+                            onClick={() => router.push('/login')}
+                            className="font-semibold text-blue-600 hover:text-blue-500 hover:underline"
+                          >
+                            Iniciá sesión
+                          </button>{' '}
+                          para completar tus datos automáticamente.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-4 md:px-6">
+                <div className="grid gap-3 md:grid-cols-2">
+                  {/* Primary CTA */}
+                  {holdState !== 'held' ? (
+                    <motion.button
+                      whileHover={canSubmit ? { scale: 1.01 } : {}}
+                      whileTap={canSubmit ? { scale: 0.99 } : {}}
+                      disabled={!canSubmit}
+                      onClick={onCreateHold}
+                      className={cn(
+                        'flex h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition-all',
+                        canSubmit
+                          ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 hover:bg-blue-600 hover:shadow-blue-600/25'
+                          : 'cursor-not-allowed bg-slate-200 text-slate-400'
+                      )}
+                    >
+                      {isCreatingHold ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Reservando...
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={15} />
+                          Retener turno (10 min)
+                        </>
+                      )}
+                    </motion.button>
+                  ) : isExpired ? (
+                    <motion.button
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={closeDrawer}
+                      className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-bold text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800"
+                    >
+                      Elegir otro horario
+                    </motion.button>
+                  ) : (
+                    <motion.button
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={onGoCheckout}
+                      disabled={isOpeningCheckout}
+                      className={cn(
+                        'flex h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold text-white shadow-lg transition-all',
+                        isOpeningCheckout
+                          ? 'bg-blue-400'
+                          : 'bg-blue-600 shadow-blue-600/25 hover:bg-blue-500'
+                      )}
+                    >
+                      {isOpeningCheckout ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Abriendo...
+                        </>
+                      ) : (
+                        'Continuar al pago'
+                      )}
+                    </motion.button>
+                  )}
+
+                  {/* Cancel */}
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={closeDrawer}
+                    className="h-12 w-full rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    Cancelar
+                  </motion.button>
+                </div>
+
+                <p className="mt-3 text-center text-[11px] text-slate-400">
+                  Al retener, el turno queda bloqueado temporalmente para vos.
+                </p>
+              </div>
+            </motion.div>
           </div>
         </div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 }

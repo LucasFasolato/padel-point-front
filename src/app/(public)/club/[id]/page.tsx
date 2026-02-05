@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ChevronLeft, Home } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { PlayerService } from '@/services/player-service';
 import { MediaService } from '@/lib/media-service';
@@ -24,10 +25,10 @@ import { CourtCard } from '@/app/components/public/court-card';
 import { BookingDrawer } from '@/app/components/public/booking-drawer';
 
 export default function ClubPage() {
+  const router = useRouter();
   const params = useParams();
   const id = params.id as string;
 
-  // Store (Global State for Booking)
   const {
     selectedDate,
     setDate,
@@ -38,12 +39,10 @@ export default function ClubPage() {
     openDrawer,
   } = useBookingStore();
 
-  // Local Data State
   const [club, setClub] = useState<Club | null>(null);
   const [assets, setAssets] = useState<{ cover?: PublicMedia | null; logo?: PublicMedia | null }>({});
   const [courts, setCourts] = useState<Court[]>([]);
 
-  // Availability State
   const [availability, setAvailability] = useState<Record<string, AvailabilitySlot[]>>({});
   const [loadingByCourt, setLoadingByCourt] = useState<Record<string, boolean>>({});
   const [errorByCourt, setErrorByCourt] = useState<Record<string, string | null>>({});
@@ -55,13 +54,10 @@ export default function ClubPage() {
     const secureUrl = asset.secureUrl || asset.url || undefined;
     const url = asset.url || asset.secureUrl || undefined;
     if (!secureUrl && !url) return undefined;
-    return {
-      secureUrl: secureUrl ?? '',
-      url: url ?? '',
-    };
+    return { secureUrl: secureUrl ?? '', url: url ?? '' };
   };
 
-  // 1) Initial Load (Overview: club + media + courts)
+  // Initial Load
   useEffect(() => {
     if (!id) return;
 
@@ -78,9 +74,6 @@ export default function ClubPage() {
           activo: overview.club.activo,
           latitud: overview.club.latitud,
           longitud: overview.club.longitud,
-
-          // Estos dos no vienen en overview, pero tu type Club los tiene.
-          // Los seteamos como empty para evitar undefined en UI.
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -93,7 +86,6 @@ export default function ClubPage() {
           cover: overview.media.cover,
         });
 
-        // Adaptamos courts (overview) a tu Court type actual
         const mappedCourts: Court[] = overview.courts.map((c) => ({
           id: c.id,
           nombre: c.nombre,
@@ -101,19 +93,16 @@ export default function ClubPage() {
           precioPorHora: Number(c.precioPorHora),
           activa: c.activa,
           clubId: overview.club.id,
-          primaryImage: c.primaryPhoto ?? undefined, 
+          primaryImage: c.primaryPhoto ?? undefined,
         }));
 
         setCourts(mappedCourts);
 
-        // Fetch public media assets (logo/cover + court primary images)
         try {
           const [logoAsset, coverAsset, primaryAssets] = await Promise.all([
             MediaService.getClubLogo(overview.club.id),
             MediaService.getClubCover(overview.club.id),
-            Promise.all(
-              mappedCourts.map((court) => MediaService.getCourtPrimary(court.id))
-            ),
+            Promise.all(mappedCourts.map((court) => MediaService.getCourtPrimary(court.id))),
           ]);
 
           setAssets({
@@ -128,7 +117,7 @@ export default function ClubPage() {
             }))
           );
         } catch {
-          // Ignore media errors; keep overview data
+          // Ignore media errors
         }
       } catch (e) {
         console.error('Failed to load club overview', e);
@@ -140,14 +129,13 @@ export default function ClubPage() {
     initData();
   }, [id, setStoreClub]);
 
-  // 2) Fetch Availability (When Date or Courts change)
+  // Fetch Availability
   useEffect(() => {
     const fetchAvailability = async () => {
       if (courts.length === 0) return;
 
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-      // mark all courts loading
       setLoadingByCourt(() => {
         const obj: Record<string, boolean> = {};
         for (const c of courts) obj[c.id] = true;
@@ -166,9 +154,9 @@ export default function ClubPage() {
             const slots = await PlayerService.getAvailability(court.id, dateStr);
             setAvailability((prev) => ({ ...prev, [court.id]: slots }));
             setAvailabilityForCourt(court.id, slots);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } catch (e: any) {
-            const msg = e?.response?.data?.message || 'No pudimos cargar los horarios.';
+          } catch (e: unknown) {
+            const err = e as { response?: { data?: { message?: string } } };
+            const msg = err?.response?.data?.message || 'No pudimos cargar los horarios.';
             setAvailability((prev) => ({ ...prev, [court.id]: [] }));
             setAvailabilityForCourt(court.id, []);
             setErrorByCourt((prev) => ({ ...prev, [court.id]: msg }));
@@ -180,9 +168,9 @@ export default function ClubPage() {
     };
 
     fetchAvailability();
-  }, [selectedDate, courts]);
+  }, [selectedDate, courts, setAvailabilityForCourt]);
 
-  // 2.5) Prefill from "Reservar de nuevo"
+  // Prefill from "Reservar de nuevo"
   useEffect(() => {
     if (initLoading || !club || courts.length === 0) return;
 
@@ -215,7 +203,6 @@ export default function ClubPage() {
     } catch {}
   }, [initLoading, club, courts, setDate, setCourt]);
 
-  // 3) Interaction Handler
   const handleSlotSelect = useCallback(
     (slot: AvailabilitySlot, court: Court) => {
       setSelectedSlot(slot);
@@ -225,8 +212,7 @@ export default function ClubPage() {
     [setSelectedSlot, setCourt, openDrawer]
   );
 
-  // --- RENDER STATES ---
-
+  // --- LOADING STATE ---
   if (initLoading) {
     return (
       <div className="min-h-screen bg-slate-50">
@@ -268,6 +254,7 @@ export default function ClubPage() {
     );
   }
 
+  // --- NOT FOUND STATE ---
   if (!club) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50 p-4 text-center">
@@ -276,7 +263,7 @@ export default function ClubPage() {
         <p className="text-slate-500">Es posible que el enlace sea incorrecto o el club no exista.</p>
         <Link
           href="/"
-          className="mt-5 inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-bold text-white hover:bg-blue-600"
+          className="mt-5 inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-600"
         >
           Volver al inicio
         </Link>
@@ -284,56 +271,132 @@ export default function ClubPage() {
     );
   }
 
+  // --- MAIN RENDER ---
   return (
     <div className="min-h-screen bg-slate-50 pb-32">
-      {/* 1) Hero */}
+      {/* ============================================
+          HEADER FIJO - Volver a Home
+          ============================================ */}
+      <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur-lg">
+        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
+          {/* Botón Volver */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => router.push('/')}
+            className="group flex items-center gap-2 rounded-full bg-slate-100 py-2 pl-2.5 pr-4 text-sm font-semibold text-slate-700 transition-all hover:bg-slate-200 hover:text-slate-900"
+          >
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:-translate-x-0.5">
+              <ChevronLeft size={14} className="text-slate-600" />
+            </span>
+            <span className="hidden sm:inline">Volver</span>
+          </motion.button>
+
+          {/* Club name (center) */}
+          <div className="absolute left-1/2 -translate-x-1/2">
+            <p className="max-w-[180px] truncate text-sm font-bold text-slate-900 sm:max-w-none">
+              {club.nombre}
+            </p>
+          </div>
+
+          {/* Home icon (right) */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => router.push('/')}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            aria-label="Ir al inicio"
+          >
+            <Home size={18} />
+          </motion.button>
+        </div>
+      </header>
+
+      {/* ============================================
+          HERO
+          ============================================ */}
       <ClubHero club={club} cover={assets.cover} logo={assets.logo} />
 
-      {/* 2) Date Navigator (Sticky) */}
-      <div className="sticky top-0 z-30 -mt-6">
+      {/* ============================================
+          DATE NAVIGATOR (Sticky below header)
+          ============================================ */}
+      <div className="sticky top-14 z-30 -mt-6">
         <DateNavigator selectedDate={selectedDate} onSelect={setDate} />
       </div>
 
-      {/* 3) Courts List */}
-      <div className="mx-auto max-w-md space-y-6 px-4 pt-8 sm:max-w-3xl">
+      {/* ============================================
+          COURTS LIST
+          ============================================ */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="mx-auto max-w-md space-y-6 px-4 pt-8 sm:max-w-3xl"
+      >
+        {/* Section Header */}
         <div className="flex items-center justify-between px-1">
           <h2 className="text-lg font-bold text-slate-900">Canchas Disponibles</h2>
-          <span className="text-xs font-medium text-slate-500">
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
             {courts.length} {courts.length === 1 ? 'Pista' : 'Pistas'}
           </span>
         </div>
-        {prefillHint && (
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
-            {prefillHint}
-          </div>
-        )}
 
-        {courts.map((court) => (
-          <CourtCard
+        {/* Prefill Hint */}
+        <AnimatePresence>
+          {prefillHint && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                {prefillHint}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Court Cards */}
+        {courts.map((court, idx) => (
+          <motion.div
             key={court.id}
-            court={court}
-            slots={availability[court.id] || []}
-            loading={!!loadingByCourt[court.id]}
-            error={errorByCourt[court.id] || null}
-            onSlotSelect={(slot) => handleSlotSelect(slot, court)}
-          />
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: idx * 0.1 }}
+          >
+            <CourtCard
+              court={court}
+              slots={availability[court.id] || []}
+              loading={!!loadingByCourt[court.id]}
+              error={errorByCourt[court.id] || null}
+              onSlotSelect={(slot) => handleSlotSelect(slot, court)}
+            />
+          </motion.div>
         ))}
 
+        {/* Empty State */}
         {courts.length === 0 && (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center"
+          >
             <p className="font-medium text-slate-900">No hay canchas configuradas</p>
             <p className="text-sm text-slate-500">Este club aún no tiene pistas activas.</p>
             <Link
               href="/"
-              className="mt-4 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+              className="mt-4 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
             >
               Ver otros clubes
             </Link>
-          </div>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
 
-      {/* 4) Booking Drawer */}
+      {/* ============================================
+          BOOKING DRAWER
+          ============================================ */}
       <BookingDrawer />
     </div>
   );
