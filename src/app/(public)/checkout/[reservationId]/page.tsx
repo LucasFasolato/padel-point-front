@@ -62,6 +62,11 @@ const getErrorUserMessage = (error: unknown): string => {
   const status = axios.isAxiosError(error) ? error.response?.status : undefined;
   const message = getApiErrorMessage(error).toLowerCase();
 
+  // Hold expirado
+  if (status === 409 && message.includes('expired')) {
+    return 'La reserva expiró. Elegí otro horario.';
+  }
+
   // Reserva ya confirmada
   if (status === 409) {
     if (message.includes('already') || message.includes('confirmed')) {
@@ -305,7 +310,7 @@ export default function CheckoutPage() {
         try {
           sessionStorage.setItem(cacheKey, JSON.stringify(data));
         } catch {}
-      } catch (err) {
+      } catch {
         if (cancelled) return;
         setLoadError('Reserva no encontrada o link expirado.');
       } finally {
@@ -366,8 +371,8 @@ export default function CheckoutPage() {
   const processPayment = useCallback(async () => {
     if (!reservationId || !checkoutToken) return;
 
-    // Don't process if expired
-    if (ready && expired) {
+    // ✅ Don't process if expired (use isExpired which checks ready)
+    if (isExpired) {
       setIntentState('failed');
       setIntentError('La reserva expiró. Elegí otro horario.');
       return;
@@ -419,17 +424,27 @@ export default function CheckoutPage() {
       setIntentState('failed');
       setIntentError(getErrorUserMessage(err));
     }
-  }, [reservationId, checkoutToken, authToken, ready, expired]);
+  }, [reservationId, checkoutToken, authToken, isExpired]);
 
-  // Auto-start payment when reservation loads
+  // ✅ Auto-start payment when reservation loads AND countdown is ready
   useEffect(() => {
     if (!reservation || loading || intentState !== 'idle') return;
+
+    // ✅ Wait for countdown to be ready before deciding
+    if (countdownEnabled && !ready) return;
+
+    // ✅ Don't process if already expired
+    if (isExpired) {
+      setIntentState('failed');
+      setIntentError('La reserva expiró. Elegí otro horario.');
+      return;
+    }
 
     // Only process if reservation is in valid state
     if (reservation.status === 'hold') {
       processPayment();
     }
-  }, [reservation, loading, intentState, processPayment]);
+  }, [reservation, loading, intentState, countdownEnabled, ready, isExpired, processPayment]);
 
   // Redirect on success
   useEffect(() => {

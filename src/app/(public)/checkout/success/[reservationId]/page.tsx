@@ -4,7 +4,17 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Loader2, CheckCircle2, Calendar, MapPin, Receipt } from 'lucide-react';
+import {
+  Loader2,
+  CheckCircle2,
+  Calendar,
+  MapPin,
+  Receipt,
+  Share2,
+  Copy,
+  Check,
+  MessageCircle,
+} from 'lucide-react';
 
 import { PlayerService } from '@/services/player-service';
 import type { CheckoutReservation } from '@/types';
@@ -21,6 +31,12 @@ export default function CheckoutSuccessPage() {
   const [reservation, setReservation] = useState<CheckoutReservation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Build shareable URL
+  const receiptUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/checkout/success/${reservationId}?receiptToken=${encodeURIComponent(receiptToken)}`
+    : '';
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +70,64 @@ export default function CheckoutSuccessPage() {
     };
   }, [reservationId, receiptToken]);
 
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(receiptUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = receiptUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleShareWhatsApp = () => {
+    if (!reservation) return;
+
+    const fechaFormateada = format(
+      new Date(reservation.startAt),
+      "EEEE d 'de' MMMM 'a las' HH:mm",
+      { locale: es }
+    );
+
+    const message = encodeURIComponent(
+      `🎾 ¡Reserva confirmada!\n\n` +
+      `📍 ${reservation.court.nombre} - ${reservation.court.club.nombre}\n` +
+      `📅 ${fechaFormateada} hs\n` +
+      `💰 ${formatCurrency(reservation.precio)}\n\n` +
+      `🔗 Comprobante: ${receiptUrl}`
+    );
+
+    window.open(`https://wa.me/?text=${message}`, '_blank');
+  };
+
+  const handleNativeShare = async () => {
+    if (!reservation || !navigator.share) return;
+
+    const fechaFormateada = format(
+      new Date(reservation.startAt),
+      "EEEE d 'de' MMMM 'a las' HH:mm",
+      { locale: es }
+    );
+
+    try {
+      await navigator.share({
+        title: 'Reserva confirmada',
+        text: `🎾 Reserva en ${reservation.court.nombre} - ${fechaFormateada} hs`,
+        url: receiptUrl,
+      });
+    } catch {
+      // User cancelled or share failed, ignore
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -76,6 +150,8 @@ export default function CheckoutSuccessPage() {
     );
   }
 
+  const supportsNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
+
   return (
     <>
       <PublicTopBar
@@ -83,7 +159,7 @@ export default function CheckoutSuccessPage() {
         title="Comprobante"
       />
 
-      <div className="min-h-[calc(100vh-56px)] bg-slate-50 px-4 py-10">
+      <div className="min-h-[calc(100vh-56px)] bg-slate-50 px-4 py-10 pb-24">
         <div className="mx-auto max-w-lg overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-xl">
           {/* Header - Success */}
           <div className="bg-emerald-600 p-6 text-center text-white">
@@ -155,31 +231,76 @@ export default function CheckoutSuccessPage() {
                   Datos del titular
                 </p>
                 <div className="text-sm text-slate-600 space-y-1">
-                  {reservation.cliente.nombre && (
-                    <p>{reservation.cliente.nombre}</p>
-                  )}
-                  {reservation.cliente.email && (
-                    <p>{reservation.cliente.email}</p>
-                  )}
-                  {reservation.cliente.telefono && (
-                    <p>{reservation.cliente.telefono}</p>
-                  )}
+                  {reservation.cliente.nombre && <p>{reservation.cliente.nombre}</p>}
+                  {reservation.cliente.email && <p>{reservation.cliente.email}</p>}
+                  {reservation.cliente.telefono && <p>{reservation.cliente.telefono}</p>}
                 </div>
               </div>
             )}
+
+            {/* Share buttons */}
+            <div className="space-y-3 border-t border-slate-100 pt-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Compartir comprobante
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* WhatsApp */}
+                <button
+                  onClick={handleShareWhatsApp}
+                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-semibold text-white hover:bg-emerald-600 transition-colors"
+                >
+                  <MessageCircle size={18} />
+                  WhatsApp
+                </button>
+
+                {/* Copy link */}
+                <button
+                  onClick={handleCopyLink}
+                  className={`flex h-11 items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors ${
+                    copied
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {copied ? (
+                    <>
+                      <Check size={18} />
+                      ¡Copiado!
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={18} />
+                      Copiar link
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Native share (mobile) */}
+              {supportsNativeShare && (
+                <button
+                  onClick={handleNativeShare}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <Share2 size={18} />
+                  Más opciones
+                </button>
+              )}
+            </div>
 
             {/* CTA */}
             <div className="space-y-3 pt-2">
               <button
                 onClick={() => router.push(`/club/${reservation.court.club.id}`)}
-                className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800"
+                className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 transition-colors"
               >
                 Reservar otro turno
               </button>
 
               <button
                 onClick={() => router.push('/')}
-                className="flex h-12 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50"
+                className="flex h-12 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
               >
                 Volver al inicio
               </button>
