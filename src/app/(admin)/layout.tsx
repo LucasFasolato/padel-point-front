@@ -14,6 +14,7 @@ import {
   Map,
   CreditCard,
   BarChart3,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AuthGuard from '@/app/components/admin/auth-guard';
@@ -96,8 +97,8 @@ function Sidebar() {
             />
             <NavItem
               href="/admin/availability"
-              icon={<BarChart3 size={20} />}
-              label="Availability"
+              icon={<Calendar size={20} />}
+              label="Schedule"
               active={pathname.includes('availability')}
             />
             <NavItem
