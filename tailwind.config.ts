@@ -8,12 +8,14 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      // 1. Extend Colors (Optional but recommended for consistency)
+      // 1. Extend Colors - Padel Brand Identity
       colors: {
         padel: {
-          blue: '#2563EB', // Your Primary Brand Color
-          dark: '#0F172A', // Your Dark Backgrounds
-          green: '#10B981', // Success States
+          primary: '#10B981',    // Emerald-600 - Primary CTA & brand
+          dark: '#0F172A',       // Slate-900 - Dark backgrounds
+          surface: '#F8FAFC',    // Slate-50 - Light backgrounds
+          border: '#E2E8F0',     // Slate-200 - Borders
+          muted: '#64748B',      // Slate-500 - Muted text
         }
       },
       // 2. Custom Keyframes (The "World Class" Motion)

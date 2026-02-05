@@ -24,13 +24,13 @@ export function DateNavigator({ selectedDate, onSelect }: DateNavigatorProps) {
 
   return (
     <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
-      <div 
+      <div
         ref={scrollRef}
-        className="mx-auto flex max-w-md gap-2 overflow-x-auto px-4 py-3 no-scrollbar sm:max-w-3xl"
+        className="mx-auto flex max-w-md gap-2 overflow-x-auto px-4 py-3 no-scrollbar sm:max-w-3xl snap-x snap-mandatory scroll-px-4"
       >
         {dates.map((date) => {
           const isSelected = isSameDay(date, selectedDate);
-          
+
           let label = format(date, 'EEE', { locale: es });
           if (isToday(date)) label = 'HOY';
           if (isTomorrow(date)) label = 'MAÑ';
@@ -40,16 +40,16 @@ export function DateNavigator({ selectedDate, onSelect }: DateNavigatorProps) {
               key={date.toISOString()}
               onClick={() => onSelect(date)}
               className={cn(
-                "flex min-w-[4.5rem] flex-col items-center justify-center rounded-xl border py-2 transition-all active:scale-95",
+                "flex min-w-[5rem] flex-shrink-0 flex-col items-center justify-center rounded-xl border py-3 transition-all active:scale-95 snap-start",
                 isSelected
-                  ? "border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-900/20"
+                  ? "border-emerald-600 bg-emerald-600 text-white shadow-lg shadow-emerald-600/20"
                   : "border-slate-100 bg-white text-slate-500 hover:border-slate-300"
               )}
             >
-              <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">
+              <span className="text-[11px] font-semibold uppercase tracking-wide opacity-90">
                 {label}
               </span>
-              <span className="text-xl font-bold leading-none">
+              <span className="text-2xl font-bold leading-none mt-0.5">
                 {format(date, 'd')}
               </span>
             </button>

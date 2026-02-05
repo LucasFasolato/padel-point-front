@@ -24,10 +24,10 @@ html {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Custom Selection Color */
+/* Custom Selection Color - Padel Identity */
 ::selection {
-  background-color: #bfdbfe; /* Blue-200 */
-  color: #1e3a8a; /* Blue-900 */
+  background-color: #d1fae5; /* Emerald-100 */
+  color: #065f46; /* Emerald-900 */
 }
 
 /* --- 4. UTILITIES --- */
@@ -40,4 +40,12 @@ html {
   /* Hide scrollbar for IE, Edge and Firefox */
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
+}
+
+/* --- 5. SAFE AREA SUPPORT (iOS notch) --- */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
 }
