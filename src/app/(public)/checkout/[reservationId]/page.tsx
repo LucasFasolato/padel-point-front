@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   XCircle,
+  CreditCard,
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -19,9 +20,12 @@ import type { CheckoutReservation } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { useHoldCountdown } from '@/hooks/use-hold-countdown';
-import { saveReservationCache } from '@/lib/checkout-cache';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/auth-store';
+
+// =============================================================================
+// TYPES
+// =============================================================================
 
 type PlayerProfile = {
   displayName?: string | null;
@@ -37,506 +41,579 @@ type PaymentIntent = {
   receiptToken?: string | null;
 };
 
-const getApiErrorMessage = (error: unknown) => {
+type IntentState = 'idle' | 'loading' | 'pending' | 'approved' | 'failed';
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+const getApiErrorMessage = (error: unknown): string => {
   if (!axios.isAxiosError(error)) return '';
   const data = error.response?.data;
   if (!data) return '';
   if (typeof data === 'string') return data;
-  if (Array.isArray((data as { message?: string[] }).message)) {
-    return (data as { message?: string[] }).message?.join(' ') ?? '';
-  }
-  if (typeof (data as { message?: string }).message === 'string') {
-    return (data as { message?: string }).message ?? '';
-  }
-  if (typeof (data as { error?: string }).error === 'string') {
-    return (data as { error?: string }).error ?? '';
-  }
+  if (Array.isArray(data?.message)) return data.message.join(' ');
+  if (typeof data?.message === 'string') return data.message;
+  if (typeof data?.error === 'string') return data.error;
   return '';
 };
+
+const getErrorUserMessage = (error: unknown): string => {
+  const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+  const message = getApiErrorMessage(error).toLowerCase();
+
+  // Reserva ya confirmada
+  if (status === 409) {
+    if (message.includes('already') || message.includes('confirmed')) {
+      return 'Esta reserva ya fue confirmada. Revisá tu email o historial de reservas.';
+    }
+    return 'Hubo un conflicto con la reserva. Intentá de nuevo.';
+  }
+
+  // Token inválido o problema interno
+  if (status === 400) {
+    if (message.includes('token')) {
+      return 'Hubo un problema con la sesión. Recargá la página e intentá de nuevo.';
+    }
+    return 'Datos inválidos. Verificá la información e intentá de nuevo.';
+  }
+
+  // Forbidden
+  if (status === 403) {
+    return 'No tenés permiso para realizar esta acción.';
+  }
+
+  // Not found
+  if (status === 404) {
+    return 'La reserva no fue encontrada. Es posible que haya expirado.';
+  }
+
+  // Network error
+  if (!status) {
+    return 'Error de conexión. Verificá tu internet e intentá de nuevo.';
+  }
+
+  return 'No pudimos procesar el pago. Intentá de nuevo.';
+};
+
+// =============================================================================
+// COMPONENTS
+// =============================================================================
+
+function ProfileCard({
+  profile,
+  loading,
+  error,
+  onComplete,
+}: {
+  profile: PlayerProfile | null;
+  loading: boolean;
+  error: boolean;
+  onComplete: () => void;
+}) {
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+        <div className="h-4 w-24 rounded bg-slate-200 animate-pulse" />
+        <div className="mt-4 space-y-2">
+          <div className="h-4 w-2/3 rounded bg-slate-200 animate-pulse" />
+          <div className="h-4 w-1/2 rounded bg-slate-200 animate-pulse" />
+          <div className="h-4 w-1/3 rounded bg-slate-200 animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+        <p className="text-xs text-amber-700">No pudimos cargar tus datos.</p>
+      </div>
+    );
+  }
+
+  if (!profile) return null;
+
+  const isIncomplete = !profile.displayName || !profile.phone;
+
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-bold text-slate-900">Tus datos</h2>
+        {isIncomplete && (
+          <button
+            type="button"
+            onClick={onComplete}
+            className="text-xs font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+          >
+            Completar perfil
+          </button>
+        )}
+      </div>
+
+      <div className="mt-3 space-y-2 text-sm">
+        <ProfileRow label="Email" value={profile.email} />
+        <ProfileRow label="Nombre" value={profile.displayName} />
+        <ProfileRow label="Teléfono" value={profile.phone} />
+      </div>
+    </div>
+  );
+}
+
+function ProfileRow({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-slate-500">{label}</span>
+      <span className={`font-medium ${value ? 'text-slate-900' : 'text-slate-400 italic'}`}>
+        {value || 'Sin completar'}
+      </span>
+    </div>
+  );
+}
+
+function PaymentStatusCard({
+  status,
+  error,
+}: {
+  status: IntentState;
+  error: string | null;
+}) {
+  const config = {
+    idle: null,
+    loading: {
+      icon: <Loader2 className="h-6 w-6 animate-spin text-blue-600" />,
+      title: 'Preparando el pago...',
+      subtitle: 'Esto solo toma unos segundos.',
+      className: 'border-blue-100 bg-blue-50',
+    },
+    pending: {
+      icon: <Loader2 className="h-6 w-6 animate-spin text-blue-600" />,
+      title: 'Procesando pago...',
+      subtitle: 'No cierres esta ventana.',
+      className: 'border-blue-100 bg-blue-50',
+    },
+    approved: {
+      icon: <CheckCircle2 className="h-6 w-6 text-emerald-600" />,
+      title: '¡Pago confirmado!',
+      subtitle: 'Redirigiendo al comprobante...',
+      className: 'border-emerald-100 bg-emerald-50',
+    },
+    failed: {
+      icon: <XCircle className="h-6 w-6 text-rose-600" />,
+      title: 'No pudimos procesar el pago',
+      subtitle: error || 'Intentá de nuevo o elegí otro horario.',
+      className: 'border-rose-100 bg-rose-50',
+    },
+  };
+
+  const current = config[status];
+  if (!current) return null;
+
+  return (
+    <div className={`rounded-2xl border p-5 text-center ${current.className}`}>
+      <div className="flex flex-col items-center gap-3">
+        {current.icon}
+        <div>
+          <p className="text-sm font-semibold text-slate-900">{current.title}</p>
+          <p className="mt-0.5 text-xs text-slate-600">{current.subtitle}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HoldExpiredOverlay() {
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+      <div className="flex flex-col items-center gap-2 text-white">
+        <AlertTriangle className="h-8 w-8 text-amber-400" />
+        <span className="text-lg font-bold">Tiempo agotado</span>
+        <span className="text-sm text-slate-300">La reserva expiró</span>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// MAIN COMPONENT
+// =============================================================================
 
 export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const reservationId = (useParams() as { reservationId: string }).reservationId;
-
-  // ✅ en checkout sigue viniendo el checkoutToken por query param "token"
-  const token = searchParams.get('token') ?? '';
+  const { reservationId } = useParams() as { reservationId: string };
+  const checkoutToken = searchParams.get('token') ?? '';
 
   const { token: authToken } = useAuthStore();
+
+  // State
+  const [reservation, setReservation] = useState<CheckoutReservation | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState(false);
-  const profileAbortRef = useRef<AbortController | null>(null);
 
-  const [reservation, setReservation] = useState<CheckoutReservation | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [intent, setIntent] = useState<PaymentIntent | null>(null);
-  const [intentStatus, setIntentStatus] = useState<
-    'idle' | 'loading' | 'pending' | 'failed' | 'timeout' | 'approved'
-  >('idle');
+  const [intentState, setIntentState] = useState<IntentState>('idle');
   const [intentError, setIntentError] = useState<string | null>(null);
+  const [currentIntent, setCurrentIntent] = useState<PaymentIntent | null>(null);
+
+  // Refs for cleanup
+  const abortRef = useRef<AbortController | null>(null);
+  const profileAbortRef = useRef<AbortController | null>(null);
   const intentAbortRef = useRef<AbortController | null>(null);
-  const pollingRef = useRef<number | null>(null);
-  const timeoutRef = useRef<number | null>(null);
-  const pollingAbortRef = useRef<AbortController | null>(null);
+  const redirectTimeoutRef = useRef<number | null>(null);
 
-  const cacheKey = useMemo(() => `pp:reservation:${reservationId}`, [reservationId]);
+  // Derived
+  const cacheKey = useMemo(() => `pp:checkout:${reservationId}`, [reservationId]);
+  const clubUrl = reservation?.court?.club?.id ? `/club/${reservation.court.club.id}` : '/';
 
-  useEffect(() => {
-    if (!authToken) {
-      setProfile(null);
-      setProfileError(false);
-      return;
-    }
-
-    setProfileLoading(true);
-    setProfileError(false);
-    if (profileAbortRef.current) profileAbortRef.current.abort();
-    profileAbortRef.current = new AbortController();
-
-    const run = async () => {
-      try {
-        const res = await api.get<PlayerProfile>('/me/profile', {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-          signal: profileAbortRef.current?.signal,
-        });
-        setProfile(res.data ?? null);
-      } catch (err: unknown) {
-        if (profileAbortRef.current?.signal.aborted) return;
-        if (typeof err === 'object' && err !== null && 'response' in err) {
-          const status = (err as { response?: { status?: number } }).response?.status;
-          if (status === 401) {
-            setProfile(null);
-            return;
-          }
-        }
-        setProfileError(true);
-      } finally {
-        setProfileLoading(false);
-      }
-    };
-
-    run();
-
-    return () => {
-      if (profileAbortRef.current) profileAbortRef.current.abort();
-    };
-  }, [authToken]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const setSafe = (fn: () => void) => {
-      if (!cancelled) fn();
-    };
-
-    const run = async () => {
-      try {
-        if (!reservationId || !token) throw new Error('missing token');
-
-        const data = await PlayerService.getCheckout(reservationId, token);
-
-        setSafe(() => setReservation(data));
-
-        // cache para refresh / success
-        try {
-          sessionStorage.setItem(cacheKey, JSON.stringify(data));
-        } catch {}
-
-        // cache “pro” (tu helper)
-        try {
-          saveReservationCache(reservationId, data);
-        } catch {}
-      } catch {
-        setIntentError('Reserva no encontrada o token inválido.');
-        setSafe(() => setReservation(null));
-      } finally {
-        setSafe(() => setLoading(false));
-      }
-    };
-
-    run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [reservationId, token, cacheKey]);
-
-  // ✅ countdown usando serverNow (fuente de verdad)
+  // Countdown
   const countdownEnabled = reservation?.status === 'hold';
-
   const { mmss, expired, ready } = useHoldCountdown({
     expiresAtIso: reservation?.expiresAt ?? null,
     serverNowIso: reservation?.serverNow ?? null,
     enabled: countdownEnabled,
   });
 
-  const createIntent = async () => {
-    if (!reservationId || !token) return;
+  const isExpired = countdownEnabled && ready && expired;
 
-    if (ready && expired) {
-      setIntentStatus('idle');
-      setIntentError('El hold expiró. Volvé a elegir otro horario.');
+  // ===========================================================================
+  // FETCH RESERVATION
+  // ===========================================================================
+
+  useEffect(() => {
+    if (!reservationId || !checkoutToken) {
+      setLoadError('Link de checkout inválido.');
+      setLoading(false);
       return;
     }
 
-    setIntentStatus('loading');
+    let cancelled = false;
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+
+    const fetchReservation = async () => {
+      try {
+        const data = await PlayerService.getCheckout(reservationId, checkoutToken);
+        if (cancelled) return;
+
+        setReservation(data);
+
+        // Cache for page refresh
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        } catch {}
+      } catch (err) {
+        if (cancelled) return;
+        setLoadError('Reserva no encontrada o link expirado.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchReservation();
+
+    return () => {
+      cancelled = true;
+      abortRef.current?.abort();
+    };
+  }, [reservationId, checkoutToken, cacheKey]);
+
+  // ===========================================================================
+  // FETCH PROFILE (if authenticated)
+  // ===========================================================================
+
+  useEffect(() => {
+    if (!authToken) {
+      setProfile(null);
+      return;
+    }
+
+    setProfileLoading(true);
+    setProfileError(false);
+    profileAbortRef.current?.abort();
+    profileAbortRef.current = new AbortController();
+
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get<PlayerProfile>('/me/profile', {
+          headers: { Authorization: `Bearer ${authToken}` },
+          signal: profileAbortRef.current?.signal,
+        });
+        setProfile(res.data ?? null);
+      } catch (err: unknown) {
+        if (profileAbortRef.current?.signal.aborted) return;
+        const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+        if (status !== 401) setProfileError(true);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    fetchProfile();
+
+    return () => {
+      profileAbortRef.current?.abort();
+    };
+  }, [authToken]);
+
+  // ===========================================================================
+  // PAYMENT FLOW
+  // ===========================================================================
+
+  const processPayment = useCallback(async () => {
+    if (!reservationId || !checkoutToken) return;
+
+    // Don't process if expired
+    if (ready && expired) {
+      setIntentState('failed');
+      setIntentError('La reserva expiró. Elegí otro horario.');
+      return;
+    }
+
+    setIntentState('loading');
     setIntentError(null);
-    if (intentAbortRef.current) intentAbortRef.current.abort();
+
+    intentAbortRef.current?.abort();
     intentAbortRef.current = new AbortController();
 
     try {
-      const intentEndpoint = authToken
-        ? '/payments/intents'
-        : '/payments/public/intents';
-      const { data } = await api.post<PaymentIntent>(
+      // 1. Create payment intent
+      const intentEndpoint = authToken ? '/payments/intents' : '/payments/public/intents';
+      const { data: intent } = await api.post<PaymentIntent>(
         intentEndpoint,
-        { reservationId, checkoutToken: token },
+        { reservationId, checkoutToken },
         { signal: intentAbortRef.current.signal },
       );
-      if (!data?.id) throw new Error('missing intent id');
-      setIntent(data);
-      if (data.status === 'approved') {
-        // Ya viene aprobado (caso: reserva ya confirmada)
-        setIntentStatus('approved');
+
+      if (!intent?.id) throw new Error('No se pudo crear el pago.');
+
+      setCurrentIntent(intent);
+
+      // Already approved (edge case: reservation was already confirmed)
+      if (intent.status === 'approved' && intent.receiptToken) {
+        setIntentState('approved');
         return;
       }
 
-      // ✅ MODO DEMO / AUTO-APPROVE
-      // No polleamos: confirmamos explícitamente
-      setIntentStatus('pending');
+      // 2. Process payment (DEMO: simulate success)
+      // TODO: Replace with real payment gateway (MercadoPago)
+      setIntentState('pending');
 
-      const { data: confirmed } = await api.post<{
-        ok: boolean;
-        intent: PaymentIntent;
-      }>(`/payments/public/intents/${data.id}/simulate-success`, {
-        checkoutToken: token,
-      });
+      const { data: result } = await api.post<{ ok: boolean; intent: PaymentIntent }>(
+        `/payments/public/intents/${intent.id}/simulate-success`,
+        { checkoutToken },
+        { signal: intentAbortRef.current.signal },
+      );
 
-      // confirmed.intent ya trae receiptToken (backend)
-      setIntent(confirmed.intent);
-      setIntentStatus('approved');
-
-    } catch (error) {
-      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
-      const message = getApiErrorMessage(error).toLowerCase();
-      if (status === 400 && message.includes('token') && message.includes('should not exist')) {
-        setIntentError('Ocurri? un problema interno al iniciar el pago. Actualiz? la p?gina o reintent?.');
-      } else {
-        setIntentError('No pudimos iniciar el pago. Intent? de nuevo.');
+      if (!result?.intent?.receiptToken) {
+        throw new Error('El pago fue procesado pero no se generó el comprobante.');
       }
-      setIntentStatus('failed');
+
+      setCurrentIntent(result.intent);
+      setIntentState('approved');
+    } catch (err) {
+      if (intentAbortRef.current?.signal.aborted) return;
+      setIntentState('failed');
+      setIntentError(getErrorUserMessage(err));
     }
-  };
+  }, [reservationId, checkoutToken, authToken, ready, expired]);
 
-  const clearPolling = () => {
-    if (pollingRef.current) window.clearInterval(pollingRef.current);
-    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-    pollingRef.current = null;
-    timeoutRef.current = null;
-    if (pollingAbortRef.current) {
-      pollingAbortRef.current.abort();
-      pollingAbortRef.current = null;
-    }
-  };
-
-  const startPolling = (intentId: string) => {
-    clearPolling();
-
-    const poll = async () => {
-      if (!intentId) return;
-      if (pollingAbortRef.current) pollingAbortRef.current.abort();
-      pollingAbortRef.current = new AbortController();
-
-      try {
-        const intentEndpoint = authToken
-          ? `/payments/intents/${intentId}`
-          : `/payments/public/intents/${intentId}`;
-        const { data } = await api.get<PaymentIntent>(intentEndpoint, {
-          params: { checkoutToken: token },
-          signal: pollingAbortRef.current.signal,
-        });
-        if (!data?.status) return;
-        setIntent(data);
-        if (data.status === 'approved') {
-          setIntentStatus('approved');
-          clearPolling();
-        } else if (data.status === 'failed' || data.status === 'expired') {
-          setIntentStatus('failed');
-          clearPolling();
-        } else {
-          setIntentStatus('pending');
-        }
-      } catch {
-        // ignore; timeout will handle slow connections
-      }
-    };
-
-    poll();
-
-    pollingRef.current = window.setInterval(poll, 2000);
-    timeoutRef.current = window.setTimeout(() => {
-      setIntentStatus('timeout');
-      clearPolling();
-    }, 35000);
-  };
-
+  // Auto-start payment when reservation loads
   useEffect(() => {
-    if (!reservationId || !token) return;
-    createIntent();
+    if (!reservation || loading || intentState !== 'idle') return;
+
+    // Only process if reservation is in valid state
+    if (reservation.status === 'hold') {
+      processPayment();
+    }
+  }, [reservation, loading, intentState, processPayment]);
+
+  // Redirect on success
+  useEffect(() => {
+    if (intentState !== 'approved' || !currentIntent?.receiptToken) return;
+
+    // Small delay for UX (show success state briefly)
+    redirectTimeoutRef.current = window.setTimeout(() => {
+      router.replace(
+        `/checkout/success/${reservationId}?receiptToken=${encodeURIComponent(currentIntent.receiptToken!)}`,
+      );
+    }, 800);
+
     return () => {
-      clearPolling();
-      if (intentAbortRef.current) intentAbortRef.current.abort();
+      if (redirectTimeoutRef.current) {
+        window.clearTimeout(redirectTimeoutRef.current);
+      }
     };
-  }, [reservationId, token]);
+  }, [intentState, currentIntent, reservationId, router]);
 
+  // Cleanup on unmount
   useEffect(() => {
-    if (intentStatus !== 'approved') return;
-    const receiptToken = intent?.receiptToken;
-    if (!receiptToken) {
-      setIntentStatus('failed');
-      setIntentError('El pago fue aprobado pero faltan datos del comprobante.');
-      return;
-    }
-    router.replace(
-      `/checkout/success/${reservationId}?receiptToken=${encodeURIComponent(receiptToken)}`,
-    );
-  }, [intentStatus, intent, reservationId, router]);
+    return () => {
+      abortRef.current?.abort();
+      profileAbortRef.current?.abort();
+      intentAbortRef.current?.abort();
+      if (redirectTimeoutRef.current) {
+        window.clearTimeout(redirectTimeoutRef.current);
+      }
+    };
+  }, []);
 
+  // ===========================================================================
+  // RENDER
+  // ===========================================================================
+
+  // Loading state
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-slate-50">
         <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+        <p className="text-sm text-slate-500">Cargando checkout...</p>
       </div>
     );
   }
 
-  if (!reservation) {
+  // Error state
+  if (loadError || !reservation) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-500">
-        {intentError ?? 'Reserva inválida'}
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4 text-center">
+        <div className="rounded-full bg-rose-100 p-4">
+          <XCircle className="h-8 w-8 text-rose-600" />
+        </div>
+        <div>
+          <p className="font-semibold text-slate-900">No pudimos cargar el checkout</p>
+          <p className="mt-1 text-sm text-slate-500">{loadError}</p>
+        </div>
+        <button
+          onClick={() => router.push('/')}
+          className="mt-2 rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-bold text-white hover:bg-slate-800 transition-colors"
+        >
+          Volver al inicio
+        </button>
       </div>
     );
   }
 
   return (
     <>
-      <PublicTopBar
-        backHref={reservation?.court?.club?.id ? `/club/${reservation.court.club.id}` : '/'}
-        title="Checkout"
-      />
+      <PublicTopBar backHref={clubUrl} title="Checkout" />
 
-      <div className="min-h-[calc(100vh-56px)] bg-slate-50 px-4 py-10">
+      <div className="min-h-[calc(100vh-56px)] bg-slate-50 px-4 py-8 pb-24">
         <div className="mx-auto max-w-lg overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-xl">
-          {/* Header */}
+          {/* Header with countdown */}
           <div className="relative overflow-hidden bg-slate-900 p-6 text-center text-white">
             {reservation.status === 'hold' ? (
               <>
                 <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-400">
-                  Tiempo restante
+                  Tiempo restante para pagar
                 </span>
-
                 <div className="flex items-center justify-center gap-2 text-4xl font-bold tabular-nums tracking-tight">
                   <Clock className="text-blue-400" size={32} />
-                  {mmss}
+                  <span className={isExpired ? 'text-rose-400' : ''}>{mmss}</span>
                 </div>
-
-                {/* ✅ Overlay solo cuando el contador está ready */}
-                {countdownEnabled && ready && expired && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-red-500/20 backdrop-blur-sm">
-                    <span className="flex items-center gap-2 text-lg font-bold">
-                      <AlertTriangle /> Tiempo agotado
-                    </span>
-                  </div>
-                )}
+                {isExpired && <HoldExpiredOverlay />}
               </>
             ) : (
               <div className="py-2">
-                <p className="text-sm text-slate-300">Estado</p>
-                <p className="text-xl font-bold capitalize">{reservation.status}</p>
+                <p className="text-sm text-slate-400">Estado de la reserva</p>
+                <p className="mt-1 text-xl font-bold capitalize">{reservation.status}</p>
               </div>
             )}
           </div>
 
           {/* Body */}
-          <div className="p-8">
-            <div className="space-y-6">
-              {authToken && (
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-bold text-slate-900">Tus datos</h2>
-                    {profile && (!profile.displayName || !profile.phone) && (
-                      <button
-                        type="button"
-                        onClick={() => router.push('/me/profile')}
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-500"
-                      >
-                        Completar perfil
-                      </button>
-                    )}
-                  </div>
+          <div className="p-6 space-y-5">
+            {/* Profile card (if authenticated) */}
+            {authToken && (
+              <ProfileCard
+                profile={profile}
+                loading={profileLoading}
+                error={profileError}
+                onComplete={() => router.push('/me/profile')}
+              />
+            )}
 
-                  {profileLoading ? (
-                    <div className="mt-4 space-y-2">
-                      <div className="h-4 w-2/3 rounded bg-slate-200 animate-pulse" />
-                      <div className="h-4 w-1/2 rounded bg-slate-200 animate-pulse" />
-                      <div className="h-4 w-1/3 rounded bg-slate-200 animate-pulse" />
-                    </div>
-                  ) : profile ? (
-                    <div className="mt-3 space-y-2 text-sm text-slate-600">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Email</span>
-                        <span className="font-medium text-slate-900">
-                          {profile.email || 'Falta completar'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Nombre</span>
-                        <span className="font-medium text-slate-900">
-                          {profile.displayName || 'Falta completar'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Teléfono</span>
-                        <span className="font-medium text-slate-900">
-                          {profile.phone || 'Falta completar'}
-                        </span>
-                      </div>
-                    </div>
-                  ) : profileError ? (
-                    <p className="mt-3 text-xs text-slate-400">
-                      No pudimos cargar tus datos.
-                    </p>
-                  ) : null}
-                </div>
-              )}
-
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-slate-900">
-                  {reservation.court.nombre}
-                </h1>
-
-                <p className="text-slate-500">
-                  {format(new Date(reservation.startAt), "EEEE d 'de' MMMM, HH:mm", {
-                    locale: es,
-                  })}{' '}
-                  hs
-                </p>
-
-                <p className="mt-1 text-sm text-slate-400">
-                  {reservation.court.club.nombre}
-                </p>
-              </div>
-
-              <div className="space-y-3 border-y border-slate-100 py-6">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Precio</span>
-                  <span className="font-medium text-slate-900">
-                    {formatCurrency(reservation.precio)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Comisión</span>
-                  <span className="font-medium text-slate-900">$0</span>
-                </div>
-
-                <div className="flex justify-between pt-2 text-lg font-bold">
-                  <span className="text-slate-900">Total</span>
-                  <span className="text-blue-600">
-                    {formatCurrency(reservation.precio)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 rounded-lg bg-slate-50 py-2 text-xs text-slate-400">
-                <ShieldCheck size={14} className="text-green-500" /> Pagos procesados de forma
-                segura
-              </div>
-
-              <div className="rounded-2xl border border-slate-100 bg-white p-4 text-center">
-                {intentStatus === 'loading' && (
-                  <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">
-                        Estamos preparando tu pago...
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        Esto puede tardar unos segundos.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {intentStatus === 'pending' && (
-                  <div className="flex flex-col items-center gap-2 text-sm text-slate-600">
-                    <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                    <div className="text-center">
-                      <p>Esperando confirmación del pago...</p>
-                      <p className="text-xs text-slate-500">No cierres esta ventana.</p>
-                    </div>
-                  </div>
-                )}
-
-                {intentStatus === 'approved' && (
-                  <div className="flex flex-col items-center gap-2 text-sm text-emerald-700">
-                    <CheckCircle2 className="h-5 w-5" />
-                    <span>Pago confirmado. Te redirigimos al comprobante...</span>
-                  </div>
-                )}
-
-                {intentStatus === 'failed' && (
-                  <div className="flex flex-col items-center gap-2 text-sm text-rose-600">
-                    <XCircle className="h-5 w-5" />
-                    <span>No pudimos confirmar el pago.</span>
-                  </div>
-                )}
-
-                {intentStatus === 'timeout' && (
-                  <div className="flex flex-col items-center gap-2 text-sm text-slate-600">
-                    <AlertTriangle className="h-5 w-5 text-amber-500" />
-                    <span>El pago está tardando más de lo esperado.</span>
-                  </div>
-                )}
-
-                {(intentStatus === 'idle' || intentStatus === 'failed') && intentError && (
-                  <div className="text-sm text-rose-600">
-                    {intentError}
-                  </div>
-                )}
-              </div>
-
-              {(intentStatus === 'failed' || intentStatus === 'timeout') && (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={createIntent}
-                    className="flex h-11 w-full items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800"
-                  >
-                    Reintentar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/club/${reservation.court.club.id}`)}
-                    className="flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50"
-                  >
-                    Volver
-                  </button>
-                </div>
-              )}
-
-              {(ready && expired) && (
-                <button
-                  onClick={() => router.push(`/club/${reservation.court.club.id}`)}
-                  className="w-full py-3 font-medium text-slate-500 hover:text-slate-800"
-                >
-                  Volver a intentar
-                </button>
-              )}
+            {/* Reservation details */}
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-slate-900">
+                {reservation.court.nombre}
+              </h1>
+              <p className="mt-1 text-slate-500">
+                {format(new Date(reservation.startAt), "EEEE d 'de' MMMM", { locale: es })}
+              </p>
+              <p className="text-lg font-semibold text-slate-700">
+                {format(new Date(reservation.startAt), 'HH:mm', { locale: es })} hs
+              </p>
+              <p className="mt-1 text-sm text-slate-400">
+                {reservation.court.club.nombre}
+              </p>
             </div>
+
+            {/* Price breakdown */}
+            <div className="space-y-3 rounded-2xl bg-slate-50 p-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Cancha (1 hora)</span>
+                <span className="font-medium text-slate-900">
+                  {formatCurrency(reservation.precio)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Comisión de servicio</span>
+                <span className="font-medium text-emerald-600">Gratis</span>
+              </div>
+              <div className="border-t border-slate-200 pt-3 flex justify-between">
+                <span className="font-bold text-slate-900">Total a pagar</span>
+                <span className="text-xl font-bold text-blue-600">
+                  {formatCurrency(reservation.precio)}
+                </span>
+              </div>
+            </div>
+
+            {/* Payment status */}
+            <PaymentStatusCard status={intentState} error={intentError} />
+
+            {/* Security badge */}
+            <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+              <ShieldCheck size={14} className="text-emerald-500" />
+              <span>Pago seguro y encriptado</span>
+            </div>
+
+            {/* Action buttons */}
+            {intentState === 'failed' && !isExpired && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIntentState('idle');
+                    setIntentError(null);
+                    processPayment();
+                  }}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-bold text-white hover:bg-blue-500 transition-colors"
+                >
+                  <CreditCard size={18} />
+                  Reintentar pago
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push(clubUrl)}
+                  className="flex h-12 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Elegir otro horario
+                </button>
+              </div>
+            )}
+
+            {isExpired && (
+              <button
+                type="button"
+                onClick={() => router.push(clubUrl)}
+                className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 transition-colors"
+              >
+                Elegir otro horario
+              </button>
+            )}
           </div>
         </div>
       </div>
