@@ -178,6 +178,7 @@ export function BookingDrawer() {
         setProfile(res.data ?? null);
       } catch (err: unknown) {
         if (profileAbortRef.current?.signal.aborted) return;
+        // 401 = not logged in, silently ignore
         setProfile(null);
       } finally {
         setProfileLoading(false);
@@ -194,7 +195,7 @@ export function BookingDrawer() {
   // ✅ Prefill form fields when profile loads (only once per drawer open)
   useEffect(() => {
     if (!isDrawerOpen || !profile || didPrefillRef.current) return;
-    if (holdState === 'held') return;
+    if (holdState === 'held') return; // Don't overwrite if hold already created
 
     let didPrefill = false;
 
@@ -401,6 +402,7 @@ export function BookingDrawer() {
   const canGoCheckout =
     holdState === 'held' && !!hold?.id && !!hold?.checkoutToken && !isExpired;
 
+  // form key: cambia si cambia slot => inputs limpios sin useEffect reseteando state
   const formKey = useMemo(() => {
     if (!selectedSlot || !court) return 'empty';
     return `${court.id}-${selectedSlot.fecha}-${selectedSlot.horaInicio}-${selectedSlot.horaFin}`;
@@ -483,7 +485,7 @@ export function BookingDrawer() {
     <div className="fixed inset-0 z-50">
       {/* overlay */}
       <div
-        className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-[2px]"
         onClick={closeDrawer}
       />
 
@@ -497,7 +499,7 @@ export function BookingDrawer() {
           tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            'w-full bg-surface shadow-2xl ring-1 ring-border',
+            'w-full bg-white shadow-2xl ring-1 ring-black/10',
             'rounded-t-3xl md:rounded-3xl',
             'md:max-w-3xl',
             'max-h-[90vh] md:max-h-[80vh]',
@@ -506,22 +508,22 @@ export function BookingDrawer() {
         >
           {/* grab handle (mobile) */}
           <div className="md:hidden flex justify-center pt-3">
-            <div className="h-1.5 w-12 rounded-full bg-border" />
+            <div className="h-1.5 w-12 rounded-full bg-slate-200" />
           </div>
 
           {/* header */}
-          <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4 md:px-6">
+          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 md:px-6">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-textMuted">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 Reserva
               </p>
               <h3
                 id="booking-drawer-title"
-                className="text-lg font-bold text-text leading-tight"
+                className="text-lg font-bold text-slate-900 leading-tight"
               >
                 Confirmá tu turno
               </h3>
-              <p className="mt-1 text-sm text-textMuted">
+              <p className="mt-1 text-sm text-slate-500">
                 Lo retenemos 10 minutos para que nadie más lo tome.
               </p>
             </div>
@@ -529,7 +531,7 @@ export function BookingDrawer() {
             <button
               ref={closeButtonRef}
               onClick={closeDrawer}
-              className="rounded-full p-2 text-textMuted transition-colors hover:bg-surface2 hover:text-text focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg"
+              className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
               aria-label="Cerrar"
             >
               <X size={18} />
@@ -541,46 +543,46 @@ export function BookingDrawer() {
             <div className="grid gap-5 md:grid-cols-2">
               {/* Summary */}
               <div className="space-y-3">
-                <div className="rounded-2xl bg-surface2 p-4 ring-1 ring-border">
+                <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
                   {resumen ? (
                     <div className="space-y-3">
                       <div>
-                        <p className="text-sm font-bold text-text">
+                        <p className="text-sm font-bold text-slate-900">
                           {resumen.club}
                         </p>
-                        <p className="text-sm text-textMuted">{resumen.court}</p>
+                        <p className="text-sm text-slate-600">{resumen.court}</p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="rounded-xl bg-surface px-3 py-2 ring-1 ring-border">
-                          <p className="text-[11px] font-semibold text-textMuted">
+                        <div className="rounded-xl bg-white px-3 py-2 ring-1 ring-slate-100">
+                          <p className="text-[11px] font-semibold text-slate-500">
                             Día
                           </p>
-                          <p className="text-sm font-semibold text-text">
+                          <p className="text-sm font-semibold text-slate-900">
                             {resumen.dateLabel}
                           </p>
                         </div>
-                        <div className="rounded-xl bg-surface px-3 py-2 ring-1 ring-border">
-                          <p className="text-[11px] font-semibold text-textMuted">
+                        <div className="rounded-xl bg-white px-3 py-2 ring-1 ring-slate-100">
+                          <p className="text-[11px] font-semibold text-slate-500">
                             Horario
                           </p>
-                          <p className="text-sm font-semibold text-text">
+                          <p className="text-sm font-semibold text-slate-900">
                             {resumen.start} – {resumen.end}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between rounded-xl bg-surface px-3 py-2 ring-1 ring-border">
-                        <p className="text-[11px] font-semibold text-textMuted">
+                      <div className="flex items-center justify-between rounded-xl bg-white px-3 py-2 ring-1 ring-slate-100">
+                        <p className="text-[11px] font-semibold text-slate-500">
                           Total
                         </p>
-                        <p className="text-base font-extrabold text-text">
+                        <p className="text-base font-extrabold text-slate-900">
                           $ {resumen.precio.toLocaleString()}
                         </p>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-textMuted">
+                    <p className="text-sm text-slate-500">
                       Elegí un horario para continuar.
                     </p>
                   )}
@@ -588,14 +590,14 @@ export function BookingDrawer() {
 
                 {/* Expirado */}
                 {isExpired && (
-                  <div className="rounded-2xl border border-danger/25 bg-danger/10 px-4 py-3">
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
                     <div className="flex items-start gap-2">
-                      <AlertTriangle className="mt-0.5 text-danger" size={18} />
+                      <AlertTriangle className="mt-0.5 text-rose-600" size={18} />
                       <div>
-                        <p className="text-sm font-semibold text-text">
+                        <p className="text-sm font-semibold text-rose-900">
                           El turno expiró
                         </p>
-                        <p className="text-xs text-textMuted">
+                        <p className="text-xs text-rose-800/80">
                           Elegí otro horario para continuar.
                         </p>
                       </div>
@@ -605,20 +607,23 @@ export function BookingDrawer() {
 
                 {/* Hold activo */}
                 {holdState === 'held' && hold && !isExpired && (
-                  <div className="flex items-center justify-between rounded-2xl border border-success/25 bg-success/10 px-4 py-3 transition-shadow">
+                  <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 transition-shadow">
                     <div className="flex items-start gap-2">
-                      <CheckCircle2 className="mt-0.5 text-success" size={18} />
+                      <CheckCircle2
+                        className="mt-0.5 text-emerald-600"
+                        size={18}
+                      />
                       <div>
-                        <p className="text-sm font-semibold text-text">
+                        <p className="text-sm font-semibold text-emerald-900">
                           Hold activo
                         </p>
-                        <p className="text-xs text-textMuted">
+                        <p className="text-xs text-emerald-800/80">
                           Te queda tiempo para confirmar.
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 rounded-full bg-surface/80 px-3 py-1 text-xs font-bold text-text ring-1 ring-border">
-                      <Timer size={14} className="text-success" />
+                    <div className="flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-emerald-900 ring-1 ring-emerald-200">
+                      <Timer size={14} className="text-emerald-700" />
                       {formatMMSS(secondsLeft)}
                     </div>
                   </div>
@@ -626,14 +631,17 @@ export function BookingDrawer() {
 
                 {/* Error */}
                 {holdState === 'error' && holdError && (
-                  <div className="rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3">
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
                     <div className="flex items-start gap-2">
-                      <AlertTriangle className="mt-0.5 text-warning" size={18} />
+                      <AlertTriangle
+                        className="mt-0.5 text-amber-600"
+                        size={18}
+                      />
                       <div>
-                        <p className="text-sm font-semibold text-text">
+                        <p className="text-sm font-semibold text-amber-900">
                           No se pudo reservar
                         </p>
-                        <p className="text-xs text-textMuted">{holdError}</p>
+                        <p className="text-xs text-amber-800/80">{holdError}</p>
                       </div>
                     </div>
                   </div>
@@ -644,22 +652,22 @@ export function BookingDrawer() {
               <div key={formKey} className="space-y-3">
                 {/* ✅ Profile prefill indicator */}
                 {profileLoading && (
-                  <div className="flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2 text-xs text-primary ring-1 ring-primary/20">
+                  <div className="flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-700">
                     <Loader2 className="h-3 w-3 animate-spin" />
                     Cargando tus datos...
                   </div>
                 )}
 
                 {profilePrefilled && !profileLoading && (
-                  <div className="flex items-center gap-2 rounded-xl bg-success/10 px-3 py-2 text-xs text-success ring-1 ring-success/20">
+                  <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs text-emerald-700 ring-1 ring-emerald-100">
                     <User size={14} />
                     Completamos tus datos automáticamente. Podés editarlos si querés.
                   </div>
                 )}
 
                 <div>
-                  <label className="text-xs font-semibold text-textMuted">
-                    Nombre <span className="text-danger">*</span>
+                  <label className="text-xs font-semibold text-slate-600">
+                    Nombre <span className="text-rose-500">*</span>
                   </label>
                   <input
                     value={nombre}
@@ -667,23 +675,22 @@ export function BookingDrawer() {
                     placeholder="Ej: Lucas"
                     disabled={isCreatingHold}
                     className={cn(
-                      'mt-1 h-11 w-full rounded-xl border bg-surface px-3 text-sm text-text outline-none',
-                      'focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg',
+                      'mt-1 h-11 w-full rounded-xl border bg-white px-3 text-sm text-slate-900 outline-none',
                       nombreOk
-                        ? 'border-border focus:border-primary/60'
-                        : 'border-border focus:border-danger/60'
+                        ? 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                        : 'border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/15'
                     )}
                   />
                   {!nombreOk && (
-                    <p className="mt-1 text-[11px] text-textMuted">
+                    <p className="mt-1 text-[11px] text-slate-400">
                       Mínimo 2 caracteres.
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-textMuted">
-                    Email <span className="text-danger">*</span>
+                  <label className="text-xs font-semibold text-slate-600">
+                    Email <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="email"
@@ -692,46 +699,45 @@ export function BookingDrawer() {
                     placeholder="tu@mail.com"
                     disabled={isCreatingHold}
                     className={cn(
-                      'mt-1 h-11 w-full rounded-xl border bg-surface px-3 text-sm text-text outline-none',
-                      'focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg',
+                      'mt-1 h-11 w-full rounded-xl border bg-white px-3 text-sm text-slate-900 outline-none',
                       emailOk || !email.trim()
-                        ? 'border-border focus:border-primary/60'
-                        : 'border-danger/40 focus:border-danger/70'
+                        ? 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                        : 'border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/15'
                     )}
                   />
                   {email.trim() && !emailOk && (
-                    <p className="mt-1 text-[11px] text-danger">
+                    <p className="mt-1 text-[11px] text-rose-500">
                       Ingresá un email válido.
                     </p>
                   )}
                   {!email.trim() && (
-                    <p className="mt-1 text-[11px] text-textMuted">
+                    <p className="mt-1 text-[11px] text-slate-400">
                       Requerido para enviarte la confirmación.
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-textMuted">
-                    Teléfono <span className="text-textMuted">(opcional)</span>
+                  <label className="text-xs font-semibold text-slate-600">
+                    Teléfono <span className="text-slate-400">(opcional)</span>
                   </label>
                   <input
                     value={telefono}
                     onChange={(e) => setTelefono(e.target.value)}
                     placeholder="+54 9 ..."
                     disabled={isCreatingHold}
-                    className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-text outline-none focus:border-primary/60 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg"
+                    className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
 
                 {!authToken && (
-                  <div className="rounded-2xl bg-surface2 p-3 ring-1 ring-border">
-                    <p className="text-xs text-textMuted">
+                  <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-100">
+                    <p className="text-xs text-slate-500">
                       Tip: si{' '}
                       <button
                         type="button"
                         onClick={() => router.push('/login')}
-                        className="font-semibold text-primary hover:opacity-90"
+                        className="font-semibold text-blue-600 hover:text-blue-500"
                       >
                         iniciás sesión
                       </button>
@@ -741,8 +747,8 @@ export function BookingDrawer() {
                 )}
 
                 {authToken && profilePrefilled && (
-                  <div className="rounded-2xl bg-surface2 p-3 ring-1 ring-border">
-                    <p className="text-xs text-textMuted">
+                  <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-100">
+                    <p className="text-xs text-slate-500">
                       Te enviaremos la confirmación por email.
                     </p>
                   </div>
@@ -752,7 +758,7 @@ export function BookingDrawer() {
           </div>
 
           {/* footer */}
-          <div className="border-t border-border bg-surface px-5 py-4 md:px-6">
+          <div className="border-t border-slate-100 bg-white px-5 py-4 md:px-6">
             <div className="grid gap-3 md:grid-cols-2">
               {/* CTA principal */}
               {holdState !== 'held' ? (
@@ -762,10 +768,9 @@ export function BookingDrawer() {
                   onClick={onCreateHold}
                   className={cn(
                     'flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold transition',
-                    'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg',
                     canSubmit
-                      ? 'bg-primary text-primary-foreground hover:opacity-90'
-                      : 'cursor-not-allowed bg-surface2 text-textMuted'
+                      ? 'bg-slate-900 text-white hover:bg-blue-600'
+                      : 'cursor-not-allowed bg-slate-200 text-slate-500'
                   )}
                 >
                   {isCreatingHold ? (
@@ -783,7 +788,7 @@ export function BookingDrawer() {
               ) : isExpired ? (
                 <button
                   onClick={closeDrawer}
-                  className="flex h-12 w-full items-center justify-center rounded-2xl bg-brand-950 px-4 text-sm font-bold text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg"
+                  className="flex h-12 w-full items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-bold text-white hover:bg-slate-800"
                 >
                   Elegir otro horario
                 </button>
@@ -793,11 +798,10 @@ export function BookingDrawer() {
                   disabled={isOpeningCheckout}
                   aria-disabled={isOpeningCheckout}
                   className={cn(
-                    'flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold text-primary-foreground transition',
-                    'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg',
+                    'flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold text-white transition',
                     isOpeningCheckout
-                      ? 'bg-primary/60'
-                      : 'bg-primary hover:opacity-90'
+                      ? 'bg-blue-300'
+                      : 'bg-blue-600 hover:bg-blue-500'
                   )}
                 >
                   {isOpeningCheckout ? (
@@ -813,13 +817,13 @@ export function BookingDrawer() {
 
               <button
                 onClick={closeDrawer}
-                className="h-12 w-full rounded-2xl border border-border bg-surface text-sm font-bold text-text hover:bg-surface2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg"
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50"
               >
                 Cancelar
               </button>
             </div>
 
-            <p className="mt-3 text-[11px] text-textMuted">
+            <p className="mt-3 text-[11px] text-slate-400">
               Al retener el turno, queda bloqueado temporalmente para vos.
             </p>
           </div>

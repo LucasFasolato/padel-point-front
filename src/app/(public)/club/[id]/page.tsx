@@ -101,7 +101,7 @@ export default function ClubPage() {
           precioPorHora: Number(c.precioPorHora),
           activa: c.activa,
           clubId: overview.club.id,
-          primaryImage: c.primaryPhoto ?? undefined,
+          primaryImage: c.primaryPhoto ?? undefined, 
         }));
 
         setCourts(mappedCourts);
@@ -111,7 +111,9 @@ export default function ClubPage() {
           const [logoAsset, coverAsset, primaryAssets] = await Promise.all([
             MediaService.getClubLogo(overview.club.id),
             MediaService.getClubCover(overview.club.id),
-            Promise.all(mappedCourts.map((court) => MediaService.getCourtPrimary(court.id))),
+            Promise.all(
+              mappedCourts.map((court) => MediaService.getCourtPrimary(court.id))
+            ),
           ]);
 
           setAssets({
@@ -123,7 +125,7 @@ export default function ClubPage() {
             prev.map((court, idx) => ({
               ...court,
               primaryImage: toPublicMedia(primaryAssets[idx]),
-            })),
+            }))
           );
         } catch {
           // Ignore media errors; keep overview data
@@ -164,7 +166,7 @@ export default function ClubPage() {
             const slots = await PlayerService.getAvailability(court.id, dateStr);
             setAvailability((prev) => ({ ...prev, [court.id]: slots }));
             setAvailabilityForCourt(court.id, slots);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (e: any) {
             const msg = e?.response?.data?.message || 'No pudimos cargar los horarios.';
             setAvailability((prev) => ({ ...prev, [court.id]: [] }));
@@ -173,7 +175,7 @@ export default function ClubPage() {
           } finally {
             setLoadingByCourt((prev) => ({ ...prev, [court.id]: false }));
           }
-        }),
+        })
       );
     };
 
@@ -220,39 +222,39 @@ export default function ClubPage() {
       setCourt(court);
       openDrawer();
     },
-    [setSelectedSlot, setCourt, openDrawer],
+    [setSelectedSlot, setCourt, openDrawer]
   );
 
   // --- RENDER STATES ---
 
   if (initLoading) {
     return (
-      <div className="min-h-screen bg-bg">
+      <div className="min-h-screen bg-slate-50">
         <div className="animate-pulse">
-          <div className="h-44 w-full bg-border" />
+          <div className="h-44 w-full bg-slate-200" />
           <div className="mx-auto max-w-md space-y-4 px-4 pt-6 sm:max-w-3xl">
-            <div className="h-10 w-2/3 rounded-full bg-border" />
-            <div className="h-6 w-1/3 rounded-full bg-border" />
-            <div className="h-12 w-full rounded-2xl bg-border" />
+            <div className="h-10 w-2/3 rounded-full bg-slate-200" />
+            <div className="h-6 w-1/3 rounded-full bg-slate-200" />
+            <div className="h-12 w-full rounded-2xl bg-slate-200" />
             <div className="space-y-4 pt-6">
               {Array.from({ length: 2 }).map((_, i) => (
                 <div
                   key={i}
-                  className="overflow-hidden rounded-3xl bg-surface shadow-sm ring-1 ring-border"
+                  className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-100"
                 >
-                  <div className="flex items-center justify-between border-b border-border bg-surface2/50 px-5 py-4">
+                  <div className="flex items-center justify-between border-b border-slate-50 bg-slate-50/50 px-5 py-4">
                     <div className="space-y-2">
-                      <div className="h-4 w-32 rounded-full bg-border" />
-                      <div className="h-3 w-24 rounded-full bg-border" />
+                      <div className="h-4 w-32 rounded-full bg-slate-200" />
+                      <div className="h-3 w-24 rounded-full bg-slate-200" />
                     </div>
-                    <div className="h-6 w-20 rounded-full bg-border" />
+                    <div className="h-6 w-20 rounded-full bg-slate-200" />
                   </div>
                   <div className="p-5">
                     <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
                       {Array.from({ length: 10 }).map((__, idx) => (
                         <div
                           key={idx}
-                          className="h-20 rounded-xl border border-border bg-surface2"
+                          className="h-20 rounded-xl border border-slate-200 bg-slate-100"
                         />
                       ))}
                     </div>
@@ -268,13 +270,13 @@ export default function ClubPage() {
 
   if (!club) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-bg p-4 text-center">
-        <AlertCircle className="mb-2 h-10 w-10 text-textMuted" />
-        <h2 className="text-lg font-bold text-text">Club no encontrado</h2>
-        <p className="text-textMuted">Es posible que el enlace sea incorrecto o el club no exista.</p>
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50 p-4 text-center">
+        <AlertCircle className="mb-2 h-10 w-10 text-slate-300" />
+        <h2 className="text-lg font-bold text-slate-700">Club no encontrado</h2>
+        <p className="text-slate-500">Es posible que el enlace sea incorrecto o el club no exista.</p>
         <Link
           href="/"
-          className="mt-5 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
+          className="mt-5 inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-bold text-white hover:bg-blue-600"
         >
           Volver al inicio
         </Link>
@@ -283,7 +285,7 @@ export default function ClubPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg pb-32">
+    <div className="min-h-screen bg-slate-50 pb-32">
       {/* 1) Hero */}
       <ClubHero club={club} cover={assets.cover} logo={assets.logo} />
 
@@ -295,14 +297,13 @@ export default function ClubPage() {
       {/* 3) Courts List */}
       <div className="mx-auto max-w-md space-y-6 px-4 pt-8 sm:max-w-3xl">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-lg font-bold text-text">Canchas Disponibles</h2>
-          <span className="text-xs font-medium text-textMuted">
+          <h2 className="text-lg font-bold text-slate-900">Canchas Disponibles</h2>
+          <span className="text-xs font-medium text-slate-500">
             {courts.length} {courts.length === 1 ? 'Pista' : 'Pistas'}
           </span>
         </div>
-
         {prefillHint && (
-          <div className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-textMuted shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
             {prefillHint}
           </div>
         )}
@@ -319,12 +320,12 @@ export default function ClubPage() {
         ))}
 
         {courts.length === 0 && (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface py-12 text-center">
-            <p className="font-medium text-text">No hay canchas configuradas</p>
-            <p className="text-sm text-textMuted">Este club aún no tiene pistas activas.</p>
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center">
+            <p className="font-medium text-slate-900">No hay canchas configuradas</p>
+            <p className="text-sm text-slate-500">Este club aún no tiene pistas activas.</p>
             <Link
               href="/"
-              className="mt-4 inline-flex items-center justify-center rounded-full border border-border bg-surface px-4 py-2 text-xs font-bold text-text transition-colors hover:bg-surface2"
+              className="mt-4 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
             >
               Ver otros clubes
             </Link>

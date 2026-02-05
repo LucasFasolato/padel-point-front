@@ -8,58 +8,15 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // 1. Extend Colors (Optional but recommended for consistency)
       colors: {
-        // Compat con lo que ya venías usando
         padel: {
-          blue: "#2563EB",
-          dark: "#0F172A",
-          green: "#10B981",
-        },
-
-        // Paleta “Deep Blue + Electric Accent”
-        brand: {
-          50: "#EFF6FF",
-          100: "#DBEAFE",
-          200: "#BFDBFE",
-          300: "#93C5FD",
-          400: "#60A5FA",
-          500: "#3B82F6", // accent / action
-          600: "#2563EB",
-          700: "#1D4ED8",
-          800: "#1E40AF",
-          900: "#1E3A8A",
-          950: "#0F172A", // deep navy
-        },
-
-        // Tokens por variables (lo “pro” para escalar UI)
-        bg: "hsl(var(--bg))",
-        surface: "hsl(var(--surface))",
-        surface2: "hsl(var(--surface-2))",
-        border: "hsl(var(--border))",
-        ring: "hsl(var(--ring))",
-        text: "hsl(var(--text))",
-        textMuted: "hsl(var(--text-muted))",
-
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-
-        success: {
-          DEFAULT: "hsl(var(--success))",
-          foreground: "hsl(var(--success-foreground))",
-        },
-        warning: {
-          DEFAULT: "hsl(var(--warning))",
-          foreground: "hsl(var(--warning-foreground))",
-        },
-        danger: {
-          DEFAULT: "hsl(var(--danger))",
-          foreground: "hsl(var(--danger-foreground))",
-        },
+          blue: '#2563EB', // Your Primary Brand Color
+          dark: '#0F172A', // Your Dark Backgrounds
+          green: '#10B981', // Success States
+        }
       },
-
-      // tus animaciones quedan igual
+      // 2. Custom Keyframes (The "World Class" Motion)
       keyframes: {
         "slide-up": {
           "0%": { transform: "translate(-50%, 100%)", opacity: "0" },
@@ -72,10 +29,11 @@ const config: Config = {
         "scale-in": {
           "0%": { transform: "scale(0.95)", opacity: "0" },
           "100%": { transform: "scale(1)", opacity: "1" },
-        },
+        }
       },
+      // 3. Animation Utility Classes
       animation: {
-        "slide-up": "slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+        "slide-up": "slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1)", // Apple-like smooth curve
         "fade-in": "fade-in 0.2s ease-out",
         "scale-in": "scale-in 0.2s ease-out",
       },
@@ -83,5 +41,4 @@ const config: Config = {
   },
   plugins: [],
 };
-
 export default config;

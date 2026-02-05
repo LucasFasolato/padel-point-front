@@ -23,6 +23,7 @@ export function AgendaDayView({
   onViewReservation,
   viewMode,
 }: AgendaDayViewProps) {
+  // Get unique time slots across all courts
   const timeSlots = useMemo(() => {
     if (!data?.courts.length) return [];
 
@@ -38,9 +39,9 @@ export function AgendaDayView({
 
   if (loading) {
     return (
-      <div className="rounded-2xl bg-surface p-6 ring-1 ring-border">
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
       </div>
     );
@@ -48,10 +49,10 @@ export function AgendaDayView({
 
   if (error) {
     return (
-      <div className="rounded-2xl bg-surface p-6 ring-1 ring-border">
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <AlertTriangle size={48} className="mb-4 text-warning" />
-          <p className="font-medium text-textMuted">{error}</p>
+          <AlertTriangle size={48} className="text-amber-500 mb-4" />
+          <p className="text-slate-600 font-medium">{error}</p>
         </div>
       </div>
     );
@@ -59,11 +60,11 @@ export function AgendaDayView({
 
   if (!data || data.courts.length === 0) {
     return (
-      <div className="rounded-2xl bg-surface p-6 ring-1 ring-border">
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <Calendar size={48} className="mb-4 text-textMuted/40" />
-          <p className="text-textMuted">No hay canchas configuradas</p>
-          <p className="mt-1 text-sm text-textMuted/70">
+          <Calendar size={48} className="text-slate-300 mb-4" />
+          <p className="text-slate-500">No hay canchas configuradas</p>
+          <p className="text-sm text-slate-400 mt-1">
             Agregá canchas desde la sección de Canchas
           </p>
         </div>
@@ -77,16 +78,15 @@ export function AgendaDayView({
         {data.courts.map((court) => (
           <div
             key={court.courtId}
-            className="overflow-hidden rounded-2xl bg-surface ring-1 ring-border"
+            className="bg-white rounded-2xl border border-slate-200 overflow-hidden"
           >
-            <div className="border-b border-border bg-surface2 px-4 py-3">
-              <h3 className="font-bold text-text">{court.name}</h3>
-              <p className="text-xs text-textMuted">
+            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
+              <h3 className="font-bold text-slate-900">{court.name}</h3>
+              <p className="text-xs text-slate-500">
                 {court.slots.length} horarios disponibles
               </p>
             </div>
-
-            <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
               {court.slots.map((slot, idx) => (
                 <SlotCard
                   key={`${court.courtId}-${idx}`}
@@ -103,37 +103,32 @@ export function AgendaDayView({
     );
   }
 
-  // Grid view
+  // Grid view - Calendar style
   return (
-    <div className="overflow-hidden rounded-2xl bg-surface ring-1 ring-border">
+    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-border bg-surface2">
-              <th className="sticky left-0 z-10 min-w-[80px] bg-surface2 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-textMuted">
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wide sticky left-0 bg-slate-50 z-10 min-w-[80px]">
                 Hora
               </th>
               {data.courts.map((court) => (
                 <th
                   key={court.courtId}
-                  className="min-w-[150px] px-4 py-3 text-center text-sm font-bold text-text"
+                  className="px-4 py-3 text-center text-sm font-bold text-slate-900 min-w-[150px]"
                 >
                   {court.name}
                 </th>
               ))}
             </tr>
           </thead>
-
           <tbody>
             {timeSlots.map((time) => (
-              <tr
-                key={time}
-                className="border-b border-border/60 hover:bg-surface2/60"
-              >
-                <td className="sticky left-0 z-10 bg-surface px-4 py-2 text-sm font-bold text-textMuted">
+              <tr key={time} className="border-b border-slate-100 hover:bg-slate-50/50">
+                <td className="px-4 py-2 text-sm font-bold text-slate-600 sticky left-0 bg-white z-10">
                   {time}
                 </td>
-
                 {data.courts.map((court) => {
                   const slot = court.slots.find(
                     (s) => format(parseISO(s.startAt), 'HH:mm') === time
@@ -145,13 +140,16 @@ export function AgendaDayView({
                         key={`${court.courtId}-${time}`}
                         className="px-2 py-2 text-center"
                       >
-                        <div className="h-10 rounded-lg bg-surface2 ring-1 ring-border border-dashed" />
+                        <div className="h-10 rounded-lg bg-slate-50 border border-dashed border-slate-200" />
                       </td>
                     );
                   }
 
                   return (
-                    <td key={`${court.courtId}-${time}`} className="px-2 py-2">
+                    <td
+                      key={`${court.courtId}-${time}`}
+                      className="px-2 py-2"
+                    >
                       <SlotCard
                         slot={slot}
                         compact
@@ -172,11 +170,11 @@ export function AgendaDayView({
 
 export function AgendaDayViewSkeleton() {
   return (
-    <div className="rounded-2xl bg-surface p-6 ring-1 ring-border">
+    <div className="bg-white rounded-2xl border border-slate-200 p-6">
       <div className="space-y-4">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="space-y-2">
-            <div className="h-6 w-32 animate-pulse rounded bg-surface2" />
+            <div className="h-6 w-32 bg-slate-100 rounded animate-pulse" />
             <div className="grid grid-cols-4 gap-2">
               {Array.from({ length: 8 }).map((_, j) => (
                 <SlotCardSkeleton key={j} />

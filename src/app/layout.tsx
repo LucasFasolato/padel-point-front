@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
-import { cn } from "@/lib/utils";
-import { ThemeInit } from "@/app/components/ui/theme-init";
+import { cn } from "@/lib/utils"; // Make sure you import 'cn'
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,23 +14,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang="es">
+      {/* 👇 We apply the classes here instead of globals.css */}
       <body
-        className={cn("min-h-screen bg-bg text-text antialiased")}
+        className={cn("bg-slate-50 text-slate-900 antialiased")}
         style={{
           fontFamily:
             'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
         }}
       >
-        {/* Inicializa theme (light/dark) desde localStorage */}
-        <ThemeInit />
-
         {children}
-
-        <Toaster
-          position="top-center"
-          richColors
-          expand
+        <Toaster 
+          position="top-center" 
+          richColors 
+          expand 
           closeButton
         />
       </body>

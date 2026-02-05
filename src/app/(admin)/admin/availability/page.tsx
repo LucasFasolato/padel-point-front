@@ -4,7 +4,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { Calendar, LayoutGrid, List, Settings, AlertTriangle } from 'lucide-react';
+import {
+  Calendar,
+  LayoutGrid,
+  List,
+  Settings,
+  AlertTriangle,
+} from 'lucide-react';
 
 import { useClubStore } from '@/store/club-store';
 import { useAuthStore } from '@/store/auth-store';
@@ -58,10 +64,18 @@ export default function AvailabilityPage() {
     }
   }, [activeClub?.id, selectedDate, fetchAgenda]);
 
-  const handleBlockSlot = useCallback((courtId: string, courtName: string, slot: AgendaSlot) => {
-    if (slot.status !== 'free') return;
-    setBlockModal({ isOpen: true, courtId, courtName, slot });
-  }, []);
+  const handleBlockSlot = useCallback(
+    (courtId: string, courtName: string, slot: AgendaSlot) => {
+      if (slot.status !== 'free') return;
+      setBlockModal({
+        isOpen: true,
+        courtId,
+        courtName,
+        slot,
+      });
+    },
+    []
+  );
 
   const handleConfirmBlock = useCallback(
     async (reason: string) => {
@@ -81,14 +95,23 @@ export default function AvailabilityPage() {
         blocked: true,
       });
 
-      if (result.ok) handleRefresh();
+      if (result.ok) {
+        // Refresh agenda after blocking
+        handleRefresh();
+      }
+
       return result;
     },
     [blockModal, blockSlot, selectedDate, handleRefresh]
   );
 
   const handleCloseBlockModal = useCallback(() => {
-    setBlockModal({ isOpen: false, courtId: null, courtName: '', slot: null });
+    setBlockModal({
+      isOpen: false,
+      courtId: null,
+      courtName: '',
+      slot: null,
+    });
   }, []);
 
   const handleViewReservation = useCallback(
@@ -101,12 +124,12 @@ export default function AvailabilityPage() {
   // Permission check
   if (user?.role !== 'ADMIN') {
     return (
-      <div className="flex h-96 flex-col items-center justify-center text-textMuted">
-        <AlertTriangle size={48} className="mb-4 opacity-60 text-warning" />
+      <div className="flex h-96 flex-col items-center justify-center text-slate-400">
+        <AlertTriangle size={48} className="mb-4 opacity-50" />
         <p className="text-sm">No tenés permisos para ver esta sección.</p>
         <Link
           href="/admin/dashboard"
-          className="mt-4 inline-flex items-center justify-center rounded-full bg-brand-950 px-4 py-2 text-xs font-bold text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg"
+          className="mt-4 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
         >
           Volver
         </Link>
@@ -117,12 +140,12 @@ export default function AvailabilityPage() {
   // No club selected
   if (!activeClub) {
     return (
-      <div className="flex h-96 flex-col items-center justify-center text-textMuted">
-        <Calendar size={48} className="mb-4 opacity-60 text-textMuted" />
+      <div className="flex h-96 flex-col items-center justify-center text-slate-400">
+        <Calendar size={48} className="mb-4 opacity-50" />
         <p>Seleccioná un club primero.</p>
         <Link
           href="/admin/dashboard"
-          className="mt-4 inline-flex items-center justify-center rounded-full bg-brand-950 px-4 py-2 text-xs font-bold text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg"
+          className="mt-4 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
         >
           Ir al Dashboard
         </Link>
@@ -131,12 +154,12 @@ export default function AvailabilityPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-text">Agenda</h1>
-          <p className="text-textMuted">
+          <h1 className="text-2xl font-bold text-slate-900">Agenda</h1>
+          <p className="text-slate-500">
             Visualizá y gestioná la disponibilidad de {activeClub.nombre}
           </p>
         </div>
@@ -144,7 +167,7 @@ export default function AvailabilityPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin/availability/rules"
-            className="flex items-center gap-2 rounded-xl bg-surface px-4 py-2.5 text-sm font-bold text-text ring-1 ring-border shadow-sm transition hover:bg-surface2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 shadow-sm transition-all"
           >
             <Settings size={18} />
             <span className="hidden sm:inline">Configurar horarios</span>
@@ -153,7 +176,7 @@ export default function AvailabilityPage() {
       </div>
 
       {/* Controls */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="relative">
           <AgendaDatePicker
             selectedDate={selectedDate}
@@ -164,26 +187,25 @@ export default function AvailabilityPage() {
         </div>
 
         {/* View mode toggle */}
-        <div className="flex items-center gap-1 rounded-xl bg-surface p-1 ring-1 ring-border shadow-sm">
+        <div className="flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
           <button
             onClick={() => setViewMode('grid')}
-            className={`
-              flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-              focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg
-              ${viewMode === 'grid' ? 'bg-brand-950 text-white' : 'text-textMuted hover:bg-surface2 hover:text-text'}
-            `}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              viewMode === 'grid'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
           >
             <LayoutGrid size={16} />
             <span className="hidden sm:inline">Grilla</span>
           </button>
-
           <button
             onClick={() => setViewMode('list')}
-            className={`
-              flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-              focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg
-              ${viewMode === 'list' ? 'bg-brand-950 text-white' : 'text-textMuted hover:bg-surface2 hover:text-text'}
-            `}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              viewMode === 'list'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
           >
             <List size={16} />
             <span className="hidden sm:inline">Lista</span>
@@ -193,26 +215,22 @@ export default function AvailabilityPage() {
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-3 text-xs">
-        <span className="font-semibold text-textMuted">Estados:</span>
-
+        <span className="font-semibold text-slate-500">Estados:</span>
         <div className="flex items-center gap-1.5">
-          <div className="h-3 w-3 rounded bg-success/15 ring-1 ring-success/30" />
-          <span className="text-textMuted">Disponible</span>
+          <div className="w-3 h-3 rounded bg-emerald-100 border border-emerald-300" />
+          <span className="text-slate-600">Disponible</span>
         </div>
-
         <div className="flex items-center gap-1.5">
-          <div className="h-3 w-3 rounded bg-primary/15 ring-1 ring-primary/30" />
-          <span className="text-textMuted">Confirmada</span>
+          <div className="w-3 h-3 rounded bg-blue-100 border border-blue-300" />
+          <span className="text-slate-600">Confirmada</span>
         </div>
-
         <div className="flex items-center gap-1.5">
-          <div className="h-3 w-3 rounded bg-warning/15 ring-1 ring-warning/30" />
-          <span className="text-textMuted">En espera</span>
+          <div className="w-3 h-3 rounded bg-amber-100 border border-amber-300" />
+          <span className="text-slate-600">En espera</span>
         </div>
-
         <div className="flex items-center gap-1.5">
-          <div className="h-3 w-3 rounded bg-surface2 ring-1 ring-border" />
-          <span className="text-textMuted">Bloqueado</span>
+          <div className="w-3 h-3 rounded bg-slate-100 border border-slate-300" />
+          <span className="text-slate-600">Bloqueado</span>
         </div>
       </div>
 

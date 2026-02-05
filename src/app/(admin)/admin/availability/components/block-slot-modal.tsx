@@ -23,6 +23,7 @@ export function BlockSlotModal({
   slot,
   courtName,
   date,
+  loading,
 }: BlockSlotModalProps) {
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +48,6 @@ export function BlockSlotModal({
     } else {
       setReason('');
       onClose();
-      setSubmitting(false);
     }
   };
 
@@ -63,63 +63,56 @@ export function BlockSlotModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
         onClick={handleClose}
       />
 
       {/* Modal */}
-      <div className="relative mx-4 w-full max-w-md overflow-hidden rounded-2xl bg-surface shadow-2xl ring-1 ring-border">
+      <div className="relative w-full max-w-md mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border p-4">
+        <div className="flex items-center justify-between p-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface2 ring-1 ring-border">
-              <Lock size={20} className="text-textMuted" />
+            <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center">
+              <Lock size={20} className="text-slate-600" />
             </div>
             <div>
-              <h3 className="font-bold text-text">Bloquear horario</h3>
-              <p className="text-xs text-textMuted">
-                Este slot no estará disponible
-              </p>
+              <h3 className="font-bold text-slate-900">Bloquear horario</h3>
+              <p className="text-xs text-slate-500">Este slot no estará disponible</p>
             </div>
           </div>
-
           <button
             onClick={handleClose}
             disabled={submitting}
-            className="rounded-lg p-2 text-textMuted transition-colors hover:bg-surface2 hover:text-text focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg disabled:opacity-50"
-            aria-label="Cerrar"
-            title="Cerrar"
+            className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="space-y-4 p-4">
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {/* Slot info */}
-          <div className="space-y-2 rounded-xl bg-surface2 p-4 ring-1 ring-border">
+          <div className="rounded-xl bg-slate-50 p-4 space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-textMuted">Cancha</span>
-              <span className="font-bold text-text">{courtName}</span>
+              <span className="text-slate-500">Cancha</span>
+              <span className="font-bold text-slate-900">{courtName}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-textMuted">Fecha</span>
-              <span className="font-medium capitalize text-textMuted/90">
-                {dateFormatted}
-              </span>
+              <span className="text-slate-500">Fecha</span>
+              <span className="font-medium text-slate-700 capitalize">{dateFormatted}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-textMuted">Horario</span>
-              <span className="font-bold text-text">
+              <span className="text-slate-500">Horario</span>
+              <span className="font-bold text-slate-900">
                 {startTime} - {endTime}
               </span>
             </div>
           </div>
 
-          {/* Reason */}
+          {/* Reason input */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-textMuted/90">
-              Motivo <span className="text-textMuted/70">(opcional)</span>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Motivo <span className="text-slate-400">(opcional)</span>
             </label>
             <input
               type="text"
@@ -127,15 +120,13 @@ export function BlockSlotModal({
               onChange={(e) => setReason(e.target.value)}
               placeholder="Ej: Mantenimiento, evento privado..."
               disabled={submitting}
-              className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none transition
-                         focus:border-primary focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg
-                         disabled:bg-surface2 disabled:opacity-70"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:opacity-70"
             />
           </div>
 
           {/* Error */}
           {error && (
-            <div className="flex items-center gap-2 rounded-xl border border-danger/20 bg-danger/10 p-3 text-sm text-danger">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-100 text-sm text-red-600">
               <AlertTriangle size={16} />
               {error}
             </div>
@@ -147,19 +138,14 @@ export function BlockSlotModal({
               type="button"
               onClick={handleClose}
               disabled={submitting}
-              className="flex-1 rounded-xl border border-border bg-surface px-4 py-3 text-sm font-bold text-textMuted transition-colors
-                         hover:bg-surface2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg
-                         disabled:opacity-50"
+              className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
-
             <button
               type="submit"
               disabled={submitting}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white transition-colors
-                         hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg
-                         disabled:opacity-70"
+              className="flex-1 px-4 py-3 rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
             >
               {submitting ? (
                 <>

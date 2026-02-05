@@ -21,33 +21,24 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+      {/* Backdrop con blur */}
+      <div 
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
-
+      
       {/* Content */}
-      <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-surface p-6 shadow-2xl ring-1 ring-border transition-all">
-        {/* Header */}
-        <div className="mb-5 flex items-center justify-between border-b border-border pb-4">
-          <h3 className="text-lg font-semibold text-text">
-            {title}
-          </h3>
-
-          <button
+      <div className="relative w-full max-w-lg scale-100 transform overflow-hidden rounded-2xl bg-white p-6 shadow-2xl transition-all">
+        <div className="mb-5 flex items-center justify-between border-b border-slate-100 pb-4">
+          <h3 className="text-xl font-bold text-slate-900">{title}</h3>
+          <button 
             onClick={onClose}
-            aria-label="Cerrar"
-            className="rounded-full p-2 text-textMuted transition-colors hover:bg-surface2 hover:text-danger focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg"
+            className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-red-500 transition-colors"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
-
-        {/* Body */}
-        <div className="text-text">
-          {children}
-        </div>
+        {children}
       </div>
     </div>
   );

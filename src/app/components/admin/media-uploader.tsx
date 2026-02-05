@@ -5,7 +5,6 @@ import { ImagePlus, Loader2, Trash2 } from 'lucide-react';
 import { toastManager } from '@/lib/toast';
 import { cloudinaryUploadSigned, MediaService } from '@/lib/media-service';
 import type { MediaAsset, MediaKind, MediaOwnerType } from '@/types';
-import { cn } from '@/lib/utils';
 
 type UploadStatus = {
   id: string;
@@ -61,9 +60,7 @@ export default function MediaUploader({
   };
 
   const updateQueue = (id: string, status: UploadStatus['status']) => {
-    setQueue((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status } : item))
-    );
+    setQueue((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
   };
 
   const handleFiles = async (files: FileList | null) => {
@@ -139,21 +136,16 @@ export default function MediaUploader({
   };
 
   return (
-    <div className="rounded-2xl bg-surface p-5 shadow-sm ring-1 ring-border">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-text">{title}</h3>
-          <p className="text-xs text-textMuted">
+          <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+          <p className="text-xs text-slate-500">
             {mode === 'single' ? 'Subí una imagen.' : 'Subí varias imágenes.'}
           </p>
         </div>
-
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition hover:opacity-90 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-bg">
-          {uploading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <ImagePlus size={16} />
-          )}
+        <label className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-blue-600">
+          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus size={16} />}
           {uploading ? 'Subiendo...' : 'Subir'}
           <input
             ref={inputRef}
@@ -168,7 +160,7 @@ export default function MediaUploader({
       </div>
 
       {assets.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border bg-surface2 px-4 py-6 text-center text-xs text-textMuted">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-xs text-slate-500">
           No hay imágenes todavía.
         </div>
       )}
@@ -178,7 +170,7 @@ export default function MediaUploader({
           {assets.map((asset) => (
             <div
               key={asset.id}
-              className="group relative overflow-hidden rounded-xl border border-border bg-surface2"
+              className="group relative overflow-hidden rounded-xl border border-slate-200"
             >
               <img
                 src={getAssetUrl(asset)}
@@ -188,7 +180,7 @@ export default function MediaUploader({
               <button
                 type="button"
                 onClick={() => handleDelete(asset)}
-                className="absolute right-2 top-2 rounded-lg bg-surface/90 p-1 text-text opacity-0 shadow-sm ring-1 ring-border transition-opacity group-hover:opacity-100 hover:text-danger"
+                className="absolute right-2 top-2 rounded-lg bg-white/90 p-1 text-slate-700 opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
                 title="Eliminar"
               >
                 <Trash2 size={14} />
@@ -199,17 +191,11 @@ export default function MediaUploader({
       )}
 
       {queue.length > 0 && (
-        <div className="mt-4 space-y-2 text-xs text-textMuted">
+        <div className="mt-4 space-y-2 text-xs text-slate-500">
           {queue.map((item) => (
             <div key={item.id} className="flex items-center justify-between gap-2">
               <span className="truncate">{item.name}</span>
-              <span
-                className={cn(
-                  'font-medium',
-                  item.status === 'success' && 'text-success',
-                  item.status === 'error' && 'text-danger'
-                )}
-              >
+              <span className="font-medium">
                 {item.status === 'uploading' && 'Subiendo...'}
                 {item.status === 'success' && 'Listo'}
                 {item.status === 'error' && 'Error'}
