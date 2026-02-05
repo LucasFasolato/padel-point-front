@@ -20,25 +20,34 @@ type ReservationNotificationCardProps = {
 
 const statusConfig: Record<
   ReservationNotificationStatus,
-  { label: string; description: string; icon: typeof CheckCircle2; badge: string }
+  {
+    label: string;
+    description: string;
+    icon: typeof CheckCircle2;
+    badge: string;
+    iconColor: string;
+  }
 > = {
   sent: {
     label: 'Enviada',
     description: 'Notificación enviada',
     icon: CheckCircle2,
-    badge: 'bg-emerald-100 text-emerald-700',
+    badge: 'bg-success/10 text-success ring-1 ring-success/20',
+    iconColor: 'text-success',
   },
   pending: {
     label: 'Pendiente',
     description: 'Notificación pendiente',
     icon: Clock,
-    badge: 'bg-amber-100 text-amber-700',
+    badge: 'bg-warning/10 text-warning ring-1 ring-warning/25',
+    iconColor: 'text-warning',
   },
   error: {
     label: 'Error',
     description: 'No pudimos enviar la notificación',
     icon: AlertTriangle,
-    badge: 'bg-red-100 text-red-600',
+    badge: 'bg-danger/10 text-danger ring-1 ring-danger/20',
+    iconColor: 'text-danger',
   },
 };
 
@@ -54,11 +63,11 @@ export function ReservationNotificationCard({
 }: ReservationNotificationCardProps) {
   if (loading && !isResending) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 animate-pulse space-y-4">
-        <div className="h-4 w-28 rounded-full bg-slate-200" />
-        <div className="h-6 w-40 rounded-full bg-slate-200" />
-        <div className="h-4 w-64 rounded-full bg-slate-200" />
-        <div className="h-10 w-full rounded-xl bg-slate-200" />
+      <div className="rounded-2xl bg-surface p-6 ring-1 ring-border animate-pulse space-y-4">
+        <div className="h-4 w-28 rounded-full bg-surface2" />
+        <div className="h-6 w-40 rounded-full bg-surface2" />
+        <div className="h-4 w-64 rounded-full bg-surface2" />
+        <div className="h-10 w-full rounded-xl bg-surface2" />
       </div>
     );
   }
@@ -67,33 +76,38 @@ export function ReservationNotificationCard({
   const Icon = config.icon;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
+    <div className="rounded-2xl bg-surface p-6 ring-1 ring-border space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">
+        <p className="text-sm font-bold text-textMuted uppercase tracking-wide">
           Notificación
         </p>
+
         <span
           className={cn(
             'inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold',
-            config.badge,
+            config.badge
           )}
         >
-          <Icon size={14} /> {config.label}
+          <Icon size={14} className={config.iconColor} />
+          {config.label}
         </span>
       </div>
 
       <div>
-        <p className="text-base font-bold text-slate-900">
+        <p className="text-base font-bold text-text">
           {config.description}
         </p>
+
         {message && (
-          <p className="text-sm text-slate-500 mt-1">{message}</p>
+          <p className="mt-1 text-sm text-textMuted">{message}</p>
         )}
+
         {errorMessage && (
-          <p className="text-sm text-red-600 mt-2">{errorMessage}</p>
+          <p className="mt-2 text-sm text-danger">{errorMessage}</p>
         )}
+
         {lastAttemptAt && (
-          <p className="text-xs text-slate-400 mt-2">
+          <p className="mt-2 text-xs text-textMuted">
             Último intento:{' '}
             {format(parseISO(lastAttemptAt), 'd MMM yyyy HH:mm', {
               locale: es,
@@ -108,10 +122,11 @@ export function ReservationNotificationCard({
           onClick={onResend}
           disabled={isResending}
           className={cn(
-            'inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-800 transition-colors',
+            'inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition-colors',
+            'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg',
             isResending
-              ? 'bg-slate-100 text-slate-400'
-              : 'bg-white hover:bg-slate-50',
+              ? 'border-border bg-surface2 text-textMuted'
+              : 'border-border bg-surface text-text hover:bg-surface2'
           )}
         >
           {isResending ? (
@@ -123,8 +138,8 @@ export function ReservationNotificationCard({
           )}
         </button>
       ) : (
-        <p className="text-xs text-slate-400">
-          No se puede reenviar sin un receiptToken valido.
+        <p className="text-xs text-textMuted">
+          No se puede reenviar sin un receiptToken válido.
         </p>
       )}
     </div>

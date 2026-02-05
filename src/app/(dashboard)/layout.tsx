@@ -3,14 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  LayoutDashboard, 
-  CalendarDays, 
-  Trophy, 
-  BarChart3, 
-  LogOut, 
-  Menu, 
-  X 
+import {
+  LayoutDashboard,
+  CalendarDays,
+  Trophy,
+  BarChart3,
+  LogOut,
+  Menu,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -49,17 +49,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ];
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
-      
+    <div className="flex h-screen bg-bg overflow-hidden">
       {/* Sidebar - Adaptable */}
-      <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transition-transform duration-300 md:relative",
-        !isSidebarOpen && "-translate-x-full md:hidden"
-      )}>
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transition-transform duration-300 md:relative',
+          !isSidebarOpen && '-translate-x-full md:hidden'
+        )}
+      >
         <div className="flex h-16 items-center justify-between px-6 border-b border-slate-800">
-          <span className="text-xl font-bold tracking-tight">PadelPoint<span className="text-blue-500">.</span></span>
+          <span className="text-xl font-bold tracking-tight">
+            PadelPoint<span className="text-primary">.</span>
+          </span>
           {isMobile && (
-            <button onClick={() => setSidebarOpen(false)} className="text-slate-400">
+            <button onClick={() => setSidebarOpen(false)} className="text-textMuted">
               <X size={24} />
             </button>
           )}
@@ -73,23 +76,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "group flex items-center rounded-xl px-3 py-3 text-sm font-medium transition-colors",
-                  isActive 
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20" 
-                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                  'group flex items-center rounded-xl px-3 py-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-primary text-primary-foreground shadow-lg shadow-slate-900/20'
+                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                 )}
               >
-                <item.icon className={cn("mr-3 h-5 w-5 flex-shrink-0", isActive ? "text-white" : "text-slate-500 group-hover:text-white")} />
+                <item.icon
+                  className={cn(
+                    'mr-3 h-5 w-5 flex-shrink-0',
+                    isActive ? 'text-primary-foreground' : 'text-slate-500 group-hover:text-white'
+                  )}
+                />
                 {item.name}
               </Link>
-            )
+            );
           })}
         </nav>
 
         <div className="border-t border-slate-800 p-4">
-          <button 
+          <button
             onClick={handleLogout}
-            className="flex w-full items-center rounded-xl px-3 py-3 text-sm font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-500 transition-colors"
+            className="flex w-full items-center rounded-xl px-3 py-3 text-sm font-medium text-slate-400 hover:bg-danger/10 hover:text-danger transition-colors"
           >
             <LogOut className="mr-3 h-5 w-5" />
             Cerrar Sesión
@@ -100,17 +108,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile Header */}
-        <header className="flex h-16 items-center justify-between bg-white px-4 shadow-sm md:hidden">
-          <button onClick={() => setSidebarOpen(true)} className="text-slate-500">
+        <header className="flex h-16 items-center justify-between bg-surface px-4 shadow-sm md:hidden">
+          <button onClick={() => setSidebarOpen(true)} className="text-textMuted">
             <Menu size={24} />
           </button>
-          <span className="font-bold text-slate-900">PadelPoint Admin</span>
+          <span className="font-bold text-text">PadelPoint Admin</span>
           <div className="w-6" /> {/* Spacer */}
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
-            {children}
-        </main>
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
       </div>
     </div>
   );

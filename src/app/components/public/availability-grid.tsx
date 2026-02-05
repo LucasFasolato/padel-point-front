@@ -14,7 +14,7 @@ interface AvailabilityGridProps {
   // ✅ mejoras UX
   selectedSlot?: AvailabilitySlot | null;
   holdState?: 'idle' | 'creating' | 'held' | 'error';
-  secondsLeft?: number; // opcional (si querés mostrar timer en el slot)
+  secondsLeft?: number;
 }
 
 type SlotStatus = 'available' | 'reserved' | 'blocked';
@@ -73,7 +73,7 @@ export function AvailabilityGrid({
         {Array.from({ length: 10 }).map((_, i) => (
           <div
             key={i}
-            className="h-20 animate-pulse rounded-xl border border-slate-200 bg-slate-100"
+            className="h-20 animate-pulse rounded-xl border border-border bg-surface2"
           />
         ))}
       </div>
@@ -83,12 +83,12 @@ export function AvailabilityGrid({
   // 2) Empty state
   if (!slots || slots.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center">
-        <div className="mb-3 rounded-full bg-white p-3 shadow-sm">
-          <Clock className="text-slate-400" size={24} />
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface2 px-4 py-12 text-center">
+        <div className="mb-3 rounded-full bg-surface p-3 shadow-sm ring-1 ring-border">
+          <Clock className="text-textMuted" size={24} />
         </div>
-        <p className="font-medium text-slate-900">No hay turnos disponibles</p>
-        <p className="text-sm text-slate-500">Probá cambiando la fecha.</p>
+        <p className="font-medium text-text">No hay turnos disponibles</p>
+        <p className="text-sm text-textMuted">Probá cambiando la fecha.</p>
       </div>
     );
   }
@@ -130,16 +130,16 @@ export function AvailabilityGrid({
         return (
           <div key={sec.key}>
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <p className="text-xs font-semibold uppercase tracking-wider text-textMuted">
                 {sec.label}
               </p>
 
-              <div className="hidden items-center gap-3 text-[11px] text-slate-400 sm:flex">
+              <div className="hidden items-center gap-3 text-[11px] text-textMuted sm:flex">
                 <span className="inline-flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-blue-500/70" /> Disponible
+                  <span className="h-2 w-2 rounded-full bg-primary/80" /> Disponible
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-slate-300" /> Ocupado
+                  <span className="h-2 w-2 rounded-full bg-border" /> Ocupado
                 </span>
               </div>
             </div>
@@ -164,7 +164,6 @@ export function AvailabilityGrid({
                     ? 'Bloqueado'
                     : 'Reservado';
 
-                // key 100% estable: la firma sola debería ser única post-dedup
                 const key = slotSignature(slot);
 
                 return (
@@ -182,23 +181,26 @@ export function AvailabilityGrid({
 
                       // ✅ Selected hold slot
                       isSelected &&
-                        'border-blue-500 bg-blue-50 shadow-sm',
+                        'border-primary/60 bg-primary/10 shadow-sm ring-1 ring-primary/20',
 
                       // normal locked / available
                       !isSelected &&
                         (locked
-                          ? 'cursor-not-allowed border-slate-100 bg-slate-50 opacity-80'
-                          : 'border-slate-200 bg-white shadow-sm hover:-translate-y-1 hover:border-blue-500 hover:shadow-md active:scale-95 active:shadow-sm')
+                          ? 'cursor-not-allowed border-border bg-surface2 opacity-80'
+                          : 'border-border bg-surface shadow-sm hover:-translate-y-1 hover:border-primary/60 hover:shadow-md active:scale-95 active:shadow-sm'),
+
+                      // focus (accesible)
+                      'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg'
                     )}
                   >
                     {/* top-right tiny dot */}
                     {!locked && !isSelected && (
-                      <div className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-blue-500 opacity-0 transition-opacity group-hover:opacity-100" />
+                      <div className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary opacity-0 transition-opacity group-hover:opacity-100" />
                     )}
 
                     {/* Selected badge */}
                     {isSelected && (
-                      <div className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold text-blue-700 ring-1 ring-blue-200 backdrop-blur">
+                      <div className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-surface/85 px-2 py-0.5 text-[10px] font-bold text-primary ring-1 ring-border backdrop-blur">
                         <Timer size={12} />
                         {typeof secondsLeft === 'number'
                           ? formatMMSS(Math.max(0, secondsLeft))
@@ -210,8 +212,10 @@ export function AvailabilityGrid({
                     <span
                       className={cn(
                         'text-lg font-bold tracking-tight',
-                        locked ? 'text-slate-400' : 'text-slate-700 group-hover:text-blue-600',
-                        isSelected && 'text-blue-700'
+                        locked
+                          ? 'text-textMuted'
+                          : 'text-text group-hover:text-primary',
+                        isSelected && 'text-primary'
                       )}
                     >
                       {slot.horaInicio}
@@ -220,7 +224,7 @@ export function AvailabilityGrid({
                     {/* Subtext */}
                     <span className="mt-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider">
                       {locked ? (
-                        <span className="flex items-center gap-1 text-slate-400">
+                        <span className="flex items-center gap-1 text-textMuted">
                           <Lock size={10} />
                           {subLabel}
                         </span>
@@ -228,9 +232,7 @@ export function AvailabilityGrid({
                         <span
                           className={cn(
                             'transition-colors',
-                            isSelected
-                              ? 'text-blue-700'
-                              : 'text-slate-500 group-hover:text-blue-500'
+                            isSelected ? 'text-primary' : 'text-textMuted group-hover:text-primary'
                           )}
                         >
                           {subLabel}
@@ -240,7 +242,7 @@ export function AvailabilityGrid({
 
                     {/* Block hint */}
                     {status === 'blocked' && slot.motivoBloqueo && (
-                      <div className="absolute left-2 top-2 hidden items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold text-slate-500 backdrop-blur sm:flex">
+                      <div className="absolute left-2 top-2 hidden items-center gap-1 rounded-full bg-surface/80 px-2 py-0.5 text-[10px] font-semibold text-warning ring-1 ring-border backdrop-blur sm:flex">
                         <AlertTriangle size={10} />
                         Bloq.
                       </div>

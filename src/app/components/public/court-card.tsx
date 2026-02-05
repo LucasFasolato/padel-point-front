@@ -18,17 +18,17 @@ export function CourtCard({
   onSlotSelect,
 }: CourtCardProps) {
   return (
-    <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-100 transition-shadow hover:shadow-md">
+    <div className="overflow-hidden rounded-3xl bg-surface shadow-sm ring-1 ring-border transition-shadow hover:shadow-md">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-50 bg-slate-50/50 px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border bg-surface2/60 px-5 py-4">
         <div>
-          <h3 className="font-bold text-slate-900">{court.nombre}</h3>
-          <p className="text-xs text-slate-500">
+          <h3 className="font-bold text-text">{court.nombre}</h3>
+          <p className="text-xs text-textMuted">
             {court.superficie} • Techada
           </p>
         </div>
 
-        <div className="rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-slate-900 shadow-sm ring-1 ring-slate-100">
+        <div className="rounded-lg bg-surface px-2.5 py-1 text-xs font-bold text-text shadow-sm ring-1 ring-border">
           ${court.precioPorHora.toLocaleString()} /h
         </div>
       </div>
@@ -37,12 +37,12 @@ export function CourtCard({
       <div className="p-5">
         {/* Error state */}
         {!loading && error && (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-8 text-center">
-            <AlertTriangle className="h-6 w-6 text-slate-400" />
-            <p className="text-sm font-medium text-slate-700">
+          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-surface2 py-8 text-center">
+            <AlertTriangle className="h-6 w-6 text-warning" />
+            <p className="text-sm font-medium text-text">
               No pudimos cargar los horarios
             </p>
-            <p className="text-xs text-slate-500">{error}</p>
+            <p className="text-xs text-textMuted">{error}</p>
           </div>
         )}
 

@@ -100,12 +100,12 @@ export default function AvailabilityRulesPage() {
   // Permission check
   if (user?.role !== 'ADMIN') {
     return (
-      <div className="flex h-96 flex-col items-center justify-center text-slate-400">
-        <AlertTriangle size={48} className="mb-4 opacity-50" />
+      <div className="flex h-96 flex-col items-center justify-center text-textMuted">
+        <AlertTriangle size={48} className="mb-4 opacity-50 text-warning" />
         <p className="text-sm">No tenés permisos para ver esta sección.</p>
         <Link
           href="/admin/dashboard"
-          className="mt-4 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
+          className="mt-4 inline-flex items-center justify-center rounded-full bg-surface px-4 py-2 text-xs font-bold text-text ring-1 ring-border hover:bg-surface2"
         >
           Volver
         </Link>
@@ -116,12 +116,12 @@ export default function AvailabilityRulesPage() {
   // No club selected
   if (!activeClub) {
     return (
-      <div className="flex h-96 flex-col items-center justify-center text-slate-400">
+      <div className="flex h-96 flex-col items-center justify-center text-textMuted">
         <Calendar size={48} className="mb-4 opacity-50" />
         <p>Seleccioná un club primero.</p>
         <Link
           href="/admin/dashboard"
-          className="mt-4 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
+          className="mt-4 inline-flex items-center justify-center rounded-full bg-surface px-4 py-2 text-xs font-bold text-text ring-1 ring-border hover:bg-surface2"
         >
           Ir al Dashboard
         </Link>
@@ -130,21 +130,21 @@ export default function AvailabilityRulesPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Link
             href="/admin/availability"
-            className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
+            className="rounded-lg p-2 text-textMuted transition-colors hover:bg-surface2 hover:text-text"
           >
             <ArrowLeft size={20} />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-2xl font-bold text-text">
               Configuración de Horarios
             </h1>
-            <p className="text-slate-500">
+            <p className="text-textMuted">
               Define los horarios disponibles para cada cancha
             </p>
           </div>
@@ -153,7 +153,7 @@ export default function AvailabilityRulesPage() {
         <button
           onClick={() => setIsModalOpen(true)}
           disabled={courts.length === 0}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-500 shadow-lg shadow-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus size={18} />
           Agregar horarios
@@ -161,10 +161,10 @@ export default function AvailabilityRulesPage() {
       </div>
 
       {/* Court selector */}
-      <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-        <label className="text-sm font-medium text-slate-700">Cancha:</label>
+      <div className="flex items-center gap-4 rounded-2xl border border-border bg-surface p-4 shadow-sm">
+        <label className="text-sm font-medium text-text">Cancha:</label>
         {courts.length === 0 ? (
-          <div className="flex items-center gap-2 text-sm text-slate-500">
+          <div className="flex items-center gap-2 text-sm text-textMuted">
             <Loader2 size={16} className="animate-spin" />
             Cargando canchas...
           </div>
@@ -174,10 +174,10 @@ export default function AvailabilityRulesPage() {
               <button
                 key={court.id}
                 onClick={() => setSelectedCourtId(court.id)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
                   selectedCourtId === court.id
-                    ? 'bg-slate-900 text-white shadow-md'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    ? 'bg-slate-900 text-white'
+                    : 'bg-surface2 text-textMuted hover:bg-slate-200'
                 }`}
               >
                 {court.nombre}
@@ -189,7 +189,7 @@ export default function AvailabilityRulesPage() {
 
       {/* Error state */}
       {error && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-100 text-sm text-red-600">
+        <div className="flex items-center gap-3 rounded-xl border border-danger/20 bg-danger/10 p-4 text-sm text-danger">
           <AlertTriangle size={18} />
           {error}
         </div>
@@ -207,16 +207,16 @@ export default function AvailabilityRulesPage() {
 
       {/* No courts message */}
       {courts.length === 0 && !loading && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-8">
+        <div className="rounded-2xl border border-border bg-surface p-8">
           <div className="flex flex-col items-center justify-center text-center">
-            <Calendar size={48} className="text-slate-300 mb-4" />
-            <p className="text-slate-500 font-medium">No hay canchas configuradas</p>
-            <p className="text-sm text-slate-400 mt-1 mb-4">
+            <Calendar size={48} className="mb-4 text-textMuted/40" />
+            <p className="font-medium text-textMuted">No hay canchas configuradas</p>
+            <p className="mt-1 mb-4 text-sm text-textMuted">
               Primero necesitás crear canchas para configurar sus horarios
             </p>
             <Link
               href="/admin/courts"
-              className="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors"
+              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800"
             >
               Ir a Canchas
             </Link>

@@ -118,12 +118,12 @@ function ProfileCard({
 }) {
   if (loading) {
     return (
-      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-        <div className="h-4 w-24 rounded bg-slate-200 animate-pulse" />
+      <div className="rounded-2xl border border-border bg-surface2 p-4">
+        <div className="h-4 w-24 animate-pulse rounded bg-border" />
         <div className="mt-4 space-y-2">
-          <div className="h-4 w-2/3 rounded bg-slate-200 animate-pulse" />
-          <div className="h-4 w-1/2 rounded bg-slate-200 animate-pulse" />
-          <div className="h-4 w-1/3 rounded bg-slate-200 animate-pulse" />
+          <div className="h-4 w-2/3 animate-pulse rounded bg-border" />
+          <div className="h-4 w-1/2 animate-pulse rounded bg-border" />
+          <div className="h-4 w-1/3 animate-pulse rounded bg-border" />
         </div>
       </div>
     );
@@ -131,8 +131,8 @@ function ProfileCard({
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
-        <p className="text-xs text-amber-700">No pudimos cargar tus datos.</p>
+      <div className="rounded-2xl border border-border bg-surface2 p-4">
+        <p className="text-xs text-warning">No pudimos cargar tus datos.</p>
       </div>
     );
   }
@@ -142,14 +142,14 @@ function ProfileCard({
   const isIncomplete = !profile.displayName || !profile.phone;
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+    <div className="rounded-2xl border border-border bg-surface2 p-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-bold text-slate-900">Tus datos</h2>
+        <h2 className="text-sm font-bold text-text">Tus datos</h2>
         {isIncomplete && (
           <button
             type="button"
             onClick={onComplete}
-            className="text-xs font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+            className="text-xs font-semibold text-primary transition-colors hover:opacity-90"
           >
             Completar perfil
           </button>
@@ -168,8 +168,8 @@ function ProfileCard({
 function ProfileRow({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-slate-500">{label}</span>
-      <span className={`font-medium ${value ? 'text-slate-900' : 'text-slate-400 italic'}`}>
+      <span className="text-textMuted">{label}</span>
+      <span className={`font-medium ${value ? 'text-text' : 'text-textMuted italic'}`}>
         {value || 'Sin completar'}
       </span>
     </div>
@@ -186,28 +186,28 @@ function PaymentStatusCard({
   const config = {
     idle: null,
     loading: {
-      icon: <Loader2 className="h-6 w-6 animate-spin text-blue-600" />,
+      icon: <Loader2 className="h-6 w-6 animate-spin text-primary" />,
       title: 'Preparando el pago...',
       subtitle: 'Esto solo toma unos segundos.',
-      className: 'border-blue-100 bg-blue-50',
+      className: 'border-border bg-surface2',
     },
     pending: {
-      icon: <Loader2 className="h-6 w-6 animate-spin text-blue-600" />,
+      icon: <Loader2 className="h-6 w-6 animate-spin text-primary" />,
       title: 'Procesando pago...',
       subtitle: 'No cierres esta ventana.',
-      className: 'border-blue-100 bg-blue-50',
+      className: 'border-border bg-surface2',
     },
     approved: {
-      icon: <CheckCircle2 className="h-6 w-6 text-emerald-600" />,
+      icon: <CheckCircle2 className="h-6 w-6 text-success" />,
       title: '¡Pago confirmado!',
       subtitle: 'Redirigiendo al comprobante...',
-      className: 'border-emerald-100 bg-emerald-50',
+      className: 'border-border bg-surface2',
     },
     failed: {
-      icon: <XCircle className="h-6 w-6 text-rose-600" />,
+      icon: <XCircle className="h-6 w-6 text-danger" />,
       title: 'No pudimos procesar el pago',
       subtitle: error || 'Intentá de nuevo o elegí otro horario.',
-      className: 'border-rose-100 bg-rose-50',
+      className: 'border-border bg-surface2',
     },
   };
 
@@ -219,8 +219,8 @@ function PaymentStatusCard({
       <div className="flex flex-col items-center gap-3">
         {current.icon}
         <div>
-          <p className="text-sm font-semibold text-slate-900">{current.title}</p>
-          <p className="mt-0.5 text-xs text-slate-600">{current.subtitle}</p>
+          <p className="text-sm font-semibold text-text">{current.title}</p>
+          <p className="mt-0.5 text-xs text-textMuted">{current.subtitle}</p>
         </div>
       </div>
     </div>
@@ -229,11 +229,11 @@ function PaymentStatusCard({
 
 function HoldExpiredOverlay() {
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
-      <div className="flex flex-col items-center gap-2 text-white">
-        <AlertTriangle className="h-8 w-8 text-amber-400" />
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface/80 backdrop-blur-sm">
+      <div className="flex flex-col items-center gap-2 text-text">
+        <AlertTriangle className="h-8 w-8 text-warning" />
         <span className="text-lg font-bold">Tiempo agotado</span>
-        <span className="text-sm text-slate-300">La reserva expiró</span>
+        <span className="text-sm text-textMuted">La reserva expiró</span>
       </div>
     </div>
   );
@@ -309,7 +309,7 @@ export default function CheckoutPage() {
         // Cache for page refresh
         try {
           sessionStorage.setItem(cacheKey, JSON.stringify(data));
-        } catch {}
+        } catch { }
       } catch {
         if (cancelled) return;
         setLoadError('Reserva no encontrada o link expirado.');
@@ -483,9 +483,9 @@ export default function CheckoutPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-slate-50">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-        <p className="text-sm text-slate-500">Cargando checkout...</p>
+      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-bg">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-sm text-textMuted">Cargando checkout...</p>
       </div>
     );
   }
@@ -493,17 +493,17 @@ export default function CheckoutPage() {
   // Error state
   if (loadError || !reservation) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4 text-center">
-        <div className="rounded-full bg-rose-100 p-4">
-          <XCircle className="h-8 w-8 text-rose-600" />
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-bg px-4 text-center">
+        <div className="rounded-full bg-surface2 p-4">
+          <XCircle className="h-8 w-8 text-danger" />
         </div>
         <div>
-          <p className="font-semibold text-slate-900">No pudimos cargar el checkout</p>
-          <p className="mt-1 text-sm text-slate-500">{loadError}</p>
+          <p className="font-semibold text-text">No pudimos cargar el checkout</p>
+          <p className="mt-1 text-sm text-textMuted">{loadError}</p>
         </div>
         <button
           onClick={() => router.push('/')}
-          className="mt-2 rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-bold text-white hover:bg-slate-800 transition-colors"
+          className="mt-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
         >
           Volver al inicio
         </button>
@@ -515,31 +515,31 @@ export default function CheckoutPage() {
     <>
       <PublicTopBar backHref={clubUrl} title="Checkout" />
 
-      <div className="min-h-[calc(100vh-56px)] bg-slate-50 px-4 py-8 pb-24">
-        <div className="mx-auto max-w-lg overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-xl">
+      <div className="min-h-[calc(100vh-56px)] bg-bg px-4 py-8 pb-24">
+        <div className="mx-auto max-w-lg overflow-hidden rounded-3xl border border-border bg-surface shadow-xl">
           {/* Header with countdown */}
-          <div className="relative overflow-hidden bg-slate-900 p-6 text-center text-white">
+          <div className="relative overflow-hidden bg-surface p-6 text-center text-text">
             {reservation.status === 'hold' ? (
               <>
-                <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-400">
+                <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-textMuted">
                   Tiempo restante para pagar
                 </span>
                 <div className="flex items-center justify-center gap-2 text-4xl font-bold tabular-nums tracking-tight">
-                  <Clock className="text-blue-400" size={32} />
-                  <span className={isExpired ? 'text-rose-400' : ''}>{mmss}</span>
+                  <Clock className="text-primary" size={32} />
+                  <span className={isExpired ? 'text-danger' : ''}>{mmss}</span>
                 </div>
                 {isExpired && <HoldExpiredOverlay />}
               </>
             ) : (
               <div className="py-2">
-                <p className="text-sm text-slate-400">Estado de la reserva</p>
+                <p className="text-sm text-textMuted">Estado de la reserva</p>
                 <p className="mt-1 text-xl font-bold capitalize">{reservation.status}</p>
               </div>
             )}
           </div>
 
           {/* Body */}
-          <div className="p-6 space-y-5">
+          <div className="space-y-5 p-6">
             {/* Profile card (if authenticated) */}
             {authToken && (
               <ProfileCard
@@ -552,35 +552,35 @@ export default function CheckoutPage() {
 
             {/* Reservation details */}
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-slate-900">
+              <h1 className="text-2xl font-bold text-text">
                 {reservation.court.nombre}
               </h1>
-              <p className="mt-1 text-slate-500">
+              <p className="mt-1 text-textMuted">
                 {format(new Date(reservation.startAt), "EEEE d 'de' MMMM", { locale: es })}
               </p>
-              <p className="text-lg font-semibold text-slate-700">
+              <p className="text-lg font-semibold text-text">
                 {format(new Date(reservation.startAt), 'HH:mm', { locale: es })} hs
               </p>
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-sm text-textMuted">
                 {reservation.court.club.nombre}
               </p>
             </div>
 
             {/* Price breakdown */}
-            <div className="space-y-3 rounded-2xl bg-slate-50 p-4">
+            <div className="space-y-3 rounded-2xl bg-surface2 p-4">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Cancha (1 hora)</span>
-                <span className="font-medium text-slate-900">
+                <span className="text-textMuted">Cancha (1 hora)</span>
+                <span className="font-medium text-text">
                   {formatCurrency(reservation.precio)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Comisión de servicio</span>
-                <span className="font-medium text-emerald-600">Gratis</span>
+                <span className="text-textMuted">Comisión de servicio</span>
+                <span className="font-medium text-success">Gratis</span>
               </div>
-              <div className="border-t border-slate-200 pt-3 flex justify-between">
-                <span className="font-bold text-slate-900">Total a pagar</span>
-                <span className="text-xl font-bold text-blue-600">
+              <div className="flex justify-between border-t border-border pt-3">
+                <span className="font-bold text-text">Total a pagar</span>
+                <span className="text-xl font-bold text-primary">
                   {formatCurrency(reservation.precio)}
                 </span>
               </div>
@@ -590,8 +590,8 @@ export default function CheckoutPage() {
             <PaymentStatusCard status={intentState} error={intentError} />
 
             {/* Security badge */}
-            <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-              <ShieldCheck size={14} className="text-emerald-500" />
+            <div className="flex items-center justify-center gap-2 text-xs text-textMuted">
+              <ShieldCheck size={14} className="text-success" />
               <span>Pago seguro y encriptado</span>
             </div>
 
@@ -605,7 +605,7 @@ export default function CheckoutPage() {
                     setIntentError(null);
                     processPayment();
                   }}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-bold text-white hover:bg-blue-500 transition-colors"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
                 >
                   <CreditCard size={18} />
                   Reintentar pago
@@ -613,7 +613,7 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   onClick={() => router.push(clubUrl)}
-                  className="flex h-12 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                  className="flex h-12 w-full items-center justify-center rounded-xl border border-border bg-surface text-sm font-bold text-text transition-colors hover:bg-surface2"
                 >
                   Elegir otro horario
                 </button>
@@ -624,7 +624,7 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 onClick={() => router.push(clubUrl)}
-                className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 transition-colors"
+                className="flex h-12 w-full items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
               >
                 Elegir otro horario
               </button>

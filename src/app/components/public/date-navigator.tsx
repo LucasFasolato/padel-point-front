@@ -11,26 +11,24 @@ interface DateNavigatorProps {
 }
 
 export function DateNavigator({ selectedDate, onSelect }: DateNavigatorProps) {
-  // Generate next 14 days
   const dates = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to selected date (UX Polish)
   useEffect(() => {
     if (scrollRef.current) {
-      // Simple logic to center could be added here
+      // opcional: centrar el selected
     }
   }, [selectedDate]);
 
   return (
-    <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
-      <div 
+    <div className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur-sm supports-[backdrop-filter]:bg-surface/85">
+      <div
         ref={scrollRef}
         className="mx-auto flex max-w-md gap-2 overflow-x-auto px-4 py-3 no-scrollbar sm:max-w-3xl"
       >
         {dates.map((date) => {
           const isSelected = isSameDay(date, selectedDate);
-          
+
           let label = format(date, 'EEE', { locale: es });
           if (isToday(date)) label = 'HOY';
           if (isTomorrow(date)) label = 'MAÑ';
@@ -41,9 +39,10 @@ export function DateNavigator({ selectedDate, onSelect }: DateNavigatorProps) {
               onClick={() => onSelect(date)}
               className={cn(
                 "flex min-w-[4.5rem] flex-col items-center justify-center rounded-xl border py-2 transition-all active:scale-95",
+                "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg",
                 isSelected
-                  ? "border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-900/20"
-                  : "border-slate-100 bg-white text-slate-500 hover:border-slate-300"
+                  ? "border-brand-950 bg-brand-950 text-white shadow-lg shadow-black/15"
+                  : "border-border bg-surface text-textMuted hover:bg-surface2 hover:text-text"
               )}
             >
               <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">

@@ -92,12 +92,12 @@ export default function BookingsPage() {
 
   if (user?.role !== 'ADMIN') {
     return (
-      <div className="flex h-96 flex-col items-center justify-center text-slate-400">
-        <AlertTriangle size={48} className="mb-4 opacity-50" />
+      <div className="flex h-96 flex-col items-center justify-center text-textMuted">
+        <AlertTriangle size={48} className="mb-4 opacity-50 text-warning" />
         <p className="text-sm">No tenés permisos para ver esta sección.</p>
         <Link
           href="/admin/dashboard"
-          className="mt-4 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
+          className="mt-4 inline-flex items-center justify-center rounded-full bg-surface px-4 py-2 text-xs font-bold text-text ring-1 ring-border hover:bg-surface2"
         >
           Volver
         </Link>
@@ -107,7 +107,7 @@ export default function BookingsPage() {
 
   if (!activeClub) {
     return (
-      <div className="flex h-96 flex-col items-center justify-center text-slate-400">
+      <div className="flex h-96 flex-col items-center justify-center text-textMuted">
         <Calendar size={48} className="mb-4 opacity-50" />
         <p>Seleccioná un club primero.</p>
       </div>
@@ -115,23 +115,23 @@ export default function BookingsPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="mx-auto max-w-6xl">
       {/* Header & Filtros */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Reservas</h1>
-          <p className="text-slate-500">Gestiona los turnos de {activeClub.nombre}</p>
+          <h1 className="text-2xl font-bold text-text">Reservas</h1>
+          <p className="text-textMuted">Gestiona los turnos de {activeClub.nombre}</p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-2 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-2 px-2 text-slate-500 border-r border-slate-200 pr-4">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface p-2 shadow-sm">
+          <div className="flex items-center gap-2 border-r border-border px-2 pr-4 text-textMuted">
             <Filter size={16} />
             <span className="text-sm font-medium">Filtros</span>
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-            className="bg-transparent text-sm font-medium text-slate-700 outline-none"
+            className="bg-transparent text-sm font-medium text-text outline-none"
           >
             <option value="all">Todos</option>
             <option value="hold">Hold</option>
@@ -143,7 +143,7 @@ export default function BookingsPage() {
           <select
             value={rangePreset}
             onChange={(e) => setRangePreset(e.target.value as typeof rangePreset)}
-            className="bg-transparent text-sm font-medium text-slate-700 outline-none"
+            className="bg-transparent text-sm font-medium text-text outline-none"
           >
             <option value="today">Hoy</option>
             <option value="7d">Próximos 7 días</option>
@@ -155,37 +155,37 @@ export default function BookingsPage() {
               setStatusFilter('all');
               setRangePreset('today');
             }}
-            className="ml-auto rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600 hover:bg-slate-50"
+            className="ml-auto rounded-full border border-border bg-surface px-3 py-1 text-xs font-bold text-textMuted hover:bg-surface2"
           >
             Limpiar filtros
           </button>
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-        <span className="font-semibold text-slate-600">Estados:</span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-textMuted">
+        <span className="font-semibold text-textMuted">Estados:</span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface2 px-2 py-0.5 font-semibold text-textMuted">
           HOLD
         </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">
+        <span className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 font-semibold text-brand-700">
           PAYMENT_PENDING
         </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 font-semibold text-green-700">
+        <span className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-semibold text-success">
           CONFIRMED
         </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 font-semibold text-red-600">
+        <span className="inline-flex items-center gap-1 rounded-full border border-danger/30 bg-danger/10 px-2 py-0.5 font-semibold text-danger">
           CANCELLED
         </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
+        <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface2 px-2 py-0.5 font-semibold text-textMuted">
           EXPIRED
         </span>
       </div>
 
       {/* Tabla de Reservas */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
         <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500">
+            <thead className="bg-surface2 text-textMuted">
                 <tr>
                 <th className="px-6 py-4 font-bold">Creada</th>
                 <th className="px-6 py-4 font-bold">Club</th>
@@ -196,20 +196,20 @@ export default function BookingsPage() {
                 <th className="px-6 py-4 font-bold text-right">Precio</th>
                 </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
                 {loading ? (
                     <tr>
                         <td colSpan={7} className="py-10">
                           <div className="space-y-3 px-6">
                             {Array.from({ length: 4 }).map((_, i) => (
-                              <div key={i} className="h-10 w-full rounded-xl bg-slate-100 animate-pulse" />
+                              <div key={i} className="h-10 w-full animate-pulse rounded-xl bg-surface2" />
                             ))}
                           </div>
                         </td>
                     </tr>
                 ) : sessionExpired ? (
                     <tr>
-                        <td colSpan={7} className="py-12 text-center text-slate-500">
+                        <td colSpan={7} className="py-12 text-center text-textMuted">
                           Sesión expirada. Iniciá sesión nuevamente.
                           <div className="mt-4">
                             <Link
@@ -223,7 +223,7 @@ export default function BookingsPage() {
                     </tr>
                 ) : unauthorized ? (
                     <tr>
-                        <td colSpan={7} className="py-12 text-center text-slate-500">
+                        <td colSpan={7} className="py-12 text-center text-textMuted">
                           No tenés permisos para ver esta sección.
                           <div className="mt-4">
                             <Link
@@ -237,7 +237,7 @@ export default function BookingsPage() {
                     </tr>
                 ) : error ? (
                     <tr>
-                        <td colSpan={7} className="py-12 text-center text-slate-500">
+                        <td colSpan={7} className="py-12 text-center text-textMuted">
                           <p>{error}</p>
                           <button
                             type="button"
@@ -251,14 +251,14 @@ export default function BookingsPage() {
                 ) : (
                     reservations.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-12 text-center text-slate-500">
+                        <td colSpan={7} className="py-12 text-center text-textMuted">
                           No hay reservas para este rango.
                         </td>
                       </tr>
                     ) : (
                       reservations.map((res) => (
-                      <tr key={res.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="px-6 py-4 text-slate-500">
+                      <tr key={res.id} className="transition-colors hover:bg-surface2/60">
+                          <td className="px-6 py-4 text-textMuted">
                             {(res as Reservation & { createdAt?: string }).createdAt
                               ? format(
                                   parseISO(
@@ -269,39 +269,39 @@ export default function BookingsPage() {
                               : '-'}
                           </td>
                           <td className="px-6 py-4">
-                            <div className="flex items-center gap-2 text-slate-600">
+                            <div className="flex items-center gap-2 text-textMuted">
                               <MapPin size={16} />
                               {res.court?.club?.nombre || activeClub.nombre}
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                              <div className="flex items-center gap-2 text-slate-600">
+                              <div className="flex items-center gap-2 text-textMuted">
                                   <MapPin size={16} />
                                   {res.court?.nombre || 'Cancha no disponible'}
                               </div>
                           </td>
                           <td className="px-6 py-4">
-                              <div className="flex items-center gap-2 font-medium text-slate-900">
-                                  <Clock size={16} className="text-blue-500"/>
+                              <div className="flex items-center gap-2 font-medium text-text">
+                                  <Clock size={16} className="text-primary"/>
                                   {format(parseISO(res.startAt), 'HH:mm')} - {format(parseISO(res.endAt), 'HH:mm')}
                               </div>
-                              <div className="text-xs text-slate-400">
+                              <div className="text-xs text-textMuted">
                                 {format(parseISO(res.startAt), "EEEE d MMM", { locale: es })}
                               </div>
                           </td>
                           <td className="px-6 py-4">
-                              <div className="flex items-center gap-2 text-slate-600">
+                              <div className="flex items-center gap-2 text-textMuted">
                                 <User size={16} />
                                 <div className="flex flex-col">
-                                  <span className="font-medium text-slate-900">{res.clienteNombre || 'Cliente Casual'}</span>
-                                  <span className="text-xs text-slate-400">{res.clienteEmail || '-'}</span>
+                                  <span className="font-medium text-text">{res.clienteNombre || 'Cliente Casual'}</span>
+                                  <span className="text-xs text-textMuted">{res.clienteEmail || '-'}</span>
                                 </div>
                               </div>
                           </td>
                           <td className="px-6 py-4">
                               <StatusBadge status={res.status} />
                           </td>
-                          <td className="px-6 py-4 text-right font-bold text-slate-900">
+                          <td className="px-6 py-4 text-right font-bold text-text">
                               ${res.precio}
                           </td>
                       </tr>
@@ -319,15 +319,15 @@ export default function BookingsPage() {
 // Badge de Estado
 function StatusBadge({ status }: { status: string }) {
     const styles: Record<string, string> = {
-        confirmed: 'bg-green-100 text-green-700 border-green-200',
-        hold: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-        cancelled: 'bg-red-50 text-red-500 border-red-100',
-        expired: 'bg-slate-100 text-slate-500 border-slate-200',
-        payment_pending: 'bg-blue-100 text-blue-700 border-blue-200',
+        confirmed: 'bg-success/10 text-success border-success/30',
+        hold: 'bg-warning/10 text-warning border-warning/30',
+        cancelled: 'bg-danger/10 text-danger border-danger/30',
+        expired: 'bg-surface2 text-textMuted border-border',
+        payment_pending: 'bg-brand-100 text-brand-700 border-brand-200',
     };
     
     return (
-        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${styles[status] || 'bg-slate-100 text-slate-500'}`}>
+        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${styles[status] || 'bg-surface2 text-textMuted border-border'}`}>
             {status === 'confirmed'
               ? 'Confirmada'
               : status === 'hold'

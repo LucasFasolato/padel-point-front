@@ -170,22 +170,22 @@ export default function DashboardPage() {
       label: 'Reservas (mes)',
       value: stats.data?.revenue.confirmedCount ?? '-',
       icon: CalendarDays,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50',
+      color: 'text-brand-600',
+      bg: 'bg-brand-50',
     },
     {
       label: 'Ingresos (mes)',
       value: stats.data ? formatCurrency(stats.data.revenue.totalRevenue) : '-',
       icon: TrendingUp,
-      color: 'text-green-600',
-      bg: 'bg-green-50',
+      color: 'text-success',
+      bg: 'bg-success/10',
     },
     {
       label: 'Ocupación (mes)',
       value: stats.data ? `${stats.data.occupancy.occupancyPct}%` : '-',
       icon: Percent,
-      color: 'text-purple-600',
-      bg: 'bg-purple-50',
+      color: 'text-slate-600',
+      bg: 'bg-surface2',
     },
     {
       label: 'Hora pico',
@@ -193,19 +193,19 @@ export default function DashboardPage() {
         ? `${stats.data.peak.top.weekday} ${stats.data.peak.top.time}`
         : '-',
       icon: Clock,
-      color: 'text-orange-600',
-      bg: 'bg-orange-50',
+      color: 'text-warning',
+      bg: 'bg-warning/10',
     },
   ];
 
   if (!token) {
     return (
-      <div className="flex h-96 flex-col items-center justify-center text-slate-400">
+      <div className="flex h-96 flex-col items-center justify-center text-textMuted">
         <LayoutDashboard size={48} className="mb-4 opacity-50" />
         <p className="text-sm">Sesión expirada. Iniciá sesión nuevamente.</p>
         <Link
           href="/admin/login"
-          className="mt-4 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
+          className="mt-4 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-800"
         >
           Volver
         </Link>
@@ -215,12 +215,12 @@ export default function DashboardPage() {
 
   if (user?.role !== 'ADMIN') {
     return (
-      <div className="flex h-96 flex-col items-center justify-center text-slate-400">
+      <div className="flex h-96 flex-col items-center justify-center text-textMuted">
         <LayoutDashboard size={48} className="mb-4 opacity-50" />
         <p className="text-sm">No tenés permisos para ver esta sección.</p>
         <Link
           href="/"
-          className="mt-4 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
+          className="mt-4 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-800"
         >
           Volver
         </Link>
@@ -231,23 +231,23 @@ export default function DashboardPage() {
   if (loading && clubs.length === 0) {
     return (
       <div className="flex h-96 items-center justify-center">
-        <Loader2 className="animate-spin text-blue-600 h-8 w-8" />
+        <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="mx-auto max-w-6xl space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-text">
             Hola, {user?.email?.split('@')[0]}
           </h1>
-          <p className="text-slate-500">Panel operativo para gestionar tu club.</p>
+          <p className="text-textMuted">Panel operativo para gestionar tu club.</p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 shadow-lg shadow-blue-200 active:scale-95 transition-all"
+          className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-brand-700 active:scale-95"
         >
           <Plus size={18} /> Nuevo Club
         </button>
@@ -257,13 +257,13 @@ export default function DashboardPage() {
       {activeClub && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wide">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-textMuted">
               Métricas de {format(new Date(), 'MMMM yyyy')}
             </h2>
             <button
               onClick={refreshStats}
               disabled={stats.loading}
-              className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 disabled:opacity-50"
+              className="flex items-center gap-1 text-xs text-textMuted transition-colors hover:text-text disabled:opacity-50"
             >
               <RefreshCw size={14} className={stats.loading ? 'animate-spin' : ''} />
               Actualizar
@@ -271,20 +271,20 @@ export default function DashboardPage() {
           </div>
 
           {stats.error && (
-            <div className="rounded-xl bg-red-50 border border-red-100 p-4 flex items-center gap-3 text-sm text-red-600">
+            <div className="flex items-center gap-3 rounded-xl border border-danger/20 bg-danger/10 p-4 text-sm text-danger">
               <AlertTriangle size={18} />
               {stats.error}
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             {statsCards.map((stat, i) => (
               <div
                 key={i}
-                className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4"
+                className="flex items-center gap-4 rounded-2xl border border-border bg-surface p-6 shadow-sm"
               >
                 <div
-                  className={`h-12 w-12 rounded-xl flex items-center justify-center ${stat.bg} ${stat.color}`}
+                  className={`flex h-12 w-12 items-center justify-center rounded-xl ${stat.bg} ${stat.color}`}
                 >
                   {stats.loading ? (
                     <Loader2 size={24} className="animate-spin opacity-50" />
@@ -293,10 +293,10 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-500">{stat.label}</p>
-                  <h3 className="text-2xl font-bold text-slate-900">
+                  <p className="text-sm font-medium text-textMuted">{stat.label}</p>
+                  <h3 className="text-2xl font-bold text-text">
                     {stats.loading ? (
-                      <span className="inline-block h-7 w-16 rounded bg-slate-100 animate-pulse" />
+                      <span className="inline-block h-7 w-16 animate-pulse rounded bg-surface2" />
                     ) : (
                       stat.value
                     )}
@@ -308,29 +308,29 @@ export default function DashboardPage() {
 
           {/* Top performers */}
           {stats.data && (stats.data.revenue.topCourtByRevenue || stats.data.occupancy.topCourtByOccupancy) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
               {stats.data.revenue.topCourtByRevenue && (
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
-                  <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">
+                <div className="rounded-xl border border-success/20 bg-success/10 p-4">
+                  <p className="mb-1 text-xs font-bold uppercase tracking-wide text-success">
                     Cancha más rentable
                   </p>
-                  <p className="text-lg font-bold text-slate-900">
+                  <p className="text-lg font-bold text-text">
                     {stats.data.revenue.topCourtByRevenue.courtName}
                   </p>
-                  <p className="text-sm text-slate-600">
+                  <p className="text-sm text-textMuted">
                     {formatCurrency(stats.data.revenue.topCourtByRevenue.value)} este mes
                   </p>
                 </div>
               )}
               {stats.data.occupancy.topCourtByOccupancy && (
-                <div className="bg-gradient-to-br from-purple-50 to-violet-50 p-4 rounded-xl border border-purple-100">
-                  <p className="text-xs font-bold text-purple-600 uppercase tracking-wide mb-1">
+                <div className="rounded-xl border border-warning/20 bg-warning/10 p-4">
+                  <p className="mb-1 text-xs font-bold uppercase tracking-wide text-warning">
                     Mayor ocupación
                   </p>
-                  <p className="text-lg font-bold text-slate-900">
+                  <p className="text-lg font-bold text-text">
                     {stats.data.occupancy.topCourtByOccupancy.courtName}
                   </p>
-                  <p className="text-sm text-slate-600">
+                  <p className="text-sm text-textMuted">
                     {stats.data.occupancy.topCourtByOccupancy.value}% de ocupación
                   </p>
                 </div>
@@ -342,48 +342,48 @@ export default function DashboardPage() {
 
       {/* Quick Access */}
       <div>
-        <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-          <Activity size={20} className="text-blue-500" /> Accesos Rápidos
+        <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-text">
+          <Activity size={20} className="text-brand-600" /> Accesos Rápidos
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <Link
             href="/admin/bookings"
-            className="group block p-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl text-white shadow-lg shadow-blue-200 transition-all hover:-translate-y-1"
+            className="group block rounded-2xl bg-brand-700 p-6 text-white shadow-lg transition-all hover:-translate-y-1"
           >
-            <div className="h-10 w-10 bg-white/20 rounded-lg flex items-center justify-center mb-4 backdrop-blur-sm">
+            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
               <CalendarDays size={24} />
             </div>
-            <h3 className="text-lg font-bold mb-1">Reservas</h3>
-            <p className="text-blue-100 text-sm mb-4">Ver y filtrar turnos.</p>
-            <div className="flex items-center gap-2 text-sm font-bold opacity-90 group-hover:gap-3 transition-all">
+            <h3 className="mb-1 text-lg font-bold">Reservas</h3>
+            <p className="mb-4 text-sm text-brand-100">Ver y filtrar turnos.</p>
+            <div className="flex items-center gap-2 text-sm font-bold opacity-90 transition-all group-hover:gap-3">
               Ir ahora <ArrowRight size={16} />
             </div>
           </Link>
 
           <Link
             href="/admin/payments"
-            className="group block p-6 bg-white border border-slate-200 rounded-2xl shadow-sm hover:border-blue-300 transition-all hover:-translate-y-1"
+            className="group block rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-brand-300"
           >
-            <div className="h-10 w-10 bg-green-50 text-green-600 rounded-lg flex items-center justify-center mb-4">
+            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-success/10 text-success">
               <CreditCard size={24} />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Pagos</h3>
-            <p className="text-slate-500 text-sm mb-4">Intents y estados.</p>
-            <span className="text-sm font-bold text-slate-600 group-hover:text-green-600">
+            <h3 className="mb-1 text-lg font-bold text-text">Pagos</h3>
+            <p className="mb-4 text-sm text-textMuted">Intents y estados.</p>
+            <span className="text-sm font-bold text-textMuted transition-colors group-hover:text-success">
               Gestionar
             </span>
           </Link>
 
           <Link
             href="/admin/courts"
-            className="group block p-6 bg-white border border-slate-200 rounded-2xl shadow-sm hover:border-blue-300 transition-all hover:-translate-y-1"
+            className="group block rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-brand-300"
           >
-            <div className="h-10 w-10 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center mb-4">
+            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10 text-warning">
               <Trophy size={24} />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Canchas</h3>
-            <p className="text-slate-500 text-sm mb-4">Configuración básica.</p>
-            <span className="text-sm font-bold text-slate-600 group-hover:text-purple-600">
+            <h3 className="mb-1 text-lg font-bold text-text">Canchas</h3>
+            <p className="mb-4 text-sm text-textMuted">Configuración básica.</p>
+            <span className="text-sm font-bold text-textMuted transition-colors group-hover:text-warning">
               Gestionar
             </span>
           </Link>
@@ -393,14 +393,14 @@ export default function DashboardPage() {
       {/* Active Club Card */}
       {activeClub && (
         <div className="overflow-hidden rounded-2xl bg-slate-900 text-white shadow-xl ring-1 ring-slate-900/5">
-          <div className="p-8 flex flex-col md:flex-row justify-between items-start gap-6">
+          <div className="flex flex-col items-start justify-between gap-6 p-8 md:flex-row">
             <div>
-              <div className="flex items-center gap-2 mb-2">
+              <div className="mb-2 flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
                 </span>
-                <p className="text-xs font-bold uppercase tracking-wider text-green-400">
+                <p className="text-xs font-bold uppercase tracking-wider text-success">
                   Club Activo
                 </p>
               </div>
@@ -414,8 +414,8 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-            <div className="p-4 bg-white/5 rounded-2xl backdrop-blur-sm border border-white/10">
-              <LayoutDashboard size={40} className="text-blue-400" />
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <LayoutDashboard size={40} className="text-brand-400" />
             </div>
           </div>
         </div>
@@ -423,38 +423,38 @@ export default function DashboardPage() {
 
       {/* Club List */}
       <div>
-        <h3 className="mb-4 text-lg font-bold text-slate-900">Mis Clubes</h3>
+        <h3 className="mb-4 text-lg font-bold text-text">Mis Clubes</h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {clubs.map((club) => (
             <button
               key={club.id}
               onClick={() => handleSelectClub(club)}
-              className={`group relative flex flex-col items-start rounded-2xl border p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1 ${
+              className={`group relative flex flex-col items-start rounded-2xl border p-6 text-left transition-all hover:-translate-y-1 hover:shadow-xl ${
                 activeClub?.id === club.id
-                  ? 'border-blue-600 bg-blue-50/50 ring-2 ring-blue-600'
-                  : 'border-slate-200 bg-white hover:border-blue-300'
+                  ? 'border-brand-600 bg-brand-50/50 ring-2 ring-brand-600'
+                  : 'border-border bg-surface hover:border-brand-300'
               }`}
             >
-              <div className="mb-4 h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-surface2 text-textMuted transition-colors group-hover:bg-brand-100 group-hover:text-brand-600">
                 <LayoutDashboard size={20} />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-700">
+              <h3 className="text-lg font-bold text-text transition-colors group-hover:text-brand-700">
                 {club.nombre}
               </h3>
-              <p className="mt-1 text-sm text-slate-500 line-clamp-1">{club.direccion}</p>
+              <p className="mt-1 line-clamp-1 text-sm text-textMuted">{club.direccion}</p>
 
-              <div className="mt-6 w-full flex justify-between items-center border-t border-slate-200/50 pt-4">
+              <div className="mt-6 flex w-full items-center justify-between border-t border-border/50 pt-4">
                 <span
                   className={`text-xs font-bold uppercase ${
-                    activeClub?.id === club.id ? 'text-blue-600' : 'text-slate-400'
+                    activeClub?.id === club.id ? 'text-brand-600' : 'text-textMuted'
                   }`}
                 >
                   {activeClub?.id === club.id ? 'Gestionando' : 'Entrar'}
                 </span>
                 <ArrowRight
                   size={16}
-                  className={`text-slate-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all ${
-                    activeClub?.id === club.id ? 'text-blue-600' : ''
+                  className={`text-slate-300 transition-all group-hover:translate-x-1 group-hover:text-brand-600 ${
+                    activeClub?.id === club.id ? 'text-brand-600' : ''
                   }`}
                 />
               </div>
@@ -471,22 +471,22 @@ export default function DashboardPage() {
       >
         <form onSubmit={handleCreateClub} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-700">Nombre del Club</label>
+            <label className="text-sm font-medium text-text">Nombre del Club</label>
             <input
               required
-              className="w-full rounded-xl border border-slate-300 p-3 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-xl border border-border p-3 outline-none focus:ring-2 focus:ring-ring"
               placeholder="Ej: Padel Center"
               value={newClub.nombre}
               onChange={(e) => setNewClub({ ...newClub, nombre: e.target.value })}
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700">Dirección</label>
+            <label className="text-sm font-medium text-text">Dirección</label>
             <div className="relative">
-              <MapPin className="absolute left-3 top-3.5 text-slate-400" size={18} />
+              <MapPin className="absolute left-3 top-3.5 text-textMuted" size={18} />
               <input
                 required
-                className="w-full rounded-xl border border-slate-300 p-3 pl-10 outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-xl border border-border p-3 pl-10 outline-none focus:ring-2 focus:ring-ring"
                 placeholder="Calle 123"
                 value={newClub.direccion}
                 onChange={(e) => setNewClub({ ...newClub, direccion: e.target.value })}
@@ -495,22 +495,22 @@ export default function DashboardPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-slate-700">Email</label>
+              <label className="text-sm font-medium text-text">Email</label>
               <input
                 type="email"
                 required
-                className="w-full rounded-xl border border-slate-300 p-3 outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-xl border border-border p-3 outline-none focus:ring-2 focus:ring-ring"
                 placeholder="contacto@club.com"
                 value={newClub.email}
                 onChange={(e) => setNewClub({ ...newClub, email: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">Teléfono</label>
+              <label className="text-sm font-medium text-text">Teléfono</label>
               <input
                 type="tel"
                 required
-                className="w-full rounded-xl border border-slate-300 p-3 outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-xl border border-border p-3 outline-none focus:ring-2 focus:ring-ring"
                 placeholder="+54 9..."
                 value={newClub.telefono}
                 onChange={(e) => setNewClub({ ...newClub, telefono: e.target.value })}
@@ -521,7 +521,7 @@ export default function DashboardPage() {
           <button
             disabled={isCreating}
             type="submit"
-            className="w-full rounded-xl bg-slate-900 py-3 font-bold text-white hover:bg-blue-600 transition-colors disabled:opacity-70 mt-4 flex justify-center"
+            className="mt-4 flex w-full justify-center rounded-xl bg-slate-900 py-3 font-bold text-white transition-colors hover:bg-brand-600 disabled:opacity-70"
           >
             {isCreating ? <Loader2 className="animate-spin" /> : 'Crear Club'}
           </button>

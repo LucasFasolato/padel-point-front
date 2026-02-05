@@ -35,20 +35,20 @@ const getFileError = (file: File) => {
 
 function ProfileSkeleton() {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div className="rounded-3xl border border-border bg-surface p-8 shadow-sm">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-        <div className="h-24 w-24 rounded-full bg-slate-100 animate-pulse" />
+        <div className="h-24 w-24 animate-pulse rounded-full bg-surface2" />
         <div className="flex-1 space-y-3">
-          <div className="h-5 w-48 rounded bg-slate-100 animate-pulse" />
-          <div className="h-4 w-36 rounded bg-slate-100 animate-pulse" />
+          <div className="h-5 w-48 animate-pulse rounded bg-surface2" />
+          <div className="h-4 w-36 animate-pulse rounded bg-surface2" />
         </div>
       </div>
       <div className="mt-8 grid gap-4">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-12 rounded-xl bg-slate-100 animate-pulse" />
+          <div key={i} className="h-12 animate-pulse rounded-xl bg-surface2" />
         ))}
       </div>
-      <div className="mt-6 h-10 w-36 rounded-full bg-slate-100 animate-pulse" />
+      <div className="mt-6 h-10 w-36 animate-pulse rounded-full bg-surface2" />
     </div>
   );
 }
@@ -281,34 +281,34 @@ export default function ProfilePage() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-bg">
       <div className="mx-auto max-w-4xl px-6 py-16">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">Mi perfil</h1>
-          <p className="mt-2 text-slate-500">Actualizá tus datos para acelerar futuras reservas.</p>
+          <h1 className="text-2xl font-bold text-text">Mi perfil</h1>
+          <p className="mt-2 text-textMuted">Actualizá tus datos para acelerar futuras reservas.</p>
         </div>
 
         {!token ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-            <p className="text-slate-500">Iniciá sesión para ver tu perfil.</p>
+          <div className="rounded-3xl border border-border bg-surface p-10 text-center shadow-sm">
+            <p className="text-textMuted">Iniciá sesión para ver tu perfil.</p>
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/login"
-                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-600 transition-colors"
+                className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
               >
                 Iniciar sesión
               </Link>
-              <Link href="/" className="text-sm font-semibold text-slate-500 hover:text-slate-900">
+              <Link href="/" className="text-sm font-semibold text-textMuted hover:text-text">
                 Volver al inicio
               </Link>
             </div>
           </div>
         ) : sessionExpired ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-            <p className="text-slate-500">Sesión expirada.</p>
+          <div className="rounded-3xl border border-border bg-surface p-10 text-center shadow-sm">
+            <p className="text-textMuted">Sesión expirada.</p>
             <Link
               href="/login"
-              className="mt-6 inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-600 transition-colors"
+              className="mt-6 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
             >
               Volver a iniciar sesión
             </Link>
@@ -316,19 +316,19 @@ export default function ProfilePage() {
         ) : loading ? (
           <ProfileSkeleton />
         ) : error ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-            <p className="text-slate-500">{error}</p>
+          <div className="rounded-3xl border border-border bg-surface p-10 text-center shadow-sm">
+            <p className="text-textMuted">{error}</p>
             <button
               type="button"
               onClick={loadProfile}
-              className="mt-6 inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-600 transition-colors"
+              className="mt-6 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
             >
               Reintentar
             </button>
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+            <div className="rounded-3xl border border-border bg-surface p-8 shadow-sm">
               <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
                   <div className="relative">
@@ -339,27 +339,27 @@ export default function ProfilePage() {
                         className="h-24 w-24 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 text-xl font-bold text-slate-500">
+                      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-surface2 text-xl font-bold text-textMuted">
                         {initials}
                       </div>
                     )}
                     {avatarUploading && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-white/70 text-xs font-semibold text-slate-600">
+                      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-surface/70 text-xs font-semibold text-textMuted">
                         Subiendo...
                       </div>
                     )}
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900">Foto de perfil</h2>
-                    <p className="text-sm text-slate-500">
+                    <h2 className="text-lg font-bold text-text">Foto de perfil</h2>
+                    <p className="text-sm text-textMuted">
                       Subí una imagen clara para identificar tu cuenta.
                     </p>
                     {avatarError && (
-                      <p className="mt-2 text-xs text-red-500">{avatarError}</p>
+                      <p className="mt-2 text-xs text-danger">{avatarError}</p>
                     )}
                   </div>
                 </div>
-                <label className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
+                <label className="inline-flex items-center justify-center rounded-full border border-border bg-surface px-4 py-2 text-xs font-bold text-text transition-colors hover:bg-surface2">
                   {avatarUploading ? 'Subiendo...' : 'Cambiar avatar'}
                   <input
                     type="file"
@@ -377,10 +377,10 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+            <div className="rounded-3xl border border-border bg-surface p-8 shadow-sm">
               <div className="grid gap-5">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                  <label className="mb-1 block text-sm font-medium text-text">
                     Nombre visible
                   </label>
                   <input
@@ -388,15 +388,15 @@ export default function ProfilePage() {
                     value={form.displayName}
                     onChange={(e) => setForm((prev) => ({ ...prev, displayName: e.target.value }))}
                     placeholder="Tu nombre"
-                    className="w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="w-full rounded-xl border border-border bg-surface p-3 text-sm text-text outline-none focus:border-ring focus:ring-2 focus:ring-ring"
                   />
                   {fieldErrors.displayName && (
-                    <p className="mt-2 text-xs text-red-500">{fieldErrors.displayName}</p>
+                    <p className="mt-2 text-xs text-danger">{fieldErrors.displayName}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                  <label className="mb-1 block text-sm font-medium text-text">
                     Teléfono
                   </label>
                   <input
@@ -404,20 +404,20 @@ export default function ProfilePage() {
                     value={form.phone}
                     onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
                     placeholder="Ej: 11 2345 6789"
-                    className="w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="w-full rounded-xl border border-border bg-surface p-3 text-sm text-text outline-none focus:border-ring focus:ring-2 focus:ring-ring"
                   />
                   {fieldErrors.phone && (
-                    <p className="mt-2 text-xs text-red-500">{fieldErrors.phone}</p>
+                    <p className="mt-2 text-xs text-danger">{fieldErrors.phone}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+                  <label className="mb-1 block text-sm font-medium text-text">Email</label>
                   <input
                     type="email"
                     value={profile?.email ?? ''}
                     readOnly
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500"
+                    className="w-full rounded-xl border border-border bg-surface2 p-3 text-sm text-textMuted"
                   />
                 </div>
               </div>
@@ -427,12 +427,12 @@ export default function ProfilePage() {
                   type="button"
                   onClick={handleSave}
                   disabled={!hasChanges || saving}
-                  className="rounded-full bg-slate-900 px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-600 disabled:opacity-60"
+                  className="rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-60"
                 >
                   {saving ? 'Guardando...' : 'Guardar cambios'}
                 </button>
                 {!hasChanges && (
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-textMuted">
                     No hay cambios pendientes.
                   </span>
                 )}

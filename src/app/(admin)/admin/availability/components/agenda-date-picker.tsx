@@ -1,7 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { format, addDays, subDays, isToday, isTomorrow, isYesterday } from 'date-fns';
+import {
+  format,
+  addDays,
+  subDays,
+  isToday,
+  isTomorrow,
+  isYesterday,
+} from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Calendar, RefreshCw } from 'lucide-react';
 
@@ -32,62 +39,60 @@ export function AgendaDatePicker({
   };
 
   return (
-    <div className="flex items-center gap-2">
-      {/* Prev/Next buttons */}
-      <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm">
+    <div className="relative flex items-center gap-2">
+      {/* Prev/Next */}
+      <div className="flex items-center rounded-xl bg-surface ring-1 ring-border shadow-sm">
         <button
           onClick={goToPrevDay}
-          className="p-2.5 hover:bg-slate-50 rounded-l-xl border-r border-slate-200 transition-colors"
+          className="rounded-l-xl border-r border-border p-2.5 transition-colors hover:bg-surface2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg"
           title="Día anterior"
         >
-          <ChevronLeft size={20} className="text-slate-600" />
+          <ChevronLeft size={20} className="text-textMuted" />
         </button>
 
         <button
           onClick={() => setShowCalendar(!showCalendar)}
-          className="px-4 py-2.5 hover:bg-slate-50 flex items-center gap-2 min-w-[200px] justify-center transition-colors"
+          className="flex min-w-[200px] items-center justify-center gap-2 px-4 py-2.5 transition-colors hover:bg-surface2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg"
         >
-          <Calendar size={18} className="text-blue-600" />
-          <span className="font-bold text-slate-900 capitalize">
-            {getDateLabel()}
-          </span>
+          <Calendar size={18} className="text-primary" />
+          <span className="font-bold capitalize text-text">{getDateLabel()}</span>
         </button>
 
         <button
           onClick={goToNextDay}
-          className="p-2.5 hover:bg-slate-50 rounded-r-xl border-l border-slate-200 transition-colors"
+          className="rounded-r-xl border-l border-border p-2.5 transition-colors hover:bg-surface2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg"
           title="Día siguiente"
         >
-          <ChevronRight size={20} className="text-slate-600" />
+          <ChevronRight size={20} className="text-textMuted" />
         </button>
       </div>
 
-      {/* Today button */}
+      {/* Today */}
       {!isToday(selectedDate) && (
         <button
           onClick={goToToday}
-          className="px-4 py-2.5 bg-blue-50 text-blue-600 rounded-xl text-sm font-bold hover:bg-blue-100 transition-colors"
+          className="rounded-xl bg-primary/10 px-4 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/15 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg"
         >
           Ir a hoy
         </button>
       )}
 
-      {/* Refresh button */}
+      {/* Refresh */}
       <button
         onClick={onRefresh}
         disabled={loading}
-        className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors disabled:opacity-50"
+        className="rounded-xl bg-surface p-2.5 ring-1 ring-border shadow-sm transition-colors hover:bg-surface2 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg"
         title="Actualizar"
       >
         <RefreshCw
           size={20}
-          className={`text-slate-600 ${loading ? 'animate-spin' : ''}`}
+          className={`text-textMuted ${loading ? 'animate-spin' : ''}`}
         />
       </button>
 
-      {/* Native date input (hidden but functional) */}
+      {/* Native date input */}
       {showCalendar && (
-        <div className="absolute mt-2 top-full left-0 z-20">
+        <div className="absolute left-0 top-full z-20 mt-2">
           <input
             type="date"
             value={format(selectedDate, 'yyyy-MM-dd')}
@@ -97,7 +102,7 @@ export function AgendaDatePicker({
                 setShowCalendar(false);
               }
             }}
-            className="px-4 py-2 rounded-xl border border-slate-200 shadow-lg bg-white"
+            className="rounded-xl bg-surface px-4 py-2 text-sm text-text shadow-lg ring-1 ring-border outline-none focus:ring-2 focus:ring-ring"
             autoFocus
             onBlur={() => setTimeout(() => setShowCalendar(false), 200)}
           />

@@ -45,16 +45,16 @@ const statusLabels: Record<ReservationStatus, string> = {
 
 function ReservationSkeleton() {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-10 w-20 rounded-lg bg-slate-100 animate-pulse" />
+          <div className="h-10 w-20 animate-pulse rounded-lg bg-surface2" />
           <div className="space-y-2">
-            <div className="h-4 w-48 rounded bg-slate-100 animate-pulse" />
-            <div className="h-3 w-36 rounded bg-slate-100 animate-pulse" />
+            <div className="h-4 w-48 animate-pulse rounded bg-surface2" />
+            <div className="h-3 w-36 animate-pulse rounded bg-surface2" />
           </div>
         </div>
-        <div className="h-6 w-28 rounded-full bg-slate-100 animate-pulse" />
+        <div className="h-6 w-28 animate-pulse rounded-full bg-surface2" />
       </div>
     </div>
   );
@@ -134,6 +134,8 @@ export default function MyReservationsPage() {
     return `Mis reservas (${meta.total})`;
   }, [meta]);
 
+  const prevTotal = (current: { total: number } | null) => current?.total ?? items.length;
+
   const fetchReservations = async (page: number, mode: 'replace' | 'append') => {
     if (!token) return;
 
@@ -142,18 +144,15 @@ export default function MyReservationsPage() {
       setError(null);
       setSessionExpired(false);
       setForbidden(false);
+
       initialAbortRef.current?.abort();
       const controller = new AbortController();
       initialAbortRef.current = controller;
+
       try {
         const res = await api.get<ReservationsResponse>('/me/reservations', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          params: {
-            page,
-            limit: 10,
-          },
+          headers: { Authorization: `Bearer ${token}` },
+          params: { page, limit: 10 },
           signal: controller.signal,
         });
 
@@ -181,10 +180,9 @@ export default function MyReservationsPage() {
 
         setError('No pudimos cargar tus reservas.');
       } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        if (!controller.signal.aborted) setLoading(false);
       }
+
       return;
     }
 
@@ -195,13 +193,8 @@ export default function MyReservationsPage() {
 
     try {
       const res = await api.get<ReservationsResponse>('/me/reservations', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        params: {
-          page,
-          limit: meta?.limit ?? 10,
-        },
+        headers: { Authorization: `Bearer ${token}` },
+        params: { page, limit: meta?.limit ?? 10 },
         signal: controller.signal,
       });
 
@@ -229,13 +222,9 @@ export default function MyReservationsPage() {
 
       setError('No pudimos cargar tus reservas.');
     } finally {
-      if (!controller.signal.aborted) {
-        setLoadingMore(false);
-      }
+      if (!controller.signal.aborted) setLoadingMore(false);
     }
   };
-
-  const prevTotal = (current: { total: number } | null) => current?.total ?? items.length;
 
   useEffect(() => {
     return () => {
@@ -399,10 +388,7 @@ export default function MyReservationsPage() {
     const googleUrl = new URL('https://calendar.google.com/calendar/render');
     googleUrl.searchParams.set('action', 'TEMPLATE');
     googleUrl.searchParams.set('text', summary);
-    googleUrl.searchParams.set(
-      'dates',
-      `${dtStart.replace(/Z$/, '')}/${dtEnd.replace(/Z$/, '')}`,
-    );
+    googleUrl.searchParams.set('dates', `${dtStart.replace(/Z$/, '')}/${dtEnd.replace(/Z$/, '')}`);
     googleUrl.searchParams.set('details', description);
     googleUrl.searchParams.set('location', location);
 
@@ -441,17 +427,11 @@ export default function MyReservationsPage() {
       const res = await api.post<{ url?: string }>(
         `/me/reservations/${reservationId}/receipt-link`,
         {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       const url = res.data?.url;
-      if (!url) {
-        throw new Error('missing-url');
-      }
+      if (!url) throw new Error('missing-url');
       router.push(url);
     } catch (err: unknown) {
       if (typeof err === 'object' && err !== null && 'response' in err) {
@@ -498,15 +478,15 @@ export default function MyReservationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-bg">
       <div className="mx-auto max-w-5xl px-6 py-16">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">{headerText}</h1>
-          <p className="mt-2 text-slate-500">Revisá tu historial de reservas.</p>
+          <h1 className="text-2xl font-bold text-text">{headerText}</h1>
+          <p className="mt-2 text-textMuted">Revisá tu historial de reservas.</p>
         </div>
 
-        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1">
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-border bg-surface p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 rounded-full border border-border bg-surface2 p-1">
             {[
               { key: 'upcoming', label: 'Próximas' },
               { key: 'past', label: 'Pasadas' },
@@ -518,8 +498,8 @@ export default function MyReservationsPage() {
                 onClick={() => setViewFilter(option.key as ViewFilter)}
                 className={`rounded-full px-4 py-2 text-xs font-bold transition-colors ${
                   viewFilter === option.key
-                    ? 'bg-slate-900 text-white'
-                    : 'text-slate-500 hover:text-slate-900'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-textMuted hover:text-text'
                 }`}
                 aria-label={`Mostrar reservas ${option.label.toLowerCase()}`}
               >
@@ -533,40 +513,41 @@ export default function MyReservationsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar club o cancha"
-              className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:w-64"
+              className="w-full rounded-full border border-border bg-surface px-4 py-2 text-sm text-text outline-none transition-all focus:border-ring focus:ring-2 focus:ring-ring sm:w-64"
               aria-label="Buscar club o cancha"
             />
           </div>
         </div>
+
         {totalCount > 0 && (
-          <p className="mb-6 text-sm text-slate-500">
+          <p className="mb-6 text-sm text-textMuted">
             Mostrando {visibleCount} de {totalCount} reservas
           </p>
         )}
 
         {!token ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-            <p className="text-slate-500">Iniciá sesión para ver tus reservas.</p>
+          <div className="rounded-3xl border border-border bg-surface p-10 text-center shadow-sm">
+            <p className="text-textMuted">Iniciá sesión para ver tus reservas.</p>
             <Link
               href="/login"
-              className="mt-6 inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-600 transition-colors"
+              className="mt-6 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
             >
               Iniciar sesión
             </Link>
           </div>
         ) : sessionExpired ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-            <p className="text-slate-500">Sesión expirada.</p>
+          <div className="rounded-3xl border border-border bg-surface p-10 text-center shadow-sm">
+            <p className="text-textMuted">Sesión expirada.</p>
             <Link
               href="/login"
-              className="mt-6 inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-600 transition-colors"
+              className="mt-6 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
             >
               Volver a iniciar sesión
             </Link>
           </div>
         ) : forbidden ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-            <p className="text-slate-500">Tu cuenta no tiene permisos para ver esto.</p>
+          <div className="rounded-3xl border border-border bg-surface p-10 text-center shadow-sm">
+            <p className="text-textMuted">Tu cuenta no tiene permisos para ver esto.</p>
           </div>
         ) : loading ? (
           <div className="grid gap-4">
@@ -575,37 +556,37 @@ export default function MyReservationsPage() {
             ))}
           </div>
         ) : error ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-            <p className="text-slate-500">{error}</p>
+          <div className="rounded-3xl border border-border bg-surface p-10 text-center shadow-sm">
+            <p className="text-textMuted">{error}</p>
             <button
               type="button"
               onClick={() => fetchReservations(1, 'replace')}
-              className="mt-6 inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-600 transition-colors"
+              className="mt-6 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
             >
               Reintentar
             </button>
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+          <div className="rounded-3xl border border-border bg-surface p-10 text-center shadow-sm">
             {debouncedSearch ? (
               <>
-                <p className="text-slate-500">
+                <p className="text-textMuted">
                   No encontramos reservas que coincidan con tu búsqueda.
                 </p>
                 <button
                   type="button"
                   onClick={() => setSearch('')}
-                  className="mt-4 inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                  className="mt-4 inline-flex items-center justify-center rounded-full border border-border bg-surface px-4 py-2 text-xs font-bold text-text hover:bg-surface2"
                 >
                   Limpiar búsqueda
                 </button>
               </>
             ) : (
               <>
-                <p className="text-slate-500">{emptyMessage}</p>
+                <p className="text-textMuted">{emptyMessage}</p>
                 <Link
                   href="/"
-                  className="mt-6 inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-600 transition-colors"
+                  className="mt-6 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:opacity-90"
                 >
                   {emptyCta}
                 </Link>
@@ -628,23 +609,23 @@ export default function MyReservationsPage() {
                   }
                   role="button"
                   aria-expanded={expandedId === item.reservationId}
-                  className="w-full text-left rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:bg-slate-50"
+                  className="w-full rounded-2xl border border-border bg-surface p-5 text-left shadow-sm transition-colors hover:bg-surface2"
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
-                        <p className="text-xs font-semibold uppercase text-slate-500">
+                      <div className="rounded-xl border border-border bg-surface2 px-3 py-2 text-center">
+                        <p className="text-xs font-semibold uppercase text-textMuted">
                           {formatDate(item.startAt)}
                         </p>
-                        <p className="text-sm font-bold text-slate-900">
+                        <p className="text-sm font-bold text-text">
                           {formatTimeRange(item.startAt, item.endAt)}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-sm font-semibold text-text">
                           {item.clubName || 'Club sin nombre'}
                         </p>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-textMuted">
                           {item.courtName || 'Cancha por confirmar'}
                         </p>
                       </div>
@@ -652,18 +633,20 @@ export default function MyReservationsPage() {
 
                     <div className="flex flex-wrap items-center gap-3">
                       {amountLabel && (
-                        <span className="text-sm font-semibold text-slate-900">{amountLabel}</span>
+                        <span className="text-sm font-semibold text-text">{amountLabel}</span>
                       )}
-                      <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                      <span className="inline-flex items-center rounded-full border border-border bg-surface2 px-3 py-1 text-xs font-semibold text-textMuted">
                         {statusLabels[item.status] ?? item.status}
                       </span>
                     </div>
                   </div>
+
                   {expandedId === item.reservationId && (
                     <div className="mt-4 space-y-3">
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-textMuted">
                         ID de reserva: {item.reservationId}
                       </p>
+
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
@@ -671,32 +654,35 @@ export default function MyReservationsPage() {
                             event.stopPropagation();
                             copyText(shareText, item.reservationId, 'summary');
                           }}
-                          className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text transition-colors hover:bg-surface2"
                           aria-label="Copiar resumen de la reserva"
                         >
                           Copiar resumen
                         </button>
+
                         <a
                           href={whatsappUrl}
                           target="_blank"
                           rel="noreferrer"
                           onClick={(event) => event.stopPropagation()}
-                          className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text transition-colors hover:bg-surface2"
                           aria-label="Compartir reserva por WhatsApp"
                         >
                           Compartir por WhatsApp
                         </a>
+
                         <button
                           type="button"
                           onClick={(event) => {
                             event.stopPropagation();
                             copyText(item.reservationId, item.reservationId, 'id');
                           }}
-                          className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text transition-colors hover:bg-surface2"
                           aria-label="Copiar ID de la reserva"
                         >
                           Copiar ID
                         </button>
+
                         {item.status === 'CONFIRMED' && (
                           <button
                             type="button"
@@ -705,14 +691,13 @@ export default function MyReservationsPage() {
                               handleReceipt(item.reservationId);
                             }}
                             disabled={receiptLoadingId === item.reservationId}
-                            className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                            className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text transition-colors hover:bg-surface2 disabled:opacity-60"
                             aria-label="Ver comprobante de la reserva"
                           >
-                            {receiptLoadingId === item.reservationId
-                              ? 'Abriendo...'
-                              : 'Ver comprobante'}
+                            {receiptLoadingId === item.reservationId ? 'Abriendo...' : 'Ver comprobante'}
                           </button>
                         )}
+
                         {['CONFIRMED', 'PAYMENT_PENDING'].includes(item.status) && (
                           <>
                             <button
@@ -721,7 +706,7 @@ export default function MyReservationsPage() {
                                 event.stopPropagation();
                                 downloadCalendar(item);
                               }}
-                              className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                              className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text transition-colors hover:bg-surface2"
                               aria-label="Agregar la reserva al calendario"
                             >
                               Agregar al calendario
@@ -732,7 +717,7 @@ export default function MyReservationsPage() {
                                 target="_blank"
                                 rel="noreferrer"
                                 onClick={(event) => event.stopPropagation()}
-                                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text transition-colors hover:bg-surface2"
                                 aria-label="Abrir en Google Calendar"
                               >
                                 Google Calendar
@@ -740,6 +725,7 @@ export default function MyReservationsPage() {
                             )}
                           </>
                         )}
+
                         {['CONFIRMED', 'CANCELLED', 'EXPIRED'].includes(item.status) && (
                           <button
                             type="button"
@@ -747,22 +733,23 @@ export default function MyReservationsPage() {
                               event.stopPropagation();
                               handleRebook(item);
                             }}
-                            className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text transition-colors hover:bg-surface2"
                             aria-label="Reservar de nuevo esta cancha"
                           >
                             Reservar de nuevo
                           </button>
                         )}
+
                         {copiedId === item.reservationId && (
-                          <span className="text-xs text-slate-400">Copiado</span>
+                          <span className="text-xs text-textMuted">Copiado</span>
                         )}
                         {receiptInlineErrorId === item.reservationId && (
-                          <span className="text-xs text-slate-400">
+                          <span className="text-xs text-textMuted">
                             El comprobante todavía no está disponible.
                           </span>
                         )}
                         {calendarErrorId === item.reservationId && (
-                          <span className="text-xs text-slate-400">
+                          <span className="text-xs text-textMuted">
                             No pudimos generar el evento.
                           </span>
                         )}
@@ -779,7 +766,7 @@ export default function MyReservationsPage() {
                   type="button"
                   onClick={() => fetchReservations((meta?.page ?? 1) + 1, 'append')}
                   disabled={loadingMore}
-                  className="w-full rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                  className="w-full rounded-full border border-border bg-surface px-4 py-2 text-sm font-bold text-text transition-colors hover:bg-surface2 disabled:opacity-60"
                 >
                   {loadingMore ? 'Cargando...' : 'Cargar más'}
                 </button>

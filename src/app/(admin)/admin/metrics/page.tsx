@@ -174,7 +174,7 @@ export default function MetricsPage() {
   // Permission check
   if (user?.role !== 'ADMIN') {
     return (
-      <div className="flex h-96 flex-col items-center justify-center text-slate-400">
+      <div className="flex h-96 flex-col items-center justify-center text-textMuted">
         <AlertTriangle size={48} className="mb-4 opacity-50" />
         <p className="text-sm">No tenés permisos para ver esta sección.</p>
         <Link
@@ -190,7 +190,7 @@ export default function MetricsPage() {
   // No club selected
   if (!activeClub) {
     return (
-      <div className="flex h-96 flex-col items-center justify-center text-slate-400">
+      <div className="flex h-96 flex-col items-center justify-center text-textMuted">
         <BarChart3 size={48} className="mb-4 opacity-50" />
         <p className="text-sm">Seleccioná un club en el Dashboard para ver métricas.</p>
         <Link
@@ -204,40 +204,40 @@ export default function MetricsPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="mx-auto max-w-6xl space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Link
             href="/admin/dashboard"
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-textMuted hover:bg-surface2 hover:text-text"
           >
             <ArrowLeft size={20} />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Métricas</h1>
-            <p className="text-slate-500">{activeClub.nombre}</p>
+            <h1 className="text-2xl font-bold text-text">Métricas</h1>
+            <p className="text-textMuted">{activeClub.nombre}</p>
           </div>
         </div>
 
         {/* Month Selector */}
-        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-surface p-1 shadow-sm">
           <button
             onClick={goToPrevMonth}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-textMuted hover:bg-surface2"
           >
             <ChevronLeft size={20} />
           </button>
           <div className="flex items-center gap-2 px-3">
-            <Calendar size={16} className="text-slate-400" />
-            <span className="min-w-[140px] text-center font-semibold text-slate-700 capitalize">
+            <Calendar size={16} className="text-textMuted" />
+            <span className="min-w-[140px] text-center font-semibold text-text capitalize">
               {monthLabel}
             </span>
           </div>
           <button
             onClick={goToNextMonth}
             disabled={!canGoNext}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-textMuted hover:bg-surface2 disabled:cursor-not-allowed disabled:opacity-30"
           >
             <ChevronRight size={20} />
           </button>
@@ -246,7 +246,7 @@ export default function MetricsPage() {
 
       {/* Error State */}
       {metrics.error && (
-        <div className="rounded-xl bg-red-50 border border-red-100 p-4 flex items-center gap-3 text-sm text-red-600">
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-danger/10 p-4 text-sm text-danger">
           <AlertTriangle size={18} />
           {metrics.error}
         </div>
@@ -255,7 +255,7 @@ export default function MetricsPage() {
       {/* Loading State */}
       {metrics.loading && (
         <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       )}
 
@@ -263,47 +263,47 @@ export default function MetricsPage() {
       {!metrics.loading && !metrics.error && (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <SummaryCard
               label="Ingresos totales"
               value={formatCurrency(metrics.revenue?.totalRevenue ?? 0)}
               icon={DollarSign}
-              color="text-green-600"
-              bg="bg-green-50"
+              color="text-success"
+              bg="bg-success/10"
             />
             <SummaryCard
               label="Reservas confirmadas"
               value={String(metrics.revenue?.confirmedCount ?? 0)}
               icon={Trophy}
-              color="text-blue-600"
-              bg="bg-blue-50"
+              color="text-primary"
+              bg="bg-primary/10"
             />
             <SummaryCard
               label="Ocupación promedio"
               value={`${metrics.occupancy?.totals.occupancyPct ?? 0}%`}
               icon={Percent}
-              color="text-purple-600"
-              bg="bg-purple-50"
+              color="text-brand-700"
+              bg="bg-brand-100"
             />
             <SummaryCard
               label="Horas ocupadas"
               value={`${Math.round((metrics.occupancy?.totals.occupiedMinutes ?? 0) / 60)}h`}
               icon={Clock}
-              color="text-orange-600"
-              bg="bg-orange-50"
+              color="text-warning"
+              bg="bg-warning/10"
             />
           </div>
 
           {/* Revenue by Court */}
           {metrics.revenue && metrics.revenue.byCourt.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-50 text-green-600">
+            <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success">
                   <TrendingUp size={20} />
                 </div>
                 <div>
-                  <h2 className="font-bold text-slate-900">Ingresos por cancha</h2>
-                  <p className="text-sm text-slate-500">Desglose del mes</p>
+                  <h2 className="font-bold text-text">Ingresos por cancha</h2>
+                  <p className="text-sm text-textMuted">Desglose del mes</p>
                 </div>
               </div>
 
@@ -315,17 +315,15 @@ export default function MetricsPage() {
                   return (
                     <div key={court.courtId} className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium text-slate-700">{court.courtName}</span>
+                        <span className="font-medium text-text">{court.courtName}</span>
                         <div className="flex items-center gap-3">
-                          <span className="text-slate-500">{court.count} reservas</span>
-                          <span className="font-bold text-slate-900">
-                            {formatCurrency(court.revenue)}
-                          </span>
+                          <span className="text-textMuted">{court.count} reservas</span>
+                          <span className="font-bold text-text">{formatCurrency(court.revenue)}</span>
                         </div>
                       </div>
-                      <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-surface2">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-green-400 to-emerald-500 transition-all duration-500"
+                          className="h-full rounded-full bg-primary transition-all duration-500"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -338,14 +336,14 @@ export default function MetricsPage() {
 
           {/* Occupancy by Court */}
           {metrics.occupancy && metrics.occupancy.byCourt.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+            <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
                   <Activity size={20} />
                 </div>
                 <div>
-                  <h2 className="font-bold text-slate-900">Ocupación por cancha</h2>
-                  <p className="text-sm text-slate-500">Porcentaje de uso vs disponibilidad</p>
+                  <h2 className="font-bold text-text">Ocupación por cancha</h2>
+                  <p className="text-sm text-textMuted">Porcentaje de uso vs disponibilidad</p>
                 </div>
               </div>
 
@@ -353,24 +351,24 @@ export default function MetricsPage() {
                 {metrics.occupancy.byCourt.map((court) => (
                   <div key={court.courtId} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-slate-700">{court.courtName}</span>
+                      <span className="font-medium text-text">{court.courtName}</span>
                       <div className="flex items-center gap-3">
-                        <span className="text-slate-500">
-                          {Math.round(court.occupiedMinutes / 60)}h /{' '}
-                          {Math.round(court.bookableMinutes / 60)}h
+                        <span className="text-textMuted">
+                          {Math.round(court.occupiedMinutes / 60)}h / {Math.round(court.bookableMinutes / 60)}h
                         </span>
-                        <span className="font-bold text-slate-900">{court.occupancyPct}%</span>
+                        <span className="font-bold text-text">{court.occupancyPct}%</span>
                       </div>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-surface2">
                       <div
                         className={cn(
                           'h-full rounded-full transition-all duration-500',
                           court.occupancyPct >= 70
-                            ? 'bg-gradient-to-r from-purple-400 to-violet-500'
+                            ? 'bg-success'
                             : court.occupancyPct >= 40
-                            ? 'bg-gradient-to-r from-blue-400 to-indigo-500'
-                            : 'bg-gradient-to-r from-slate-300 to-slate-400'
+                            ? 'bg-primary'
+                            : 'bg-slate-300'
                         )}
                         style={{ width: `${court.occupancyPct}%` }}
                       />
@@ -383,14 +381,14 @@ export default function MetricsPage() {
 
           {/* Peak Hours */}
           {metrics.peakHours && metrics.peakHours.top.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+            <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-warning/10 text-warning">
                   <Clock size={20} />
                 </div>
                 <div>
-                  <h2 className="font-bold text-slate-900">Horarios más demandados</h2>
-                  <p className="text-sm text-slate-500">Top 10 del mes</p>
+                  <h2 className="font-bold text-text">Horarios más demandados</h2>
+                  <p className="text-sm text-textMuted">Top 10 del mes</p>
                 </div>
               </div>
 
@@ -398,21 +396,19 @@ export default function MetricsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100">
-                      <th className="pb-3 text-left font-semibold text-slate-500">Día</th>
-                      <th className="pb-3 text-left font-semibold text-slate-500">Hora</th>
-                      <th className="pb-3 text-right font-semibold text-slate-500">Reservas</th>
-                      <th className="pb-3 text-right font-semibold text-slate-500">Ingresos</th>
+                      <th className="pb-3 text-left font-semibold text-textMuted">Día</th>
+                      <th className="pb-3 text-left font-semibold text-textMuted">Hora</th>
+                      <th className="pb-3 text-right font-semibold text-textMuted">Reservas</th>
+                      <th className="pb-3 text-right font-semibold text-textMuted">Ingresos</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {metrics.peakHours.top.slice(0, 10).map((row, idx) => (
-                      <tr key={`${row.dow}-${row.time}-${idx}`} className="hover:bg-slate-50/50">
-                        <td className="py-3 font-medium text-slate-700">{row.weekday}</td>
-                        <td className="py-3 text-slate-600">{row.time}</td>
-                        <td className="py-3 text-right font-semibold text-slate-900">
-                          {row.count}
-                        </td>
-                        <td className="py-3 text-right font-semibold text-green-600">
+                      <tr key={`${row.dow}-${row.time}-${idx}`} className="hover:bg-surface2/60">
+                        <td className="py-3 font-medium text-text">{row.weekday}</td>
+                        <td className="py-3 text-textMuted">{row.time}</td>
+                        <td className="py-3 text-right font-semibold text-text">{row.count}</td>
+                        <td className="py-3 text-right font-semibold text-success">
                           {formatCurrency(row.revenue)}
                         </td>
                       </tr>
@@ -426,12 +422,10 @@ export default function MetricsPage() {
           {/* Empty State */}
           {(!metrics.revenue || metrics.revenue.byCourt.length === 0) &&
             (!metrics.occupancy || metrics.occupancy.byCourt.length === 0) && (
-              <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
-                <BarChart3 size={48} className="mx-auto mb-4 text-slate-300" />
-                <h3 className="text-lg font-bold text-slate-700">Sin datos para este mes</h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  No hay reservas confirmadas en {monthLabel}.
-                </p>
+              <div className="rounded-2xl border-2 border-dashed border-border bg-surface2 p-12 text-center">
+                <BarChart3 size={48} className="mx-auto mb-4 text-textMuted opacity-60" />
+                <h3 className="text-lg font-bold text-text">Sin datos para este mes</h3>
+                <p className="mt-1 text-sm text-textMuted">No hay reservas confirmadas en {monthLabel}.</p>
               </div>
             )}
         </>
@@ -454,13 +448,13 @@ function SummaryCard({
   bg: string;
 }) {
   return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-      <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${bg} ${color}`}>
+    <div className="flex items-center gap-4 rounded-2xl border border-border bg-surface p-6 shadow-sm">
+      <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${bg} ${color}`}>
         <Icon size={24} />
       </div>
       <div>
-        <p className="text-sm font-medium text-slate-500">{label}</p>
-        <h3 className="text-2xl font-bold text-slate-900">{value}</h3>
+        <p className="text-sm font-medium text-textMuted">{label}</p>
+        <h3 className="text-2xl font-bold text-text">{value}</h3>
       </div>
     </div>
   );

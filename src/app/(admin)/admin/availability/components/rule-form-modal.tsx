@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { X, Plus, Loader2, AlertTriangle } from 'lucide-react';
 import { DAYS_OF_WEEK } from '@/types/availability';
 import type { Court } from '@/types';
@@ -36,50 +36,54 @@ export function RuleFormModal({
   saving,
 }: RuleFormModalProps) {
   const [courtId, setCourtId] = useState(selectedCourtId || '');
-  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Mon-Fri default
+  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Lun-Vie
   const [horaInicio, setHoraInicio] = useState('09:00');
   const [horaFin, setHoraFin] = useState('21:00');
   const [slotMinutos, setSlotMinutos] = useState(60);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  // ✅ reset “sano” cada vez que se abre o cambia el preselect
+  useEffect(() => {
+    if (!isOpen) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCourtId(selectedCourtId || '');
+    setSelectedDays([1, 2, 3, 4, 5]);
+    setHoraInicio('09:00');
+    setHoraFin('21:00');
+    setSlotMinutos(60);
+    setError(null);
+  }, [isOpen, selectedCourtId]);
 
   const toggleDay = (day: number) => {
     setSelectedDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
     );
   };
 
-  const selectAllDays = () => {
-    setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
-  };
+  const selectAllDays = () => setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
+  const selectWeekdays = () => setSelectedDays([1, 2, 3, 4, 5]);
+  const selectWeekend = () => setSelectedDays([0, 6]);
 
-  const selectWeekdays = () => {
-    setSelectedDays([1, 2, 3, 4, 5]);
-  };
+  const previewDaysLabel = useMemo(() => {
+    if (selectedDays.length === 0) return '';
+    return selectedDays
+      .slice()
+      .sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b))
+      .map((d) => DAYS_OF_WEEK.find((day) => day.value === d)?.short)
+      .filter(Boolean)
+      .join(', ');
+  }, [selectedDays]);
 
-  const selectWeekend = () => {
-    setSelectedDays([0, 6]);
-  };
+  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!courtId) {
-      setError('Seleccioná una cancha');
-      return;
-    }
-
-    if (selectedDays.length === 0) {
-      setError('Seleccioná al menos un día');
-      return;
-    }
-
-    if (horaInicio >= horaFin) {
-      setError('La hora de fin debe ser mayor a la de inicio');
-      return;
-    }
+    if (!courtId) return setError('Seleccioná una cancha');
+    if (selectedDays.length === 0) return setError('Seleccioná al menos un día');
+    if (horaInicio >= horaFin)
+      return setError('La hora de fin debe ser mayor a la de inicio');
 
     const result = await onSubmit({
       courtId,
@@ -91,15 +95,10 @@ export function RuleFormModal({
 
     if (!result.ok) {
       setError(result.error ?? 'Error al guardar');
-    } else {
-      // Reset and close
-      setSelectedDays([1, 2, 3, 4, 5]);
-      setHoraInicio('09:00');
-      setHoraFin('21:00');
-      setSlotMinutos(60);
-      setError(null);
-      onClose();
+      return;
     }
+
+    onClose();
   };
 
   const handleClose = () => {
@@ -113,45 +112,54 @@ export function RuleFormModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={handleClose}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+      <div className="relative mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-surface shadow-2xl ring-1 ring-border">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface p-4">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center">
-              <Plus size={20} className="text-blue-600" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface2 ring-1 ring-border">
+              <Plus size={20} className="text-primary" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900">Agregar horarios</h3>
-              <p className="text-xs text-slate-500">Define cuándo está disponible la cancha</p>
+              <h3 className="font-bold text-text">Agregar horarios</h3>
+              <p className="text-xs text-textMuted">
+                Definí cuándo está disponible la cancha
+              </p>
             </div>
           </div>
+
           <button
             onClick={handleClose}
             disabled={saving}
-            className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
+            className="rounded-lg p-2 text-textMuted transition-colors hover:bg-surface2 hover:text-text
+                       focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg
+                       disabled:opacity-50"
+            aria-label="Cerrar"
+            title="Cerrar"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="p-4 space-y-5">
-          {/* Court selector (only if not preselected) */}
+        <form onSubmit={handleSubmit} className="space-y-5 p-4">
+          {/* Court selector */}
           {!selectedCourtId && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="mb-2 block text-sm font-medium text-textMuted/90">
                 Cancha
               </label>
               <select
                 value={courtId}
                 onChange={(e) => setCourtId(e.target.value)}
                 disabled={saving}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none transition
+                           focus:border-primary focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg
+                           disabled:bg-surface2"
               >
                 <option value="">Seleccionar cancha...</option>
                 {courts.map((court) => (
@@ -163,59 +171,63 @@ export function RuleFormModal({
             </div>
           )}
 
-          {/* Days selection */}
+          {/* Days */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-slate-700">
+            <div className="mb-2 flex items-center justify-between">
+              <label className="block text-sm font-medium text-textMuted/90">
                 Días de la semana
               </label>
+
               <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={selectWeekdays}
-                  className="px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                >
-                  L-V
-                </button>
-                <button
-                  type="button"
-                  onClick={selectWeekend}
-                  className="px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                >
-                  S-D
-                </button>
-                <button
-                  type="button"
-                  onClick={selectAllDays}
-                  className="px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                >
-                  Todos
-                </button>
+                {[
+                  { label: 'L-V', onClick: selectWeekdays },
+                  { label: 'S-D', onClick: selectWeekend },
+                  { label: 'Todos', onClick: selectAllDays },
+                ].map((b) => (
+                  <button
+                    key={b.label}
+                    type="button"
+                    onClick={b.onClick}
+                    disabled={saving}
+                    className="rounded-lg px-2 py-1 text-xs font-semibold text-primary transition-colors
+                               hover:bg-surface2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg
+                               disabled:opacity-50"
+                  >
+                    {b.label}
+                  </button>
+                ))}
               </div>
             </div>
+
             <div className="flex flex-wrap gap-2">
-              {DAYS_OF_WEEK.map((day) => (
-                <button
-                  key={day.value}
-                  type="button"
-                  onClick={() => toggleDay(day.value)}
-                  disabled={saving}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                    selectedDays.includes(day.value)
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  } disabled:opacity-50`}
-                >
-                  {day.short}
-                </button>
-              ))}
+              {DAYS_OF_WEEK.map((day) => {
+                const active = selectedDays.includes(day.value);
+                return (
+                  <button
+                    key={day.value}
+                    type="button"
+                    onClick={() => toggleDay(day.value)}
+                    disabled={saving}
+                    className={[
+                      'rounded-xl px-4 py-2 text-sm font-semibold transition-all',
+                      'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg',
+                      'disabled:opacity-50',
+                      active
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'bg-surface2 text-textMuted hover:bg-surface2/80 ring-1 ring-border',
+                    ].join(' ')}
+                  >
+                    {day.short}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Time range */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="mb-2 block text-sm font-medium text-textMuted/90">
                 Hora inicio
               </label>
               <input
@@ -223,11 +235,14 @@ export function RuleFormModal({
                 value={horaInicio}
                 onChange={(e) => setHoraInicio(e.target.value)}
                 disabled={saving}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none transition
+                           focus:border-primary focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg
+                           disabled:bg-surface2"
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="mb-2 block text-sm font-medium text-textMuted/90">
                 Hora fin
               </label>
               <input
@@ -235,49 +250,53 @@ export function RuleFormModal({
                 value={horaFin}
                 onChange={(e) => setHoraFin(e.target.value)}
                 disabled={saving}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none transition
+                           focus:border-primary focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg
+                           disabled:bg-surface2"
               />
             </div>
           </div>
 
           {/* Slot duration */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="mb-2 block text-sm font-medium text-textMuted/90">
               Duración de cada turno
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {SLOT_DURATIONS.map((duration) => (
-                <button
-                  key={duration.value}
-                  type="button"
-                  onClick={() => setSlotMinutos(duration.value)}
-                  disabled={saving}
-                  className={`px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                    slotMinutos === duration.value
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  } disabled:opacity-50`}
-                >
-                  {duration.label}
-                </button>
-              ))}
+              {SLOT_DURATIONS.map((duration) => {
+                const active = slotMinutos === duration.value;
+                return (
+                  <button
+                    key={duration.value}
+                    type="button"
+                    onClick={() => setSlotMinutos(duration.value)}
+                    disabled={saving}
+                    className={[
+                      'rounded-xl px-4 py-3 text-sm font-semibold transition-all',
+                      'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg',
+                      'disabled:opacity-50',
+                      active
+                        ? 'bg-text text-white'
+                        : 'bg-surface2 text-textMuted hover:bg-surface2/80 ring-1 ring-border',
+                    ].join(' ')}
+                  >
+                    {duration.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Preview */}
-          <div className="rounded-xl bg-blue-50 p-4 border border-blue-100">
-            <p className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-2">
+          <div className="rounded-xl border border-border bg-surface2 p-4">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-textMuted">
               Vista previa
             </p>
-            <p className="text-sm text-blue-900">
+
+            <p className="text-sm text-text">
               {selectedDays.length > 0 ? (
                 <>
-                  <span className="font-bold">
-                    {selectedDays
-                      .sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b))
-                      .map((d) => DAYS_OF_WEEK.find((day) => day.value === d)?.short)
-                      .join(', ')}
-                  </span>
+                  <span className="font-bold">{previewDaysLabel}</span>
                   {' de '}
                   <span className="font-bold">{horaInicio}</span>
                   {' a '}
@@ -293,7 +312,7 @@ export function RuleFormModal({
 
           {/* Error */}
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-100 text-sm text-red-600">
+            <div className="flex items-center gap-2 rounded-xl border border-danger/20 bg-danger/10 p-3 text-sm text-danger">
               <AlertTriangle size={16} />
               {error}
             </div>
@@ -305,14 +324,19 @@ export function RuleFormModal({
               type="button"
               onClick={handleClose}
               disabled={saving}
-              className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              className="flex-1 rounded-xl border border-border bg-surface px-4 py-3 text-sm font-bold text-textMuted transition-colors
+                         hover:bg-surface2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg
+                         disabled:opacity-50"
             >
               Cancelar
             </button>
+
             <button
               type="submit"
               disabled={saving || selectedDays.length === 0}
-              className="flex-1 px-4 py-3 rounded-xl bg-blue-600 text-sm font-bold text-white hover:bg-blue-500 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white transition-colors
+                         hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-bg
+                         disabled:opacity-70"
             >
               {saving ? (
                 <>
