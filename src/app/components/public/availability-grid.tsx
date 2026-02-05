@@ -158,7 +158,7 @@ export function AvailabilityGrid({
               </div>
 
               {/* Legend (desktop only) */}
-              <div className="hidden items-center gap-4 text-[10px] text-slate-400 sm:flex">
+              <div className="hidden items-center gap-4 text-[11px] text-slate-400 sm:flex">
                 <span className="inline-flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-emerald-400" />
                   Disponible
@@ -212,12 +212,12 @@ export function AvailabilityGrid({
 
                       // Held state
                       isHeld &&
-                        'border-blue-400 bg-blue-50 shadow-md shadow-blue-500/10 ring-2 ring-blue-400/30',
+                        'border-emerald-400 bg-emerald-50 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-400/30',
 
                       // Selected (not held yet)
                       isSelected &&
                         !isHeld &&
-                        'border-blue-500 bg-blue-50/50 ring-2 ring-blue-500/20',
+                        'border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-500/20',
 
                       // Locked
                       !isSelected &&
@@ -240,7 +240,7 @@ export function AvailabilityGrid({
                       <motion.div
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="absolute -right-1 -top-1 flex items-center gap-1 rounded-full bg-blue-600 px-2 py-0.5 text-[9px] font-bold text-white shadow-lg"
+                        className="absolute -right-1 -top-1 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[9px] font-bold text-white shadow-lg"
                       >
                         <Timer size={10} />
                         {typeof secondsLeft === 'number' ? formatMMSS(Math.max(0, secondsLeft)) : '✓'}
@@ -252,7 +252,7 @@ export function AvailabilityGrid({
                       <motion.div
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg"
+                        className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg"
                       >
                         <Check size={12} strokeWidth={3} />
                       </motion.div>
@@ -262,8 +262,8 @@ export function AvailabilityGrid({
                     <span
                       className={cn(
                         'text-lg font-bold tracking-tight transition-colors',
-                        isHeld && 'text-blue-700',
-                        isSelected && !isHeld && 'text-blue-600',
+                        isHeld && 'text-emerald-700',
+                        isSelected && !isHeld && 'text-emerald-600',
                         !isSelected && locked && 'text-slate-400',
                         !isSelected && !locked && 'text-slate-700 group-hover:text-emerald-600'
                       )}
@@ -272,7 +272,7 @@ export function AvailabilityGrid({
                     </span>
 
                     {/* Subtext */}
-                    <span className="mt-0.5 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider">
+                    <span className="mt-0.5 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider">
                       {locked ? (
                         <span className="flex items-center gap-1 text-slate-400">
                           <Lock size={9} />
@@ -282,8 +282,8 @@ export function AvailabilityGrid({
                         <span
                           className={cn(
                             'transition-colors',
-                            isHeld && 'font-semibold text-blue-600',
-                            isSelected && !isHeld && 'text-blue-500',
+                            isHeld && 'font-semibold text-emerald-600',
+                            isSelected && !isHeld && 'text-emerald-500',
                             !isSelected && 'text-slate-500 group-hover:text-emerald-500'
                           )}
                         >

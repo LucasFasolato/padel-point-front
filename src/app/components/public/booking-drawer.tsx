@@ -512,7 +512,7 @@ export function BookingDrawer() {
               {/* Header */}
               <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 pb-4 pt-4 md:px-6 md:pt-5">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-600">
                     Reserva
                   </p>
                   <h3 id="booking-drawer-title" className="mt-1 text-xl font-bold text-slate-900">
@@ -524,7 +524,7 @@ export function BookingDrawer() {
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={closeDrawer}
-                  className="mt-1 rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                  className="mt-1 rounded-full p-2.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
                   aria-label="Cerrar"
                 >
                   <X size={20} />
@@ -557,7 +557,7 @@ export function BookingDrawer() {
                               <Calendar size={14} className="text-slate-500" />
                             </div>
                             <div>
-                              <p className="text-[10px] font-semibold uppercase text-slate-400">Día</p>
+                              <p className="text-[11px] font-semibold uppercase text-slate-400">Día</p>
                               <p className="text-sm font-semibold capitalize text-slate-900">
                                 {resumen.dateLabelShort}
                               </p>
@@ -568,7 +568,7 @@ export function BookingDrawer() {
                               <Clock size={14} className="text-slate-500" />
                             </div>
                             <div>
-                              <p className="text-[10px] font-semibold uppercase text-slate-400">Horario</p>
+                              <p className="text-[11px] font-semibold uppercase text-slate-400">Horario</p>
                               <p className="text-sm font-semibold text-slate-900">
                                 {resumen.start} – {resumen.end}
                               </p>
@@ -740,7 +740,7 @@ export function BookingDrawer() {
                           <button
                             type="button"
                             onClick={() => router.push('/login')}
-                            className="font-semibold text-blue-600 hover:text-blue-500 hover:underline"
+                            className="font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
                           >
                             Iniciá sesión
                           </button>{' '}
