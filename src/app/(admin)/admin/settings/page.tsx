@@ -7,6 +7,8 @@ import api from '@/lib/api';
 import { MediaService } from '@/lib/media-service';
 import MediaUploader from '@/app/components/admin/media-uploader';
 import { MediaKind, MediaOwnerType, type MediaAsset } from '@/types';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
 
 export default function SettingsPage() {
   const { activeClub, setActiveClub, fetchMyClubs } = useClubStore();
@@ -145,64 +147,47 @@ export default function SettingsPage() {
 
           <form onSubmit={handleSave} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">Nombre del Club</label>
-                    <input 
-                        type="text" 
-                        required
-                        className="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-                        value={form.nombre}
-                        onChange={e => setForm({...form, nombre: e.target.value})}
-                    />
-                </div>
+                <Input
+                    label="Nombre del Club"
+                    type="text"
+                    required
+                    value={form.nombre}
+                    onChange={e => setForm({...form, nombre: e.target.value})}
+                />
 
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                        <MapPin size={14}/> Dirección
-                    </label>
-                    <input 
-                        type="text" 
-                        required
-                        className="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-                        value={form.direccion}
-                        onChange={e => setForm({...form, direccion: e.target.value})}
-                    />
-                </div>
+                <Input
+                    label="Dirección"
+                    type="text"
+                    required
+                    value={form.direccion}
+                    onChange={e => setForm({...form, direccion: e.target.value})}
+                />
 
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                        <Phone size={14}/> Teléfono
-                    </label>
-                    <input 
-                        type="tel" 
-                        className="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-                        value={form.telefono}
-                        onChange={e => setForm({...form, telefono: e.target.value})}
-                    />
-                </div>
+                <Input
+                    label="Teléfono"
+                    type="tel"
+                    value={form.telefono}
+                    onChange={e => setForm({...form, telefono: e.target.value})}
+                />
 
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                        <Mail size={14}/> Email de Contacto
-                    </label>
-                    <input 
-                        type="email" 
-                        className="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-                        value={form.email}
-                        onChange={e => setForm({...form, email: e.target.value})}
-                    />
-                </div>
+                <Input
+                    label="Email de Contacto"
+                    type="email"
+                    value={form.email}
+                    onChange={e => setForm({...form, email: e.target.value})}
+                />
             </div>
 
             <div className="pt-4 flex justify-end">
-                <button 
-                    type="submit" 
-                    disabled={loading}
-                    className="flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 font-bold text-white transition-all hover:bg-blue-600 hover:shadow-lg disabled:opacity-70 active:scale-95"
+                <Button
+                    type="submit"
+                    variant="primary"
+                    size="md"
+                    loading={loading}
                 >
-                    {loading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+                    {!loading && <Save size={20} />}
                     Guardar Cambios
-                </button>
+                </Button>
             </div>
           </form>
         </div>
@@ -262,12 +247,14 @@ export default function SettingsPage() {
                     <p className="mt-1 text-sm text-red-700/80">
                         Si eliminas el club, se borrarán todas las canchas, reservas y el historial de miembros. Esta acción no se puede deshacer.
                     </p>
-                    <button 
-                        className="mt-4 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                    <Button
+                        variant="danger"
+                        size="sm"
                         onClick={() => alert('Para eliminar un club, contacta a soporte por ahora.')}
+                        className="mt-4"
                     >
                         Eliminar Club
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { MapPin, ArrowRight, Star } from 'lucide-react';
 import { Club } from '@/types';
+import { Badge } from './ui/badge';
 
 interface Props {
   club: Club;
@@ -24,26 +25,22 @@ export default function ClubCard({ club }: Props) {
         </div>
         
         {/* Badge de "Popular" (Fake para diseño) */}
-        <div className="absolute top-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-xs font-bold text-slate-900 shadow-sm flex items-center gap-1">
-            <Star size={10} className="fill-yellow-400 text-yellow-400"/> 4.8
+        <div className="absolute top-3 right-3 z-20 rounded-full bg-white/95 backdrop-blur-sm px-2.5 py-1 text-xs font-semibold text-slate-900 shadow-md flex items-center gap-1">
+            <Star size={11} className="fill-amber-400 text-amber-400"/> 4.8
         </div>
       </div>
 
       {/* Contenido */}
       <div className="flex flex-1 flex-col p-4">
         <div className="mb-4 flex gap-2">
-            <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                Padel
-            </span>
-            <span className="inline-flex items-center rounded-md bg-slate-50 px-2 py-1 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-500/10">
-                Bar
-            </span>
+            <Badge variant="emerald">Padel</Badge>
+            <Badge variant="neutral">Bar</Badge>
         </div>
 
         <div className="mt-auto pt-4 border-t border-slate-100">
-            <Link 
-                href={`/club/${club.id}`} 
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-600"
+            <Link
+                href={`/club/${club.id}`}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white transition-all hover:bg-emerald-700 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 min-h-[44px]"
             >
                 Reservar Ahora <ArrowRight size={16} />
             </Link>

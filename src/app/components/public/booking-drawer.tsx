@@ -27,6 +27,9 @@ import { useBookingStore } from '@/store/booking-store';
 import { useAuthStore } from '@/store/auth-store';
 import type { AvailabilitySlot, CreateHoldRequest } from '@/types';
 import api from '@/lib/api';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
+import { Alert } from '@/app/components/ui/alert';
 
 type SelectedSlotRef = {
   courtId: string;
@@ -698,68 +701,37 @@ export function BookingDrawer() {
                     </AnimatePresence>
 
                     {/* Name */}
-                    <div>
-                      <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                        Nombre <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        value={nombre}
-                        onChange={(e) => setNombre(e.target.value)}
-                        placeholder="Ej: Lucas"
-                        disabled={isCreatingHold}
-                        className={cn(
-                          'h-12 w-full rounded-xl border bg-white px-4 text-sm text-slate-900 outline-none transition-all',
-                          'placeholder:text-slate-400',
-                          nombreOk || !nombre.trim()
-                            ? 'border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10'
-                            : 'border-rose-300 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10'
-                        )}
-                      />
-                      {!nombreOk && nombre.trim() && (
-                        <p className="mt-1 text-[11px] text-rose-500">Mínimo 2 caracteres.</p>
-                      )}
-                    </div>
+                    <Input
+                      label="Nombre"
+                      value={nombre}
+                      onChange={(e) => setNombre(e.target.value)}
+                      placeholder="Ej: Lucas"
+                      disabled={isCreatingHold}
+                      error={!nombreOk && nombre.trim() ? 'Mínimo 2 caracteres.' : undefined}
+                      required
+                    />
 
                     {/* Email */}
-                    <div>
-                      <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                        Email <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="tu@email.com"
-                        disabled={isCreatingHold}
-                        className={cn(
-                          'h-12 w-full rounded-xl border bg-white px-4 text-sm text-slate-900 outline-none transition-all',
-                          'placeholder:text-slate-400',
-                          emailOk || !email.trim()
-                            ? 'border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10'
-                            : 'border-rose-300 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10'
-                        )}
-                      />
-                      {email.trim() && !emailOk && (
-                        <p className="mt-1 text-[11px] text-rose-500">Ingresá un email válido.</p>
-                      )}
-                      {!email.trim() && (
-                        <p className="mt-1 text-[11px] text-slate-400">Te enviaremos la confirmación.</p>
-                      )}
-                    </div>
+                    <Input
+                      label="Email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="tu@email.com"
+                      disabled={isCreatingHold}
+                      error={email.trim() && !emailOk ? 'Ingresá un email válido.' : undefined}
+                      hint={!email.trim() ? 'Te enviaremos la confirmación.' : undefined}
+                      required
+                    />
 
                     {/* Phone */}
-                    <div>
-                      <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                        Teléfono <span className="text-slate-400">(opcional)</span>
-                      </label>
-                      <input
-                        value={telefono}
-                        onChange={(e) => setTelefono(e.target.value)}
-                        placeholder="+54 9 341..."
-                        disabled={isCreatingHold}
-                        className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                      />
-                    </div>
+                    <Input
+                      label="Teléfono (opcional)"
+                      value={telefono}
+                      onChange={(e) => setTelefono(e.target.value)}
+                      placeholder="+54 9 341..."
+                      disabled={isCreatingHold}
+                    />
 
                     {/* Login hint */}
                     {!authToken && (
@@ -785,72 +757,48 @@ export function BookingDrawer() {
                 <div className="grid gap-3 md:grid-cols-2">
                   {/* Primary CTA */}
                   {holdState !== 'held' ? (
-                    <motion.button
-                      whileHover={canSubmit ? { scale: 1.01 } : {}}
-                      whileTap={canSubmit ? { scale: 0.99 } : {}}
+                    <Button
+                      variant="secondary"
+                      size="md"
+                      fullWidth
                       disabled={!canSubmit}
+                      loading={isCreatingHold}
                       onClick={onCreateHold}
-                      className={cn(
-                        'flex h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition-all',
-                        canSubmit
-                          ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 hover:bg-blue-600 hover:shadow-blue-600/25'
-                          : 'cursor-not-allowed bg-slate-200 text-slate-400'
-                      )}
                     >
-                      {isCreatingHold ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Reservando...
-                        </>
-                      ) : (
-                        <>
-                          <Lock size={15} />
-                          Retener turno (10 min)
-                        </>
-                      )}
-                    </motion.button>
+                      {!isCreatingHold && <Lock size={15} />}
+                      {isCreatingHold ? 'Reservando...' : 'Retener turno (10 min)'}
+                    </Button>
                   ) : isExpired ? (
-                    <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
+                    <Button
+                      variant="secondary"
+                      size="md"
+                      fullWidth
                       onClick={closeDrawer}
-                      className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-bold text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800"
                     >
                       Elegir otro horario
-                    </motion.button>
+                    </Button>
                   ) : (
-                    <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
+                    <Button
+                      variant="primary"
+                      size="md"
+                      fullWidth
                       onClick={onGoCheckout}
                       disabled={isOpeningCheckout}
-                      className={cn(
-                        'flex h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold text-white shadow-lg transition-all',
-                        isOpeningCheckout
-                          ? 'bg-blue-400'
-                          : 'bg-blue-600 shadow-blue-600/25 hover:bg-blue-500'
-                      )}
+                      loading={isOpeningCheckout}
                     >
-                      {isOpeningCheckout ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Abriendo...
-                        </>
-                      ) : (
-                        'Continuar al pago'
-                      )}
-                    </motion.button>
+                      {isOpeningCheckout ? 'Abriendo...' : 'Continuar al pago'}
+                    </Button>
                   )}
 
                   {/* Cancel */}
-                  <motion.button
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
+                  <Button
+                    variant="outline"
+                    size="md"
+                    fullWidth
                     onClick={closeDrawer}
-                    className="h-12 w-full rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
                   >
                     Cancelar
-                  </motion.button>
+                  </Button>
                 </div>
 
                 <p className="mt-3 text-center text-[11px] text-slate-400">
