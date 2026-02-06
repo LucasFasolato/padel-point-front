@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { ImagePlus, Loader2, Trash2 } from 'lucide-react';
 import { toastManager } from '@/lib/toast';
-import { cloudinaryUploadSigned, MediaService } from '@/lib/media-service';
+import { cloudinaryUploadSigned, MediaService } from '@/services/media-service';
 import type { MediaAsset, MediaKind, MediaOwnerType } from '@/types';
 
 type UploadStatus = {

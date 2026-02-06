@@ -6,7 +6,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Court } from '@/types';
 import { useCourtStore } from '@/store/court-store';
 import api from '@/lib/api';
-import { MediaService } from '@/lib/media-service';
+import { MediaService } from '@/services/media-service';
 import MediaUploader from '@/app/components/admin/media-uploader';
 import { MediaKind, MediaOwnerType, type MediaAsset } from '@/types';
 

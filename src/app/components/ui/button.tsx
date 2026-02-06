@@ -13,21 +13,6 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean;
 }
 
-/**
- * Base Button component with consistent styling and accessibility
- *
- * Features:
- * - 5 variants: primary (emerald), secondary (slate), outline, ghost, danger
- * - 3 sizes with proper tap targets (sm: 40px, md: 44px, lg: 48px)
- * - Loading state with spinner
- * - Focus-visible rings for keyboard navigation
- * - Hover/active micro-animations
- *
- * @example
- * <Button variant="primary" size="md" loading={isSubmitting}>
- *   Reservar
- * </Button>
- */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
@@ -59,9 +44,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const sizeStyles = {
-      sm: 'px-4 py-2 text-sm min-h-[40px]', // 40px tap target
-      md: 'px-6 py-3 text-sm min-h-[44px]', // 44px tap target (recommended)
-      lg: 'px-8 py-4 text-base min-h-[48px]', // 48px tap target
+      sm: 'px-4 py-2 text-sm min-h-[40px]',
+      md: 'px-6 py-3 text-sm min-h-[44px]',
+      lg: 'px-8 py-4 text-base min-h-[48px]',
     };
 
     const widthStyles = fullWidth ? 'w-full' : '';

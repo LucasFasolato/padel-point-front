@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useClubStore } from '@/store/club-store';
 import { Save, MapPin, Phone, Mail, Building, Loader2, AlertTriangle } from 'lucide-react';
 import api from '@/lib/api';
-import { MediaService } from '@/lib/media-service';
+import { MediaService } from '@/services/media-service';
 import MediaUploader from '@/app/components/admin/media-uploader';
 import { MediaKind, MediaOwnerType, type MediaAsset } from '@/types';
 import { Button } from '@/app/components/ui/button';

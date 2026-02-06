@@ -12,26 +12,6 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   required?: boolean;
 }
 
-/**
- * Base Input component with label, hint, error states
- *
- * Features:
- * - Label with required indicator
- * - Hint text for guidance
- * - Error state with message
- * - Focus ring (emerald for normal, rose for error)
- * - Consistent height (44px min)
- * - Disabled state
- *
- * @example
- * <Input
- *   label="Nombre completo"
- *   hint="Como aparece en tu DNI"
- *   error={errors.nombre}
- *   required
- *   {...register('nombre')}
- * />
- */
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
     {
@@ -47,7 +27,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     },
     ref
   ) => {
-    // Generate ID if not provided (for label association)
+    // eslint-disable-next-line react-hooks/purity
     const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
 
     const inputBaseStyles =
@@ -63,7 +43,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
     return (
       <div className="w-full">
-        {/* Label */}
         {label && (
           <label
             htmlFor={inputId}
@@ -74,7 +53,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           </label>
         )}
 
-        {/* Input */}
         <input
           ref={ref}
           id={inputId}
@@ -89,7 +67,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           {...props}
         />
 
-        {/* Hint or Error */}
         {(hint || error) && (
           <p
             className={cn(

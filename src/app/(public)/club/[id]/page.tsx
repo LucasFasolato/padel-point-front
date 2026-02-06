@@ -8,7 +8,7 @@ import { AlertCircle, ChevronLeft, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { PlayerService } from '@/services/player-service';
-import { MediaService } from '@/lib/media-service';
+import { MediaService } from '@/services/media-service';
 import type {
   Club,
   Court,

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import api from '@/lib/api';
 import { toastManager } from '@/lib/toast';
 import { MediaKind, MediaOwnerType } from '@/types';
-import { cloudinaryUploadSigned, MediaService } from '@/lib/media-service';
+import { cloudinaryUploadSigned, MediaService } from '@/services/media-service';
 import { useAuthStore } from '@/store/auth-store';
 
 type ProfileResponse = {
