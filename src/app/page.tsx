@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { Club } from '@/types';
 import ClubCard from '@/app/components/club-card';
 import { PlayerService } from '@/services/player-service';
+import { CompetitiveQuickLinks } from './components/competitive/competitive-quick-links';
 
 function ClubCardSkeleton() {
   return (
@@ -157,7 +158,7 @@ export default function HomePage() {
               </button>
             </div>
           </form>
-
+          <CompetitiveQuickLinks />
           {isSearching && (
             <button
               type="button"

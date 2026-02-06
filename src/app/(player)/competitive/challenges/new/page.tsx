@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { challengesService } from '@/services/challenges-service';
@@ -20,35 +20,46 @@ export default function NewChallengePage() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
-  const defaultType = (searchParams.get('type') as ChallengeType) || 'direct';
-
-  const [type, setType] = useState<ChallengeType>(defaultType);
+  const [type, setType] = useState<ChallengeType>('direct'); // ✅ fijo
   const [opponentUserId, setOpponentUserId] = useState('');
   const [partnerUserId, setPartnerUserId] = useState('');
   const [targetCategory, setTargetCategory] = useState<number>(6);
   const [message, setMessage] = useState('');
 
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const t = sp.get('type');
+    const next: ChallengeType = t === 'open' ? 'open' : 'direct';
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setType((prev) => (prev === next ? prev : next));
+  }, []);
+
   const createDirectMutation = useMutation({
     mutationFn: challengesService.createDirect,
     onSuccess: () => {
-        toast.success('¡Desafío enviado!');
-        queryClient.invalidateQueries({ queryKey: ['challenges'] });
-        router.push('/competitive/challenges'); 
+      toast.success('¡Desafío enviado!');
+      queryClient.invalidateQueries({ queryKey: ['challenges'] });
+      router.push('/competitive/challenges');
     },
-    onError: (error: Error) => {
-        toast.error(error.message || 'Error al crear el desafío');
+    onError: (error: unknown) => {
+      const msg =
+        error instanceof Error ? error.message : 'Error al crear el desafío';
+      toast.error(msg);
     },
   });
 
   const createOpenMutation = useMutation({
     mutationFn: challengesService.createOpen,
     onSuccess: () => {
-        toast.success('¡Desafío abierto creado!');
-        queryClient.invalidateQueries({ queryKey: ['challenges'] });
-        router.push('/competitive/challenges');
+      toast.success('¡Desafío abierto creado!');
+      queryClient.invalidateQueries({ queryKey: ['challenges'] });
+      router.push('/competitive/challenges');
     },
-    onError: (error: Error) => {
-        toast.error(error.message || 'Error al crear el desafío');
+    onError: (error: unknown) => {
+      const msg =
+        error instanceof Error ? error.message : 'Error al crear el desafío';
+      toast.error(msg);
     },
   });
 
@@ -83,11 +94,8 @@ export default function NewChallengePage() {
 
       <div className="container mx-auto max-w-2xl px-4 py-6">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Tipo de desafío */}
           <div>
-            <Label className="mb-3 block text-base font-semibold">
-              Tipo de desafío
-            </Label>
+            <Label className="mb-3 block text-base font-semibold">Tipo de desafío</Label>
             <RadioGroup value={type} onValueChange={(v) => setType(v as ChallengeType)}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="direct" id="direct" />
@@ -104,7 +112,6 @@ export default function NewChallengePage() {
             </RadioGroup>
           </div>
 
-          {/* DIRECT: Rival */}
           {type === 'direct' && (
             <div>
               <Label htmlFor="opponent">
@@ -123,7 +130,6 @@ export default function NewChallengePage() {
             </div>
           )}
 
-          {/* OPEN: Categoría objetivo */}
           {type === 'open' && (
             <div>
               <Label htmlFor="category">
@@ -145,11 +151,8 @@ export default function NewChallengePage() {
             </div>
           )}
 
-          {/* Partner (opcional) */}
           <div>
-            <Label htmlFor="partner">
-              ID de tu compañero (opcional)
-            </Label>
+            <Label htmlFor="partner">ID de tu compañero (opcional)</Label>
             <Input
               id="partner"
               value={partnerUserId}
@@ -159,11 +162,8 @@ export default function NewChallengePage() {
             />
           </div>
 
-          {/* Mensaje */}
           <div>
-            <Label htmlFor="message">
-              Mensaje (opcional)
-            </Label>
+            <Label htmlFor="message">Mensaje (opcional)</Label>
             <Textarea
               id="message"
               value={message}
@@ -177,7 +177,6 @@ export default function NewChallengePage() {
             </p>
           </div>
 
-          {/* Actions */}
           <div className="flex gap-3">
             <Button
               type="button"
@@ -188,11 +187,7 @@ export default function NewChallengePage() {
             >
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              className="flex-1"
-              disabled={isLoading}
-            >
+            <Button type="submit" className="flex-1" disabled={isLoading}>
               {isLoading ? 'Enviando...' : 'Enviar desafío'}
             </Button>
           </div>
