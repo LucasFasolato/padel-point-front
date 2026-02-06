@@ -8,9 +8,9 @@ import { Skeleton } from '@/app/components/ui/skeleton';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { Button } from '@/app/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { Plus, Inbox, Send, Globe } from 'lucide-react';
+import { Plus, Inbox, Send, Globe, Trophy } from 'lucide-react';
 
-type TabType = 'inbox' | 'outbox' | 'open';
+type TabType = 'inbox' | 'ready' | 'outbox' | 'open';
 
 export default function ChallengesPage() {
   const router = useRouter();
@@ -36,6 +36,11 @@ export default function ChallengesPage() {
   };
 
   const pendingCount = inbox.data?.filter((c) => c.status === 'pending').length || 0;
+  
+  // Combinar inbox + outbox y filtrar los READY
+  const allChallenges = [...(inbox.data || []), ...(outbox.data || [])];
+  const readyChallenges = allChallenges.filter((c) => c.status === 'ready' || c.status === 'accepted');
+  const readyCount = readyChallenges.length;
 
   return (
     <>
@@ -61,23 +66,35 @@ export default function ChallengesPage() {
         </div>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as TabType)} className="mb-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="inbox" className="gap-2">
               <Inbox size={16} />
-              <span>Recibidos</span>
+              <span className="hidden sm:inline">Recibidos</span>
               {pendingCount > 0 && (
-                <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
                   {pendingCount}
                 </span>
               )}
             </TabsTrigger>
+            
+            <TabsTrigger value="ready" className="gap-2">
+              <Trophy size={16} />
+              <span className="hidden sm:inline">Por jugar</span>
+              {readyCount > 0 && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-xs font-bold text-white">
+                  {readyCount}
+                </span>
+              )}
+            </TabsTrigger>
+
             <TabsTrigger value="outbox" className="gap-2">
               <Send size={16} />
-              <span>Enviados</span>
+              <span className="hidden sm:inline">Enviados</span>
             </TabsTrigger>
+            
             <TabsTrigger value="open" className="gap-2">
               <Globe size={16} />
-              <span>Abiertos</span>
+              <span className="hidden sm:inline">Abiertos</span>
             </TabsTrigger>
           </TabsList>
 
@@ -104,6 +121,29 @@ export default function ChallengesPage() {
                 description="Cuando alguien te desafíe, aparecerá acá"
                 actionLabel="Ver desafíos abiertos"
                 onAction={() => setTab('open')}
+              />
+            )}
+          </TabsContent>
+
+          {/* READY - Por jugar */}
+          <TabsContent value="ready">
+            {readyChallenges.length > 0 ? (
+              <div className="space-y-3">
+                {readyChallenges.map((challenge) => (
+                  <ChallengeCard
+                    key={challenge.id}
+                    challenge={challenge}
+                    variant="ready"
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon="🎾"
+                message="No hay partidos listos para jugar"
+                description="Cuando aceptes un desafío, aparecerá acá"
+                actionLabel="Ver desafíos recibidos"
+                onAction={() => setTab('inbox')}
               />
             )}
           </TabsContent>

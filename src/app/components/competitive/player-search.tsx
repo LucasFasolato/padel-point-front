@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, User, Loader2 } from 'lucide-react';
+import { Search, User, Loader2, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { Input } from '../ui/input';
@@ -29,6 +29,7 @@ export function PlayerSearch({
 }: PlayerSearchProps) {
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
   const { data: players, isLoading } = useQuery<Player[]>({
     queryKey: ['players', 'search', search],
@@ -42,15 +43,31 @@ export function PlayerSearch({
     enabled: search.length >= 2,
   });
 
-  const selectedPlayer = players?.find((p) => p.userId === selectedPlayerId);
-
+  // Sincronizar con prop externa
   useEffect(() => {
-    if (selectedPlayer) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSearch('');
-      setIsOpen(false);
+    if (selectedPlayerId && players) {
+      const player = players.find((p) => p.userId === selectedPlayerId);
+      if (player) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSelectedPlayer(player);
+      }
+    } else if (!selectedPlayerId) {
+      setSelectedPlayer(null);
     }
-  }, [selectedPlayer]);
+  }, [selectedPlayerId, players]);
+
+  const handleSelect = (player: Player) => {
+    setSelectedPlayer(player);
+    onSelect(player);
+    setSearch('');
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    setSelectedPlayer(null);
+    onSelect({ userId: '', email: '', displayName: '' });
+    setSearch('');
+  };
 
   return (
     <div className="relative">
@@ -69,13 +86,11 @@ export function PlayerSearch({
             </div>
           </div>
           <button
-            onClick={() => {
-              onSelect({ userId: '', email: '', displayName: '' });
-              setSearch('');
-            }}
-            className="text-sm text-slate-600 hover:text-slate-900"
+            type="button"
+            onClick={handleClear}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-emerald-100 hover:text-slate-900"
           >
-            Cambiar
+            <X size={18} />
           </button>
         </div>
       ) : (
@@ -88,6 +103,10 @@ export function PlayerSearch({
               setIsOpen(true);
             }}
             onFocus={() => setIsOpen(true)}
+            onBlur={() => {
+              // Delay para permitir click en resultados
+              setTimeout(() => setIsOpen(false), 200);
+            }}
             placeholder={placeholder}
             className="pl-10"
           />
@@ -96,7 +115,7 @@ export function PlayerSearch({
 
       {/* Dropdown de resultados */}
       {isOpen && search.length >= 2 && !selectedPlayer && (
-        <div className="absolute z-10 mt-2 w-full rounded-lg border border-slate-200 bg-white shadow-lg">
+        <div className="absolute z-50 mt-2 w-full rounded-lg border border-slate-200 bg-white shadow-lg">
           {isLoading ? (
             <div className="flex items-center justify-center p-4">
               <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
@@ -106,10 +125,8 @@ export function PlayerSearch({
               {players.map((player) => (
                 <button
                   key={player.userId}
-                  onClick={() => {
-                    onSelect(player);
-                    setIsOpen(false);
-                  }}
+                  type="button"
+                  onClick={() => handleSelect(player)}
                   className="flex w-full items-center gap-3 border-b border-slate-100 p-3 text-left transition-colors hover:bg-slate-50 last:border-b-0"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
