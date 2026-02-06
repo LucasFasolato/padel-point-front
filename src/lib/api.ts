@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '@/store/auth-store';
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -22,10 +23,9 @@ api.interceptors.request.use((config) => {
   const isPublic = url.startsWith('/public');
 
   if (!isPublic) {
-    const token =
-      typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-
-    if (token && !config.headers.Authorization) {
+    const token = useAuthStore.getState().token; 
+    if (token && !config.headers?.Authorization) {
+      config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${token}`;
     }
   }

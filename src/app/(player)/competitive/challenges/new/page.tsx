@@ -33,7 +33,7 @@ export default function NewChallengePage() {
     onSuccess: () => {
         toast.success('¡Desafío enviado!');
         queryClient.invalidateQueries({ queryKey: ['challenges'] });
-        router.push('/me/challenges');
+        router.push('/competitive/challenges'); 
     },
     onError: (error: Error) => {
         toast.error(error.message || 'Error al crear el desafío');
@@ -45,7 +45,7 @@ export default function NewChallengePage() {
     onSuccess: () => {
         toast.success('¡Desafío abierto creado!');
         queryClient.invalidateQueries({ queryKey: ['challenges'] });
-        router.push('/me/challenges');
+        router.push('/competitive/challenges');
     },
     onError: (error: Error) => {
         toast.error(error.message || 'Error al crear el desafío');
@@ -79,7 +79,7 @@ export default function NewChallengePage() {
 
   return (
     <>
-      <PublicTopBar title="Nuevo desafío" backHref="/me/challenges" />
+      <PublicTopBar title="Nuevo desafío" backHref="/competitive/challenges" />
 
       <div className="container mx-auto max-w-2xl px-4 py-6">
         <form onSubmit={handleSubmit} className="space-y-6">

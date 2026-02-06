@@ -37,14 +37,14 @@ export default function ChallengesPage() {
 
   return (
     <>
-      <PublicTopBar title="Desafíos" backHref="/me/competitive" />
+      <PublicTopBar title="Desafíos" backHref="/competitive" />
       
       <div className="container mx-auto max-w-4xl px-4 py-6">
         {/* Header con botón flotante */}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-slate-900">Desafíos</h1>
           <Button
-            onClick={() => router.push('/me/challenges/new')}
+            onClick={() => router.push('/competitive/challenges/new')}
             className="gap-2"
           >
             <Plus size={18} />
@@ -110,7 +110,7 @@ export default function ChallengesPage() {
               <EmptyState
                 message="No enviaste ningún desafío todavía"
                 actionLabel="Desafiar jugador"
-                onAction={() => router.push('/me/challenges/new')}
+                onAction={() => router.push('/competitive/challenges/new')}
               />
             )}
           </TabsContent>
@@ -134,7 +134,7 @@ export default function ChallengesPage() {
               <EmptyState
                 message="No hay desafíos abiertos disponibles"
                 actionLabel="Crear desafío abierto"
-                onAction={() => router.push('/me/challenges/new?type=open')}
+                onAction={() => router.push('/competitive/challenges/new?type=open')}
               />
             )}
           </TabsContent>

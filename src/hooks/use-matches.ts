@@ -1,40 +1,40 @@
+'use client';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { matchesService } from '@/services/matches-service';
 import { challengesService } from '@/services/challenges-service';
 import type { MatchView, Challenge, MatchResult } from '@/types/competitive';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuthStore } from '@/store/auth-store';
 import { toast } from 'sonner';
 
-/**
- * Hook para obtener MIS matches (derivados de challenges donde participo)
- * 
- * NOTA: Tu backend no tiene un endpoint directo para esto,
- * así que necesitamos:
- * 1. Obtener mis challenges (inbox + outbox)
- * 2. Para cada challenge READY, obtener su match
- * 3. Filtrar y mapear a MatchView
- */
 export function useMyMatches() {
-  const { user } = useAuth();
+  const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
+
+  const isAuthed = !!token && !!user?.userId;
+
   const { data: inbox } = useQuery({
     queryKey: ['challenges', 'inbox'],
     queryFn: () => challengesService.getInbox(),
+    enabled: isAuthed,            // ✅ no pegar si no estás logueado
+    retry: false,
   });
 
   const { data: outbox } = useQuery({
     queryKey: ['challenges', 'outbox'],
     queryFn: () => challengesService.getOutbox(),
+    enabled: isAuthed,
+    retry: false,
   });
 
-  // Combinar y filtrar challenges con match
   const allChallenges = [...(inbox || []), ...(outbox || [])];
   const challengesWithMatch = allChallenges.filter(
     (ch) => ch.status === 'ready' || ch.status === 'accepted'
   );
 
-  // Fetch matches para estos challenges
   const matchesQuery = useQuery({
-    queryKey: ['matches', 'my-matches', challengesWithMatch.map(c => c.id)],
+    queryKey: ['matches', 'my-matches', challengesWithMatch.map((c) => c.id)],
+    enabled: isAuthed && challengesWithMatch.length > 0,
     queryFn: async () => {
       const matches = await Promise.all(
         challengesWithMatch.map(async (challenge) => {
@@ -45,15 +45,16 @@ export function useMyMatches() {
       );
       return matches.filter(Boolean) as Array<{ match: MatchResult; challenge: Challenge }>;
     },
-    enabled: challengesWithMatch.length > 0,
     staleTime: 1000 * 60 * 2,
+    retry: false,
   });
 
-  // Mapear a MatchView
   const matchViews: MatchView[] = (matchesQuery.data || []).map(({ match, challenge }) => {
+    const myUserId = user!.userId;
+
     const isTeamA =
-      challenge.teamA.p1.userId === user?.userId ||
-      challenge.teamA.p2?.userId === user?.userId;
+      challenge.teamA.p1.userId === myUserId ||
+      challenge.teamA.p2?.userId === myUserId;
 
     const myTeam = isTeamA ? challenge.teamA : challenge.teamB;
     const opponentTeam = isTeamA ? challenge.teamB : challenge.teamA;
@@ -65,30 +66,24 @@ export function useMyMatches() {
       (isTeamA && match.winnerTeam === 'A') ||
       (!isTeamA && match.winnerTeam === 'B');
 
-    // ELO change (lo obtenemos del history si existe)
-    // Por ahora lo dejamos null, después podemos mejorarlo
-    const eloChange = null;
-
-    // Formatear score
     const sets = [
       `${match.teamASet1}-${match.teamBSet1}`,
       `${match.teamASet2}-${match.teamBSet2}`,
       match.teamASet3 !== null ? `${match.teamASet3}-${match.teamBSet3}` : null,
     ].filter(Boolean);
-    const score = sets.join(', ');
 
     return {
       id: match.id,
       challengeId: challenge.id,
       playedAt: match.playedAt,
-      score,
+      score: sets.join(', '),
       status: match.status,
       winnerTeam: match.winnerTeam,
       eloApplied: match.eloApplied,
       opponent,
       partner,
       isWin,
-      eloChange,
+      eloChange: null,
       createdAt: match.createdAt,
     };
   });
@@ -97,14 +92,18 @@ export function useMyMatches() {
     data: matchViews,
     isLoading: matchesQuery.isLoading,
     error: matchesQuery.error,
+    isAuthed,
   };
 }
 
 export function useMatch(matchId: string) {
+  const token = useAuthStore((s) => s.token);
+
   return useQuery({
     queryKey: ['matches', matchId],
     queryFn: () => matchesService.getById(matchId),
-    enabled: !!matchId,
+    enabled: !!token && !!matchId,
+    retry: false,
   });
 }
 
@@ -127,9 +126,7 @@ export function useMatchActions() {
       toast.success('Resultado reportado. Esperando confirmación del rival.');
       invalidate();
     },
-    onError: () => {
-      toast.error('Error al reportar el resultado');
-    },
+    onError: () => toast.error('Error al reportar el resultado'),
   });
 
   const confirmMatch = useMutation({
@@ -149,9 +146,5 @@ export function useMatchActions() {
     },
   });
 
-  return {
-    reportMatch,
-    confirmMatch,
-    rejectMatch,
-  };
+  return { reportMatch, confirmMatch, rejectMatch };
 }

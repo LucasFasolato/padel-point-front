@@ -11,7 +11,7 @@ import { Button } from '@/app/components/ui/button';
 
 type FilterType = 'all' | 'wins' | 'losses';
 
-export default function MatchesPage() {
+export default function CompetitiveMatchesPage() {
   const router = useRouter();
   const [filter, setFilter] = useState<FilterType>('all');
   const { data: matches, isLoading } = useMyMatches();
@@ -27,7 +27,7 @@ export default function MatchesPage() {
 
   return (
     <>
-      <PublicTopBar title="Historial de partidos" backHref="/me/competitive" />
+      <PublicTopBar title="Partidos Competitivos" backHref="/competitive" />
       
       <div className="container mx-auto max-w-4xl px-4 py-6">
         <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterType)} className="mb-6">
@@ -51,7 +51,7 @@ export default function MatchesPage() {
                 key={match.id} 
                 match={match}
                 variant="detailed"
-                onClick={() => router.push(`/me/matches/${match.id}`)}
+                onClick={() => router.push(`/competitive/competitive-matches/${match.id}`)}
               />
             ))}
           </div>
@@ -62,7 +62,7 @@ export default function MatchesPage() {
               {filter === 'losses' && 'Todavía no perdiste partidos'}
               {filter === 'all' && 'Todavía no jugaste partidos competitivos'}
             </p>
-            <Button onClick={() => router.push('/me/challenges')}>
+            <Button onClick={() => router.push('/competitive/challenges')}>
               Ir a desafíos
             </Button>
           </div>

@@ -35,7 +35,6 @@ export default function CompetitivePage() {
     );
   }
 
-  // Filtrar solo partidos confirmados para el dashboard
   const confirmedMatches = matches?.filter(m => m.status === 'confirmed').slice(0, 5) || [];
 
   return (
@@ -74,7 +73,7 @@ export default function CompetitivePage() {
             <Button 
               variant="secondary" 
               size="sm"
-              onClick={() => router.push('/me/challenges')}
+              onClick={() => router.push('/competitive/challenges')}
             >
               Mis desafíos
             </Button>
@@ -99,7 +98,7 @@ export default function CompetitivePage() {
               <Button 
                 variant="ghost" 
                 size="sm"
-                onClick={() => router.push('/me/matches')}
+                onClick={() => router.push('/competitive/competitive-matches')}
               >
                 Ver todos
               </Button>
@@ -118,14 +117,14 @@ export default function CompetitivePage() {
                 <MatchCard 
                   key={match.id} 
                   match={match}
-                  onClick={() => router.push(`/me/matches/${match.id}`)}
+                  onClick={() => router.push(`/competitive/competitive-matches/${match.id}`)}
                 />
               ))}
             </div>
           ) : (
             <div className="rounded-lg border border-slate-200 bg-slate-50 py-12 text-center">
               <p className="mb-4 text-slate-600">Todavía no jugaste partidos competitivos</p>
-              <Button onClick={() => router.push('/me/challenges')}>
+              <Button onClick={() => router.push('/competitive/challenges')}>
                 Desafiar jugador
               </Button>
             </div>
@@ -136,7 +135,7 @@ export default function CompetitivePage() {
         <div className="grid grid-cols-2 gap-4">
           <Button 
             size="lg"
-            onClick={() => router.push('/me/challenges/new')}
+            onClick={() => router.push('/competitive/challenges/new')}
           >
             Desafiar jugador
           </Button>
@@ -186,7 +185,7 @@ function CompetitiveEmptyState() {
       
       <Button 
         size="lg"
-        onClick={() => router.push('/me/competitive/onboarding')}
+        onClick={() => router.push('/competitive/onboarding')}
       >
         Activar ahora
       </Button>

@@ -101,14 +101,10 @@ export default function HomePage() {
             <span className="text-xl font-bold tracking-tight text-slate-900">PadelPoint</span>
           </div>
           <div className="flex items-center gap-4">
-            {token && user?.role === 'USER' ? (
-              <Link href="/me/reservations" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-                Mis reservas
-              </Link>
+            {token ? (
+              <Link href="/me/reservations">Mis reservas</Link>
             ) : (
-              <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-                Iniciar sesión
-              </Link>
+              <Link href="/login">Iniciar sesión</Link>
             )}
             <Link href="/admin/login" className="text-sm font-medium text-slate-500 hover:text-slate-900">
               Soy Dueño
