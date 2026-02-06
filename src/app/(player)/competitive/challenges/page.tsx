@@ -8,14 +8,14 @@ import { Skeleton } from '@/app/components/ui/skeleton';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { Button } from '@/app/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { Plus, Inbox, Send, Globe } from 'lucide-react';
 
 type TabType = 'inbox' | 'outbox' | 'open';
 
 export default function ChallengesPage() {
   const router = useRouter();
   const [tab, setTab] = useState<TabType>('inbox');
-  
+
   const { inbox, outbox, openChallenges } = useChallenges();
   const { acceptDirect, rejectDirect, cancel, acceptOpen } = useChallengeActions();
 
@@ -35,35 +35,50 @@ export default function ChallengesPage() {
     acceptOpen.mutate({ id });
   };
 
+  const pendingCount = inbox.data?.filter((c) => c.status === 'pending').length || 0;
+
   return (
     <>
       <PublicTopBar title="Desafíos" backHref="/competitive" />
-      
+
       <div className="container mx-auto max-w-4xl px-4 py-6">
-        {/* Header con botón flotante */}
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900">Desafíos</h1>
-          <Button
-            onClick={() => router.push('/competitive/challenges/new')}
-            className="gap-2"
-          >
-            <Plus size={18} />
-            Nuevo desafío
-          </Button>
+        {/* Header */}
+        <div className="mb-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Desafíos</h1>
+              <p className="text-sm text-slate-600">Gestioná tus partidos competitivos</p>
+            </div>
+            <Button
+              onClick={() => router.push('/competitive/challenges/new')}
+              className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              size="lg"
+            >
+              <Plus size={20} />
+              <span className="hidden sm:inline">Nuevo desafío</span>
+            </Button>
+          </div>
         </div>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as TabType)} className="mb-6">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="inbox">
-              Recibidos
-              {inbox.data && inbox.data.length > 0 && (
-                <span className="ml-2 rounded-full bg-blue-600 px-2 py-0.5 text-xs text-white">
-                  {inbox.data.filter(c => c.status === 'pending').length}
+            <TabsTrigger value="inbox" className="gap-2">
+              <Inbox size={16} />
+              <span>Recibidos</span>
+              {pendingCount > 0 && (
+                <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                  {pendingCount}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="outbox">Enviados</TabsTrigger>
-            <TabsTrigger value="open">Abiertos</TabsTrigger>
+            <TabsTrigger value="outbox" className="gap-2">
+              <Send size={16} />
+              <span>Enviados</span>
+            </TabsTrigger>
+            <TabsTrigger value="open" className="gap-2">
+              <Globe size={16} />
+              <span>Abiertos</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* INBOX */}
@@ -72,7 +87,7 @@ export default function ChallengesPage() {
               <LoadingSkeleton />
             ) : inbox.data && inbox.data.length > 0 ? (
               <div className="space-y-3">
-                {inbox.data.map(challenge => (
+                {inbox.data.map((challenge) => (
                   <ChallengeCard
                     key={challenge.id}
                     challenge={challenge}
@@ -84,7 +99,9 @@ export default function ChallengesPage() {
               </div>
             ) : (
               <EmptyState
+                icon="📥"
                 message="No tenés desafíos pendientes"
+                description="Cuando alguien te desafíe, aparecerá acá"
                 actionLabel="Ver desafíos abiertos"
                 onAction={() => setTab('open')}
               />
@@ -97,7 +114,7 @@ export default function ChallengesPage() {
               <LoadingSkeleton />
             ) : outbox.data && outbox.data.length > 0 ? (
               <div className="space-y-3">
-                {outbox.data.map(challenge => (
+                {outbox.data.map((challenge) => (
                   <ChallengeCard
                     key={challenge.id}
                     challenge={challenge}
@@ -108,7 +125,9 @@ export default function ChallengesPage() {
               </div>
             ) : (
               <EmptyState
+                icon="📤"
                 message="No enviaste ningún desafío todavía"
+                description="¿Listo para competir?"
                 actionLabel="Desafiar jugador"
                 onAction={() => router.push('/competitive/challenges/new')}
               />
@@ -121,7 +140,7 @@ export default function ChallengesPage() {
               <LoadingSkeleton />
             ) : openChallenges.data && openChallenges.data.length > 0 ? (
               <div className="space-y-3">
-                {openChallenges.data.map(challenge => (
+                {openChallenges.data.map((challenge) => (
                   <ChallengeCard
                     key={challenge.id}
                     challenge={challenge}
@@ -132,7 +151,9 @@ export default function ChallengesPage() {
               </div>
             ) : (
               <EmptyState
+                icon="🌍"
                 message="No hay desafíos abiertos disponibles"
+                description="Sé el primero en publicar uno"
                 actionLabel="Crear desafío abierto"
                 onAction={() => router.push('/competitive/challenges/new?type=open')}
               />
@@ -147,26 +168,37 @@ export default function ChallengesPage() {
 function LoadingSkeleton() {
   return (
     <div className="space-y-3">
-      {[1, 2, 3].map(i => (
+      {[1, 2, 3].map((i) => (
         <Skeleton key={i} className="h-40 w-full" />
       ))}
     </div>
   );
 }
 
-function EmptyState({ 
-  message, 
-  actionLabel, 
-  onAction 
-}: { 
+function EmptyState({
+  icon,
+  message,
+  description,
+  actionLabel,
+  onAction,
+}: {
+  icon: string;
   message: string;
+  description: string;
   actionLabel: string;
   onAction: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 py-16 text-center">
-      <p className="mb-4 text-slate-600">{message}</p>
-      <Button onClick={onAction}>{actionLabel}</Button>
+    <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 py-16 text-center">
+      <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white text-4xl shadow-sm">
+        {icon}
+      </div>
+      <h3 className="mb-2 text-lg font-semibold text-slate-900">{message}</h3>
+      <p className="mb-6 text-sm text-slate-600">{description}</p>
+      <Button onClick={onAction} className="gap-2">
+        <Plus size={16} />
+        {actionLabel}
+      </Button>
     </div>
   );
 }
