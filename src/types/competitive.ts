@@ -129,6 +129,14 @@ export interface MatchView {
   createdAt: string;
 }
 
+export interface OnboardingData {
+  category: Category;
+  goal: 'improve' | 'compete' | 'socialize';
+  frequency: '1-2' | '3-4' | '5+';
+  onboardingComplete: boolean;
+  categoryLocked: boolean;
+}
+
 export interface RankingEntry {
   userId: string;
   email: string;

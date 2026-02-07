@@ -52,4 +52,46 @@ describe('StepCategory', () => {
     fireEvent.click(screen.getByRole('button', { name: /Volver/ }));
     expect(onBack).toHaveBeenCalled();
   });
+
+  describe('locked category', () => {
+    it('shows locked UI when locked=true and lockedCategory provided', () => {
+      render(
+        <StepCategory
+          {...defaultProps}
+          locked={true}
+          lockedCategory={4}
+        />
+      );
+      expect(screen.getByText(/Tu categoría ya está definida/)).toBeInTheDocument();
+      expect(screen.getByText(/4ta - Intermedio avanzado/)).toBeInTheDocument();
+      expect(screen.getByText(/cambia automáticamente/)).toBeInTheDocument();
+    });
+
+    it('allows continuing when locked', () => {
+      const onNext = vi.fn();
+      render(
+        <StepCategory
+          {...defaultProps}
+          locked={true}
+          lockedCategory={4}
+          onNext={onNext}
+        />
+      );
+      const btn = screen.getByRole('button', { name: /Continuar/ });
+      expect(btn).not.toBeDisabled();
+      fireEvent.click(btn);
+      expect(onNext).toHaveBeenCalled();
+    });
+
+    it('does not show category selection list when locked', () => {
+      render(
+        <StepCategory
+          {...defaultProps}
+          locked={true}
+          lockedCategory={4}
+        />
+      );
+      expect(screen.queryByText(/8va - Estoy empezando/)).not.toBeInTheDocument();
+    });
+  });
 });

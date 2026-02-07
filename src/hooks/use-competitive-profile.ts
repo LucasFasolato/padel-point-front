@@ -17,6 +17,15 @@ export function useEloHistory(limit: number = 30) {
   });
 }
 
+export function useOnboardingState() {
+  return useQuery({
+    queryKey: ['competitive', 'onboarding'],
+    queryFn: () => competitiveService.getOnboarding(),
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
+}
+
 export function useRanking(limit: number = 50) {
   return useQuery({
     queryKey: ['competitive', 'ranking', limit],

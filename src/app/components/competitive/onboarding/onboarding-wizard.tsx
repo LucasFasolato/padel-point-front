@@ -3,8 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { useAuthStore } from '@/store/auth-store';
-import { useCompleteOnboarding } from '@/hooks/use-onboarding';
-import { useCompetitiveProfile } from '@/hooks/use-competitive-profile';
+import {
+  useCompleteOnboarding,
+  parseOnboardingError,
+  CATEGORY_LOCKED_CODE,
+} from '@/hooks/use-onboarding';
+import { useOnboardingState } from '@/hooks/use-competitive-profile';
 import { canAdvanceFromStep, TOTAL_STEPS } from '@/lib/onboarding-utils';
 import { ProgressBar } from './progress-bar';
 import { StepWelcome } from './step-welcome';
@@ -13,7 +17,7 @@ import { StepGoals } from './step-goals';
 import { StepConfirm } from './step-confirm';
 import { StepSuccess } from './step-success';
 import { Skeleton } from '@/app/components/ui/skeleton';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { Category } from '@/types/competitive';
 
 export function OnboardingWizard() {
@@ -31,17 +35,28 @@ export function OnboardingWizard() {
     setFrequency,
   } = useOnboardingStore();
 
-  const { data: existingProfile, isLoading: loadingProfile } = useCompetitiveProfile();
+  const { data: serverOnboarding, isLoading: loadingOnboarding } = useOnboardingState();
   const completeMutation = useCompleteOnboarding();
 
-  // If user already has a profile, redirect to competitive hub
-  useEffect(() => {
-    if (existingProfile && !completed) {
-      router.replace('/competitive');
-    }
-  }, [existingProfile, completed, router]);
+  // Whether the server told us category is locked
+  const [categoryLocked, setCategoryLocked] = useState(false);
 
-  if (loadingProfile) {
+  // Server reconciliation: if server says onboardingComplete, redirect
+  useEffect(() => {
+    if (!serverOnboarding) return;
+
+    if (serverOnboarding.onboardingComplete && !completed) {
+      router.replace('/competitive');
+      return;
+    }
+
+    // Sync category-locked from server
+    if (serverOnboarding.categoryLocked) {
+      setCategoryLocked(true);
+    }
+  }, [serverOnboarding, completed, router]);
+
+  if (loadingOnboarding) {
     return (
       <div className="space-y-6 p-6">
         <Skeleton className="h-4 w-32" />
@@ -53,11 +68,11 @@ export function OnboardingWizard() {
 
   // Show success screen after completing
   if (completed || completeMutation.isSuccess) {
-    const profileData = completeMutation.data;
+    const result = completeMutation.data;
     return (
       <StepSuccess
-        category={profileData?.category ?? (category as Category)}
-        displayName={profileData?.displayName ?? user?.email ?? 'Jugador'}
+        category={result?.category ?? (category as Category)}
+        displayName={user?.email ?? 'Jugador'}
         onGoToChallenge={() => router.push('/competitive/challenges/new')}
         onGoToRanking={() => router.push('/ranking')}
         onGoToHub={() => router.push('/competitive')}
@@ -76,13 +91,21 @@ export function OnboardingWizard() {
   };
 
   const handleConfirm = () => {
-    if (category === null) return;
-    completeMutation.mutate(category);
+    if (category === null || goal === null || frequency === null) return;
+    completeMutation.mutate({ category, goal, frequency });
   };
 
-  const errorMessage = completeMutation.isError
-    ? 'No pudimos activar tu perfil. Revisá tu conexión e intentá de nuevo.'
-    : null;
+  // Parse error into user-friendly message and detect category lock
+  let errorMessage: string | null = null;
+  let isCategoryLockedError = false;
+  if (completeMutation.isError) {
+    const parsed = parseOnboardingError(completeMutation.error);
+    errorMessage = parsed.message;
+    isCategoryLockedError = parsed.code === CATEGORY_LOCKED_CODE;
+  }
+
+  // Resolved category lock state: from server or from failed mutation
+  const effectiveCategoryLocked = categoryLocked || isCategoryLockedError;
 
   return (
     <div>
@@ -96,6 +119,8 @@ export function OnboardingWizard() {
           onSelect={setCategory}
           onNext={goNext}
           onBack={goBack}
+          locked={effectiveCategoryLocked}
+          lockedCategory={serverOnboarding?.category ?? null}
         />
       )}
 
@@ -117,6 +142,7 @@ export function OnboardingWizard() {
           frequency={frequency}
           isSubmitting={completeMutation.isPending}
           error={errorMessage}
+          categoryLocked={effectiveCategoryLocked}
           onConfirm={handleConfirm}
           onBack={goBack}
         />

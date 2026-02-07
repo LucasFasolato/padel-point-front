@@ -146,3 +146,63 @@ export function getGoalLabel(goal: PlayerGoal): string {
 export function getFrequencyLabel(frequency: PlayFrequency): string {
   return FREQUENCY_OPTIONS.find((f) => f.value === frequency)?.label ?? frequency;
 }
+
+// ---------------------------------------------------------------------------
+// Error parsing for onboarding API responses
+// ---------------------------------------------------------------------------
+
+export const CATEGORY_LOCKED_CODE = 'CATEGORY_LOCKED';
+
+/** Structured error from an onboarding API call */
+export interface OnboardingError {
+  code: string;
+  message: string;
+}
+
+/**
+ * Parses an error (typically AxiosError) into a user-friendly code + message.
+ * Detects category-locked (409 / CATEGORY_LOCKED), validation (400/422),
+ * generic HTTP errors, and network failures.
+ *
+ * Uses duck-typing on the error shape so this module stays dependency-free.
+ */
+export function parseOnboardingError(error: unknown): OnboardingError {
+  if (
+    error != null &&
+    typeof error === 'object' &&
+    'response' in error &&
+    (error as { response: unknown }).response != null
+  ) {
+    const resp = (error as { response: { status: number; data?: Record<string, unknown> } }).response;
+    const status = resp.status;
+    const data = resp.data;
+    const serverCode = (data?.code as string) ?? '';
+    const serverMessage = (data?.message as string) ?? '';
+
+    if (status === 409 || serverCode === CATEGORY_LOCKED_CODE) {
+      return {
+        code: CATEGORY_LOCKED_CODE,
+        message:
+          serverMessage ||
+          'Tu categoría ya fue definida por tus partidos. Podés continuar con tus otras preferencias.',
+      };
+    }
+
+    if (status === 422 || status === 400) {
+      return {
+        code: 'VALIDATION_ERROR',
+        message: serverMessage || 'Datos inválidos. Revisá tu selección e intentá de nuevo.',
+      };
+    }
+
+    return {
+      code: `HTTP_${status}`,
+      message: serverMessage || 'Ocurrió un error inesperado. Intentá de nuevo.',
+    };
+  }
+
+  return {
+    code: 'NETWORK_ERROR',
+    message: 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.',
+  };
+}

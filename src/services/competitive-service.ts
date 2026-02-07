@@ -1,5 +1,5 @@
 import  api  from '@/lib/api';
-import type { CompetitiveProfile, EloHistoryPoint, RankingEntry } from '@/types/competitive';
+import type { CompetitiveProfile, EloHistoryPoint, OnboardingData, RankingEntry } from '@/types/competitive';
 
 export const competitiveService = {
   /**
@@ -25,6 +25,27 @@ export const competitiveService = {
     const { data } = await api.get('/competitive/profile/me/history', {
       params: { limit },
     });
+    return data;
+  },
+
+  /**
+   * Obtiene el estado actual del onboarding competitivo.
+   */
+  async getOnboarding(): Promise<OnboardingData> {
+    const { data } = await api.get('/competitive/onboarding');
+    return data;
+  },
+
+  /**
+   * Guarda el onboarding competitivo (idempotent upsert).
+   * Envía category, goal y frequency en un solo request.
+   */
+  async putOnboarding(payload: {
+    category: number;
+    goal: string;
+    frequency: string;
+  }): Promise<OnboardingData> {
+    const { data } = await api.put('/competitive/onboarding', payload);
     return data;
   },
 

@@ -12,6 +12,8 @@ interface StepConfirmProps {
   frequency: PlayFrequency;
   isSubmitting: boolean;
   error: string | null;
+  /** If true, category is server-locked and cannot change */
+  categoryLocked?: boolean;
   onConfirm: () => void;
   onBack: () => void;
 }
@@ -22,6 +24,7 @@ export function StepConfirm({
   frequency,
   isSubmitting,
   error,
+  categoryLocked = false,
   onConfirm,
   onBack,
 }: StepConfirmProps) {
@@ -39,7 +42,9 @@ export function StepConfirm({
           {/* Category */}
           <div className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs text-slate-500 font-medium">Categoría inicial</p>
+              <p className="text-xs text-slate-500 font-medium">
+                Categoría{categoryLocked ? ' (definida por partidos)' : ' inicial'}
+              </p>
               <p className="text-sm font-semibold text-slate-900 mt-0.5">
                 {getCategoryLabel(category)}
               </p>

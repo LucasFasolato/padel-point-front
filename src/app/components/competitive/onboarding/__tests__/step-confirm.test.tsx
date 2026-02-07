@@ -49,4 +49,14 @@ describe('StepConfirm', () => {
     render(<StepConfirm {...defaultProps} isSubmitting={true} />);
     expect(screen.getByRole('button', { name: /Volver/ })).toBeDisabled();
   });
+
+  it('shows "Categoría inicial" label by default', () => {
+    render(<StepConfirm {...defaultProps} />);
+    expect(screen.getByText(/Categoría inicial/)).toBeInTheDocument();
+  });
+
+  it('shows locked category label when categoryLocked=true', () => {
+    render(<StepConfirm {...defaultProps} categoryLocked={true} />);
+    expect(screen.getByText(/definida por partidos/)).toBeInTheDocument();
+  });
 });
