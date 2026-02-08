@@ -2,11 +2,13 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { LogOut } from 'lucide-react';
 import api from '@/lib/api';
 import { toastManager } from '@/lib/toast';
 import { MediaKind, MediaOwnerType } from '@/types';
 import { cloudinaryUploadSigned, MediaService } from '@/services/media-service';
 import { useAuthStore } from '@/store/auth-store';
+import { useLogout } from '@/hooks/use-logout';
 
 type ProfileResponse = {
   userId?: string;
@@ -55,6 +57,7 @@ function ProfileSkeleton() {
 
 export default function ProfilePage() {
   const { token, user, logout } = useAuthStore();
+  const handleLogout = useLogout();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -437,6 +440,18 @@ export default function ProfilePage() {
                   </span>
                 )}
               </div>
+            </div>
+
+            {/* Logout */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+              >
+                <LogOut size={18} />
+                Cerrar sesión
+              </button>
             </div>
           </div>
         )}

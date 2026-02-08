@@ -101,18 +101,30 @@ export default function HomePage() {
             </div>
             <span className="text-xl font-bold tracking-tight text-slate-900">PadelPoint</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {token ? (
-              <Link href="/me/reservations">Mis reservas</Link>
+              <Link
+                href="/me/profile"
+                className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-600"
+              >
+                Mi cuenta
+              </Link>
             ) : (
-              <Link href="/login">Iniciar sesión</Link>
+              <>
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-slate-700 hover:text-slate-900"
+                >
+                  Iniciar sesión
+                </Link>
+                <Link
+                  href="/register"
+                  className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-700"
+                >
+                  Registrarse
+                </Link>
+              </>
             )}
-            <Link href="/admin/login" className="text-sm font-medium text-slate-500 hover:text-slate-900">
-              Soy Dueño
-            </Link>
-            <Link href="/admin/login" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-600">
-              Ingresar
-            </Link>
           </div>
         </div>
       </nav>

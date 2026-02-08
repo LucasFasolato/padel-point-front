@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Loader2, Lock, Mail, UserCircle2 } from 'lucide-react';
-import api from '@/lib/api';
+import { authService } from '@/services/auth-service';
 import { toastManager } from '@/lib/toast';
 import { useAuthStore } from '@/store/auth-store';
 
@@ -40,13 +40,9 @@ export default function LoginPage() {
     abortRef.current = controller;
 
     try {
-      const res = await api.post(
-        '/auth/login-user',
-        { email: form.email.trim(), password: form.password },
-        { signal: controller.signal }
-      );
+      const res = await authService.login(form.email.trim(), form.password);
 
-      const token = res.data?.accessToken ?? res.data?.token;
+      const token = res.accessToken ?? res.token;
       if (!token) {
         toastManager.error('No pudimos iniciar sesión. Intentá nuevamente.', {
           idempotencyKey: 'login-missing-token',
@@ -55,7 +51,7 @@ export default function LoginPage() {
       }
 
       const user =
-        res.data.user || { userId: 'temp-id', email: form.email, role: 'USER' };
+        res.user || { userId: 'temp-id', email: form.email, role: 'USER' };
       setAuth(token, user);
       router.replace('/');
     } catch (err: unknown) {
@@ -162,8 +158,15 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-6 text-center text-sm text-slate-500">
+            ¿No tenés cuenta?{' '}
+            <Link href="/register" className="font-semibold text-emerald-600 hover:text-emerald-700">
+              Registrate
+            </Link>
+          </div>
+
+          <div className="mt-3 text-center text-sm text-slate-400">
             ¿Sos dueño?{' '}
-            <Link href="/admin/login" className="font-semibold text-slate-900 hover:text-blue-600">
+            <Link href="/admin/login" className="font-semibold text-slate-600 hover:text-blue-600">
               Entrá al panel
             </Link>
           </div>

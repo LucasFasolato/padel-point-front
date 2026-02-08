@@ -33,4 +33,29 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Global 401 handler — clears auth and redirects to /login
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (
+      axios.isAxiosError(error) &&
+      error.response?.status === 401 &&
+      typeof window !== 'undefined'
+    ) {
+      const url = error.config?.url ?? '';
+      const isAuthEndpoint = url.startsWith('/auth/');
+      const isAlreadyOnAuth =
+        window.location.pathname === '/login' ||
+        window.location.pathname === '/register';
+
+      if (!isAuthEndpoint && !isAlreadyOnAuth) {
+        useAuthStore.getState().logout();
+        window.location.href = '/login';
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
+
 export default api;
