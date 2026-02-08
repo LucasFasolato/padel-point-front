@@ -9,7 +9,7 @@ import { toastManager } from '@/lib/toast';
 import { useAuthStore } from '@/store/auth-store';
 
 interface RegisterForm {
-  name: string;
+  displayName: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -20,7 +20,7 @@ export default function RegisterPage() {
   const setAuth = useAuthStore((s) => s.setAuth);
 
   const [form, setForm] = useState<RegisterForm>({
-    name: '',
+    displayName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -38,8 +38,8 @@ export default function RegisterPage() {
   const validate = (): boolean => {
     const next: Record<string, string> = {};
 
-    if (!form.name.trim()) {
-      next.name = 'El nombre es obligatorio';
+    if (!form.displayName.trim()) {
+      next.displayName = 'El nombre es obligatorio';
     }
 
     if (!form.email.trim()) {
@@ -74,7 +74,7 @@ export default function RegisterPage() {
 
     try {
       const res = await authService.register(
-        form.name.trim(),
+        form.displayName.trim(),
         form.email.trim(),
         form.password,
       );
@@ -149,13 +149,13 @@ export default function RegisterPage() {
                   required
                   placeholder="Tu nombre"
                   className="w-full rounded-xl border border-slate-200 pl-10 p-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
-                  value={form.name}
-                  onChange={(e) => updateField('name', e.target.value)}
+                  value={form.displayName}
+                  onChange={(e) => updateField('displayName', e.target.value)}
                   autoComplete="name"
                 />
               </div>
-              {errors.name && (
-                <p className="mt-1 text-xs text-rose-600">{errors.name}</p>
+              {errors.displayName && (
+                <p className="mt-1 text-xs text-rose-600">{errors.displayName}</p>
               )}
             </div>
 

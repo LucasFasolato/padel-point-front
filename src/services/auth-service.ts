@@ -29,8 +29,8 @@ export const authService = {
   },
 
   /** Register a new user account. */
-  async register(name: string, email: string, password: string): Promise<RegisterResponse> {
-    const { data } = await api.post('/auth/register', { name, email, password });
+  async register(displayName: string, email: string, password: string): Promise<RegisterResponse> {
+    const { data } = await api.post('/auth/register', { displayName, email, password });
     return data;
   },
 };

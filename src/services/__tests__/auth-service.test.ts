@@ -28,14 +28,14 @@ describe('authService', () => {
     expect(result.accessToken).toBe('tok-123');
   });
 
-  it('register calls POST /auth/register with name, email, and password', async () => {
+  it('register calls POST /auth/register with displayName, email, and password', async () => {
     const response = { accessToken: 'tok-456', user: { userId: 'u2', email: 'x@y.com', role: 'USER' } };
     mockedApi.post.mockResolvedValue({ data: response });
 
     const result = await authService.register('Juan', 'x@y.com', 'pass123');
 
     expect(mockedApi.post).toHaveBeenCalledWith('/auth/register', {
-      name: 'Juan',
+      displayName: 'Juan',
       email: 'x@y.com',
       password: 'pass123',
     });
