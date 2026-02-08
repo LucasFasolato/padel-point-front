@@ -124,7 +124,7 @@ export class NotificationSocket {
       ...NOTIFICATION_QUERY_KEYS.list,
       50,
     ]);
-    if (currentList) {
+    if (Array.isArray(currentList)) {
       queryClient.setQueryData<AppNotification[]>(
         [...NOTIFICATION_QUERY_KEYS.list, 50],
         [notification, ...currentList]

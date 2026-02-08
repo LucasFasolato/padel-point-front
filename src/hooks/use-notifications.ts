@@ -39,7 +39,7 @@ export function useMarkRead() {
       const prevList = queryClient.getQueryData<AppNotification[]>([...KEYS.list, 50]);
       const prevCount = queryClient.getQueryData<number>(KEYS.unread);
 
-      if (prevList) {
+      if (Array.isArray(prevList)) {
         queryClient.setQueryData<AppNotification[]>(
           [...KEYS.list, 50],
           prevList.map((n) => (n.id === id ? { ...n, read: true } : n))
@@ -53,7 +53,7 @@ export function useMarkRead() {
     },
     onError: (_err, _id, context) => {
       // Rollback
-      if (context?.prevList) {
+      if (Array.isArray(context?.prevList)) {
         queryClient.setQueryData([...KEYS.list, 50], context.prevList);
       }
       if (typeof context?.prevCount === 'number') {
@@ -79,7 +79,7 @@ export function useMarkAllRead() {
       const prevList = queryClient.getQueryData<AppNotification[]>([...KEYS.list, 50]);
       const prevCount = queryClient.getQueryData<number>(KEYS.unread);
 
-      if (prevList) {
+      if (Array.isArray(prevList)) {
         queryClient.setQueryData<AppNotification[]>(
           [...KEYS.list, 50],
           prevList.map((n) => ({ ...n, read: true }))
@@ -90,7 +90,7 @@ export function useMarkAllRead() {
       return { prevList, prevCount };
     },
     onError: (_err, _vars, context) => {
-      if (context?.prevList) {
+      if (Array.isArray(context?.prevList)) {
         queryClient.setQueryData([...KEYS.list, 50], context.prevList);
       }
       if (typeof context?.prevCount === 'number') {

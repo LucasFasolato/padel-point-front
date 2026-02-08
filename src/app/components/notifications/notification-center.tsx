@@ -23,7 +23,9 @@ export function NotificationCenter() {
     }
   };
 
-  const hasUnread = notifications?.some((n) => !n.read) ?? false;
+  // Defensive: ensure we always work with an array even if data is malformed
+  const items = Array.isArray(notifications) ? notifications : [];
+  const hasUnread = items.some((n) => !n.read);
 
   // Loading
   if (isLoading) {
@@ -54,7 +56,7 @@ export function NotificationCenter() {
   }
 
   // Empty
-  if (!notifications || notifications.length === 0) {
+  if (items.length === 0) {
     return (
       <div className="px-4 py-16 text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
@@ -78,7 +80,7 @@ export function NotificationCenter() {
     );
   }
 
-  const groups = groupByRecency(notifications);
+  const groups = groupByRecency(items);
 
   return (
     <div>
