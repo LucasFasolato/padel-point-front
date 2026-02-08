@@ -22,6 +22,7 @@ export function useUnreadCount() {
     staleTime: 1000 * 30,
     refetchInterval: 1000 * 60, // polling fallback: every 60s
     placeholderData: 0,
+    retry: 1, // fail fast — badge is non-critical, must never block navigation
   });
 }
 

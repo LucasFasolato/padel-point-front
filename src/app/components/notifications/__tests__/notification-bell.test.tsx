@@ -31,4 +31,17 @@ describe('NotificationBell', () => {
     render(<NotificationBell count={0} onClick={vi.fn()} />);
     expect(screen.getByRole('button')).toBeInTheDocument();
   });
+
+  it('badge has pointer-events-none so it never blocks taps', () => {
+    const onClick = vi.fn();
+    const { container } = render(<NotificationBell count={5} onClick={onClick} />);
+
+    const badge = container.querySelector('span[aria-hidden="true"]');
+    expect(badge).toBeInTheDocument();
+    expect(badge!.className).toContain('pointer-events-none');
+
+    // Click the button — should still fire even with badge overlay
+    fireEvent.click(screen.getByRole('button'));
+    expect(onClick).toHaveBeenCalledOnce();
+  });
 });

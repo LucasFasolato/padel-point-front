@@ -29,7 +29,7 @@ export function NotificationBell({ count, onClick, className }: NotificationBell
       <Bell size={20} />
       {hasUnread && (
         <span
-          className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white"
+          className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white"
           aria-hidden="true"
         >
           {displayCount}

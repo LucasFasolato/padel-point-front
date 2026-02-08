@@ -42,6 +42,11 @@ export function BottomNav() {
             <Link
               key={tab.name}
               href={tab.href}
+              aria-label={
+                tab.badge
+                  ? `${tab.name} — tienes notificaciones sin leer`
+                  : tab.name
+              }
               className={cn(
                 'relative flex h-full min-h-[44px] w-full flex-col items-center justify-center gap-1 transition-colors',
                 isActive ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'
@@ -51,7 +56,7 @@ export function BottomNav() {
                 <tab.icon size={22} className={cn(isActive && 'fill-current')} />
                 {tab.badge && (
                   <span
-                    className="absolute -right-1.5 -top-1 block h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white"
+                    className="pointer-events-none absolute -right-1.5 -top-1 block h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white"
                     aria-hidden="true"
                   />
                 )}
