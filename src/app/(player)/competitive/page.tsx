@@ -1,6 +1,6 @@
 'use client';
 
-import { useCompetitiveProfile } from '@/hooks/use-competitive-profile';
+import { useCompetitiveProfile, useOnboardingState } from '@/hooks/use-competitive-profile';
 import { useMyMatches } from '@/hooks/use-matches';
 import { CategoryBadge } from '@/app/components/competitive/category-badge';
 import { EloBadge } from '@/app/components/competitive/elo-badge';
@@ -14,10 +14,23 @@ import { useRouter } from 'next/navigation';
 
 export default function CompetitivePage() {
   const router = useRouter();
+  const { data: onboarding, isLoading: loadingOnboarding, isError: onboardingError } = useOnboardingState();
   const { data: profile, isLoading: loadingProfile } = useCompetitiveProfile();
   const { data: matches, isLoading: loadingMatches } = useMyMatches();
 
-  if (loadingProfile) {
+  // Show skeleton while onboarding state loads
+  if (loadingOnboarding || loadingProfile) {
+    return (
+      <>
+        <PublicTopBar title="Competitivo" backHref="/" />
+        <CompetitivePageSkeleton />
+      </>
+    );
+  }
+
+  // If onboarding not complete, redirect to onboarding flow
+  if (onboarding && !onboarding.onboardingComplete) {
+    router.replace('/competitive/onboarding');
     return (
       <>
         <PublicTopBar title="Competitivo" backHref="/" />
