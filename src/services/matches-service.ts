@@ -31,6 +31,17 @@ export const matchesService = {
   },
 
   /**
+   * Disputar resultado de match confirmado
+   */
+  async disputeMatch(
+    matchId: string,
+    params: { reason: string; message?: string }
+  ): Promise<MatchResult> {
+    const { data } = await api.post(`/matches/${matchId}/dispute`, params);
+    return data;
+  },
+
+  /**
    * Obtener match por ID
    */
   async getById(matchId: string): Promise<MatchResult> {

@@ -95,6 +95,30 @@ describe('NotificationItem', () => {
     expect(n.link).toBe('/leagues/invite?token=abc123');
   });
 
+  it('renders match_disputed with correct label and navigates to match', () => {
+    const onClick = vi.fn();
+    const n = makeNotification({
+      type: 'match_disputed',
+      title: 'Juan disputó el resultado',
+      link: '/matches/m-123',
+    });
+    render(<NotificationItem notification={n} onClick={onClick} />);
+    expect(screen.getByText('Resultado disputado')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button'));
+    expect(onClick).toHaveBeenCalledWith(n);
+    expect(n.link).toBe('/matches/m-123');
+  });
+
+  it('renders match_resolved with correct label', () => {
+    const n = makeNotification({
+      type: 'match_resolved',
+      title: 'La disputa fue resuelta',
+      link: '/matches/m-123',
+    });
+    render(<NotificationItem notification={n} onClick={vi.fn()} />);
+    expect(screen.getByText('Disputa resuelta')).toBeInTheDocument();
+  });
+
   it('renders unknown notification type with generic fallback label', () => {
     // Simulate a type the frontend does not know about yet
     const n = makeNotification({

@@ -6,6 +6,17 @@ import { challengesService } from '@/services/challenges-service';
 import type { MatchView, Challenge, MatchResult } from '@/types/competitive';
 import { useAuthStore } from '@/store/auth-store';
 import { toast } from 'sonner';
+import axios from 'axios';
+
+function getDisputeErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
+    if (status === 409) return 'Este resultado ya fue disputado.';
+    if (status === 410) return 'El plazo para disputar este resultado expiró.';
+    if (status === 403) return 'No tenés permiso para disputar este resultado.';
+  }
+  return 'Error al enviar la disputa. Intentá de nuevo.';
+}
 
 export function useMyMatches() {
   const user = useAuthStore((s) => s.user);
@@ -146,5 +157,21 @@ export function useMatchActions() {
     },
   });
 
-  return { reportMatch, confirmMatch, rejectMatch };
+  const disputeMatch = useMutation({
+    mutationFn: (params: { matchId: string; reason: string; message?: string }) =>
+      matchesService.disputeMatch(params.matchId, {
+        reason: params.reason,
+        message: params.message,
+      }),
+    onSuccess: () => {
+      toast.success('Disputa enviada. El resultado está en revisión.');
+      invalidate();
+    },
+    onError: (error: unknown) => {
+      const msg = getDisputeErrorMessage(error);
+      toast.error(msg);
+    },
+  });
+
+  return { reportMatch, confirmMatch, rejectMatch, disputeMatch };
 }

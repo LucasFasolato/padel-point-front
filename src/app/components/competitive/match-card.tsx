@@ -16,9 +16,10 @@ export function MatchCard({
   onClick, 
   className 
 }: MatchCardProps) {
-  const statusIcon = match.isWin ? '✅' : '❌';
-  const statusText = match.isWin ? 'Victoria' : 'Derrota';
-  const statusColor = match.isWin ? 'text-green-600' : 'text-red-600';
+  const isDisputed = match.status === 'disputed';
+  const statusIcon = isDisputed ? '⚠️' : match.isWin ? '✅' : '❌';
+  const statusText = isDisputed ? 'En disputa' : match.isWin ? 'Victoria' : 'Derrota';
+  const statusColor = isDisputed ? 'text-amber-600' : match.isWin ? 'text-green-600' : 'text-red-600';
   const isPending = match.status === 'pending_confirm';
 
   return (

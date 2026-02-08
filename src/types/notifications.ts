@@ -8,6 +8,8 @@ export type NotificationType =
   | 'league_invite_received'
   | 'league_invite_accepted'
   | 'league_invite_declined'
+  | 'match_disputed'
+  | 'match_resolved'
   | 'system'
   | 'general';
 
@@ -35,6 +37,7 @@ export const TOAST_WORTHY_TYPES: NotificationType[] = [
   'challenge_received',
   'match_reported',
   'league_invite_received',
+  'match_disputed',
 ];
 
 /** Human-readable labels by type */
@@ -48,6 +51,8 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   league_invite_received: 'Invitación a liga',
   league_invite_accepted: 'Invitación aceptada',
   league_invite_declined: 'Invitación rechazada',
+  match_disputed: 'Resultado disputado',
+  match_resolved: 'Disputa resuelta',
   system: 'Sistema',
   general: 'Notificación',
 };
