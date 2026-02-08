@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CalendarDays, PlusCircle, Trophy, Bell } from 'lucide-react';
+import { Home, Trophy, Users, Bell, UserCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUnreadCount } from '@/hooks/use-notifications';
 
@@ -13,10 +13,10 @@ export function BottomNav() {
 
   const tabs = [
     { name: 'Inicio', href: '/', icon: Home },
-    { name: 'Partidos', href: '/matches', icon: CalendarDays },
-    { name: 'Reservar', href: '/', icon: PlusCircle, highlight: true },
-    { name: 'Alertas', href: '/notifications', icon: Bell, badge: hasUnread },
     { name: 'Competitivo', href: '/competitive', icon: Trophy },
+    { name: 'Ligas', href: '/leagues', icon: Users, highlight: true },
+    { name: 'Alertas', href: '/notifications', icon: Bell, badge: hasUnread },
+    { name: 'Perfil', href: '/me/profile', icon: UserCircle },
   ];
 
   return (

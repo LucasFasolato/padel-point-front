@@ -133,18 +133,18 @@ export default function CompetitivePage() {
 
         {/* CTAs */}
         <div className="grid grid-cols-2 gap-4">
-          <Button 
+          <Button
             size="lg"
             onClick={() => router.push('/competitive/challenges/new')}
           >
             Desafiar jugador
           </Button>
-          <Button 
-            size="lg" 
+          <Button
+            size="lg"
             variant="outline"
-            onClick={() => router.push('/ranking')}
+            onClick={() => router.push('/leagues')}
           >
-            Ver ranking
+            Mis ligas
           </Button>
         </div>
       </div>

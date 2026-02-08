@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Search, MapPin, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Search, MapPin, Loader2, RefreshCw, AlertTriangle, Trophy, Users, Swords, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { toastManager } from '@/lib/toast';
 import { useAuthStore } from '@/store/auth-store';
@@ -185,6 +185,51 @@ export default function HomePage() {
           )}
         </div>
       </div>
+
+      {/* Quick Actions — Logged in */}
+      {token && (
+        <div className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
+          <h2 className="mb-4 text-lg font-bold text-slate-900">Acceso rápido</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Link
+              href="/competitive"
+              className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:shadow-md hover:border-slate-300"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                <Trophy size={20} />
+              </div>
+              <span className="text-sm font-medium text-slate-700">Competitivo</span>
+            </Link>
+            <Link
+              href="/leagues"
+              className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:shadow-md hover:border-slate-300"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                <Users size={20} />
+              </div>
+              <span className="text-sm font-medium text-slate-700">Mis ligas</span>
+            </Link>
+            <Link
+              href="/competitive/challenges"
+              className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:shadow-md hover:border-slate-300"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-600">
+                <Swords size={20} />
+              </div>
+              <span className="text-sm font-medium text-slate-700">Desafíos</span>
+            </Link>
+            <Link
+              href="/notifications"
+              className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:shadow-md hover:border-slate-300"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                <Bell size={20} />
+              </div>
+              <span className="text-sm font-medium text-slate-700">Alertas</span>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Results */}
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">

@@ -15,26 +15,26 @@ describe('authService', () => {
     vi.clearAllMocks();
   });
 
-  it('login calls POST /auth/login-user with email and password', async () => {
+  it('login calls POST /auth/login with email and password', async () => {
     const response = { accessToken: 'tok-123', user: { userId: 'u1', email: 'a@b.com', role: 'USER' } };
     mockedApi.post.mockResolvedValue({ data: response });
 
     const result = await authService.login('a@b.com', 'secret');
 
-    expect(mockedApi.post).toHaveBeenCalledWith('/auth/login-user', {
+    expect(mockedApi.post).toHaveBeenCalledWith('/auth/login', {
       email: 'a@b.com',
       password: 'secret',
     });
     expect(result.accessToken).toBe('tok-123');
   });
 
-  it('register calls POST /auth/register-user with name, email, and password', async () => {
+  it('register calls POST /auth/register with name, email, and password', async () => {
     const response = { accessToken: 'tok-456', user: { userId: 'u2', email: 'x@y.com', role: 'USER' } };
     mockedApi.post.mockResolvedValue({ data: response });
 
     const result = await authService.register('Juan', 'x@y.com', 'pass123');
 
-    expect(mockedApi.post).toHaveBeenCalledWith('/auth/register-user', {
+    expect(mockedApi.post).toHaveBeenCalledWith('/auth/register', {
       name: 'Juan',
       email: 'x@y.com',
       password: 'pass123',
