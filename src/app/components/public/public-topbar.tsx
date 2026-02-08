@@ -3,16 +3,22 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronLeft, Home } from 'lucide-react';
+import { NotificationBell } from '@/app/components/notifications/notification-bell';
+import { useUnreadCount } from '@/hooks/use-notifications';
 
 export function PublicTopBar({
   backHref,
   title,
+  showNotifications = false,
 }: {
   backHref?: string;
   title?: string;
+  /** Show the notification bell in the right slot instead of Home */
+  showNotifications?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { data: unreadCount } = useUnreadCount();
 
   const onBack = () => {
     // Si me pasaste un backHref y no es el mismo path actual, uso eso
@@ -53,15 +59,22 @@ export function PublicTopBar({
         ) : null}
 
         {/* Right */}
-        <Link
-          href="/"
-          aria-label="Ir al inicio"
-          title="Ir al inicio"
-          className="inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-900 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-        >
-          <Home size={16} />
-          <span className="hidden sm:inline">Inicio</span>
-        </Link>
+        {showNotifications ? (
+          <NotificationBell
+            count={unreadCount ?? 0}
+            onClick={() => router.push('/notifications')}
+          />
+        ) : (
+          <Link
+            href="/"
+            aria-label="Ir al inicio"
+            title="Ir al inicio"
+            className="inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-900 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          >
+            <Home size={16} />
+            <span className="hidden sm:inline">Inicio</span>
+          </Link>
+        )}
       </div>
     </div>
   );

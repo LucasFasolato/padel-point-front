@@ -2,17 +2,21 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CalendarDays, User, PlusCircle, Trophy } from 'lucide-react';
+import { Home, CalendarDays, PlusCircle, Trophy, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUnreadCount } from '@/hooks/use-notifications';
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { data: unreadCount } = useUnreadCount();
+  const hasUnread = (unreadCount ?? 0) > 0;
 
   const tabs = [
     { name: 'Inicio', href: '/', icon: Home },
     { name: 'Partidos', href: '/matches', icon: CalendarDays },
     { name: 'Reservar', href: '/', icon: PlusCircle, highlight: true },
-    { name: 'Competitive', href: '/competitive', icon: Trophy },
+    { name: 'Alertas', href: '/notifications', icon: Bell, badge: hasUnread },
+    { name: 'Competitivo', href: '/competitive', icon: Trophy },
   ];
 
   return (
@@ -39,11 +43,19 @@ export function BottomNav() {
               key={tab.name}
               href={tab.href}
               className={cn(
-                'flex h-full min-h-[44px] w-full flex-col items-center justify-center gap-1 transition-colors',
+                'relative flex h-full min-h-[44px] w-full flex-col items-center justify-center gap-1 transition-colors',
                 isActive ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'
               )}
             >
-              <tab.icon size={22} className={cn(isActive && 'fill-current')} />
+              <div className="relative">
+                <tab.icon size={22} className={cn(isActive && 'fill-current')} />
+                {tab.badge && (
+                  <span
+                    className="absolute -right-1.5 -top-1 block h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white"
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
               <span className="text-[11px] font-medium leading-tight">{tab.name}</span>
             </Link>
           );
