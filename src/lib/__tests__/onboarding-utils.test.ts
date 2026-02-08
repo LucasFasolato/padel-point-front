@@ -26,16 +26,16 @@ describe('onboarding-utils', () => {
     it('step 2 requires both goal and frequency', () => {
       expect(canAdvanceFromStep(2, emptyState)).toBe(false);
       expect(canAdvanceFromStep(2, { ...emptyState, goal: 'improve' })).toBe(false);
-      expect(canAdvanceFromStep(2, { ...emptyState, frequency: '3-4' })).toBe(false);
+      expect(canAdvanceFromStep(2, { ...emptyState, frequency: 'weekly' })).toBe(false);
       expect(
-        canAdvanceFromStep(2, { ...emptyState, goal: 'compete', frequency: '1-2' })
+        canAdvanceFromStep(2, { ...emptyState, goal: 'compete', frequency: 'biweekly' })
       ).toBe(true);
     });
 
     it('step 3 (confirm) requires all fields', () => {
       expect(canAdvanceFromStep(3, emptyState)).toBe(false);
       expect(
-        canAdvanceFromStep(3, { category: 4, goal: 'socialize', frequency: '5+' })
+        canAdvanceFromStep(3, { category: 4, goal: 'socialize', frequency: 'daily' })
       ).toBe(true);
     });
 
@@ -64,9 +64,11 @@ describe('onboarding-utils', () => {
     });
 
     it('getFrequencyLabel returns correct label', () => {
-      expect(getFrequencyLabel('1-2')).toBe('1–2 veces por semana');
-      expect(getFrequencyLabel('3-4')).toBe('3–4 veces por semana');
-      expect(getFrequencyLabel('5+')).toBe('5+ veces por semana');
+      expect(getFrequencyLabel('daily')).toBe('Todos los días');
+      expect(getFrequencyLabel('weekly')).toBe('3–4 veces por semana');
+      expect(getFrequencyLabel('biweekly')).toBe('1–2 veces por semana');
+      expect(getFrequencyLabel('monthly')).toBe('Algunas veces al mes');
+      expect(getFrequencyLabel('occasional')).toBe('De vez en cuando');
     });
   });
 
@@ -81,8 +83,8 @@ describe('onboarding-utils', () => {
       expect(GOAL_OPTIONS).toHaveLength(3);
     });
 
-    it('has 3 frequency options', () => {
-      expect(FREQUENCY_OPTIONS).toHaveLength(3);
+    it('has 5 frequency options', () => {
+      expect(FREQUENCY_OPTIONS).toHaveLength(5);
     });
 
     it('TOTAL_STEPS is 4', () => {

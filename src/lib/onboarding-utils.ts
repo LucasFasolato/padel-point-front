@@ -97,19 +97,29 @@ export interface FrequencyOption {
 
 export const FREQUENCY_OPTIONS: FrequencyOption[] = [
   {
-    value: '1-2',
-    label: '1–2 veces por semana',
-    description: 'Cuando puedo, sin presión',
+    value: 'daily',
+    label: 'Todos los días',
+    description: 'Vivo en la cancha',
   },
   {
-    value: '3-4',
+    value: 'weekly',
     label: '3–4 veces por semana',
     description: 'Juego seguido, me gusta la rutina',
   },
   {
-    value: '5+',
-    label: '5+ veces por semana',
-    description: 'Vivo en la cancha',
+    value: 'biweekly',
+    label: '1–2 veces por semana',
+    description: 'Cuando puedo, sin presión',
+  },
+  {
+    value: 'monthly',
+    label: 'Algunas veces al mes',
+    description: 'Juego cuando se da la oportunidad',
+  },
+  {
+    value: 'occasional',
+    label: 'De vez en cuando',
+    description: 'Recién empezando o jugando esporádicamente',
   },
 ];
 

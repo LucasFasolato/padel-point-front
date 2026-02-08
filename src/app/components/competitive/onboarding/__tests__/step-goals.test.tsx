@@ -30,7 +30,7 @@ describe('StepGoals', () => {
 
   it('enables continue when both goal and frequency are selected', () => {
     render(
-      <StepGoals {...defaultProps} selectedGoal="compete" selectedFrequency="3-4" />
+      <StepGoals {...defaultProps} selectedGoal="compete" selectedFrequency="weekly" />
     );
     expect(screen.getByRole('button', { name: /Continuar/ })).not.toBeDisabled();
   });
@@ -48,6 +48,6 @@ describe('StepGoals', () => {
     render(<StepGoals {...defaultProps} onSelectFrequency={onSelectFrequency} />);
 
     fireEvent.click(screen.getByText(/3–4 veces por semana/));
-    expect(onSelectFrequency).toHaveBeenCalledWith('3-4');
+    expect(onSelectFrequency).toHaveBeenCalledWith('weekly');
   });
 });

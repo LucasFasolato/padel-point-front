@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { Category } from '@/types/competitive';
 
 export type PlayerGoal = 'improve' | 'compete' | 'socialize';
-export type PlayFrequency = '1-2' | '3-4' | '5+';
+export type PlayFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'occasional';
 
 interface OnboardingState {
   /** Current step (0-indexed). null = not started */

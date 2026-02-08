@@ -6,7 +6,7 @@ describe('StepConfirm', () => {
   const defaultProps = {
     category: 5 as const,
     goal: 'improve' as const,
-    frequency: '3-4' as const,
+    frequency: 'weekly' as const,
     isSubmitting: false,
     error: null,
     onConfirm: vi.fn(),
