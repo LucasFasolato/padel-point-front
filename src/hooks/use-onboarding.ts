@@ -26,8 +26,8 @@ export function useCompleteOnboarding() {
     mutationFn: async (payload) => {
       return competitiveService.putOnboarding({
         category: payload.category,
-        goal: payload.goal,
-        frequency: payload.frequency,
+        primaryGoal: payload.goal,
+        playingFrequency: payload.frequency,
       });
     },
     onSuccess: () => {

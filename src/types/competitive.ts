@@ -131,8 +131,8 @@ export interface MatchView {
 
 export interface OnboardingData {
   category: Category;
-  goal: 'improve' | 'compete' | 'socialize';
-  frequency: '1-2' | '3-4' | '5+';
+  primaryGoal: 'improve' | 'compete' | 'socialize';
+  playingFrequency: '1-2' | '3-4' | '5+';
   onboardingComplete: boolean;
   categoryLocked: boolean;
 }

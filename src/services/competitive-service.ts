@@ -38,12 +38,12 @@ export const competitiveService = {
 
   /**
    * Guarda el onboarding competitivo (idempotent upsert).
-   * Envía category, goal y frequency en un solo request.
+   * Envía category, primaryGoal y playingFrequency en un solo request.
    */
   async putOnboarding(payload: {
     category: number;
-    goal: string;
-    frequency: string;
+    primaryGoal: string;
+    playingFrequency: string;
   }): Promise<OnboardingData> {
     const { data } = await api.put('/competitive/onboarding', payload);
     return data;

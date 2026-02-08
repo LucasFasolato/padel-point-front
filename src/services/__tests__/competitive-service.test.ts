@@ -20,8 +20,8 @@ describe('competitiveService onboarding', () => {
   it('getOnboarding calls GET /competitive/onboarding', async () => {
     const mockData = {
       category: 5,
-      goal: 'improve',
-      frequency: '3-4',
+      primaryGoal: 'improve',
+      playingFrequency: '3-4',
       onboardingComplete: false,
       categoryLocked: false,
     };
@@ -34,7 +34,7 @@ describe('competitiveService onboarding', () => {
   });
 
   it('putOnboarding calls PUT /competitive/onboarding with full payload', async () => {
-    const payload = { category: 5, goal: 'compete', frequency: '1-2' };
+    const payload = { category: 5, primaryGoal: 'compete', playingFrequency: '1-2' };
     const mockResponse = {
       ...payload,
       onboardingComplete: true,
@@ -49,7 +49,7 @@ describe('competitiveService onboarding', () => {
   });
 
   it('putOnboarding does NOT call initCategory (legacy endpoint)', async () => {
-    const payload = { category: 3, goal: 'socialize', frequency: '5+' };
+    const payload = { category: 3, primaryGoal: 'socialize', playingFrequency: '5+' };
     mockedApi.put.mockResolvedValue({ data: { ...payload, onboardingComplete: true, categoryLocked: false } });
 
     await competitiveService.putOnboarding(payload);
