@@ -61,4 +61,12 @@ describe('StandingsTable', () => {
     expect(screen.getByText('4')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
   });
+
+  it('renders "Jugador" fallback when displayName is empty', () => {
+    const standings = [makeEntry({ displayName: '', userId: 'u-3' })];
+    render(<StandingsTable standings={standings} />);
+    // "Jugador" appears in header and as fallback value
+    const matches = screen.getAllByText('Jugador');
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+  });
 });

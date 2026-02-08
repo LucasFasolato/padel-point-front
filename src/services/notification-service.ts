@@ -8,8 +8,13 @@ export const notificationService = {
   },
 
   async getUnreadCount(): Promise<number> {
-    const { data } = await api.get<UnreadCountResponse>('/notifications/unread-count');
-    return data.count;
+    try {
+      const { data } = await api.get<UnreadCountResponse>('/notifications/unread-count');
+      return typeof data?.count === 'number' ? data.count : 0;
+    } catch {
+      // 304 or empty body — keep UI working, default to 0
+      return 0;
+    }
   },
 
   async markRead(id: string): Promise<void> {

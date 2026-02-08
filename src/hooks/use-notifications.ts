@@ -21,6 +21,7 @@ export function useUnreadCount() {
     queryFn: () => notificationService.getUnreadCount(),
     staleTime: 1000 * 30,
     refetchInterval: 1000 * 60, // polling fallback: every 60s
+    placeholderData: 0,
   });
 }
 

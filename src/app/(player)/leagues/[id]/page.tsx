@@ -91,10 +91,10 @@ export default function LeagueDetailPage() {
                   className="flex items-center gap-3 rounded-lg border border-slate-100 bg-white px-4 py-3"
                 >
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
-                    {m.displayName.charAt(0).toUpperCase()}
+                    {(m.displayName || 'J').charAt(0).toUpperCase()}
                   </div>
                   <span className="text-sm font-medium text-slate-900 truncate">
-                    {m.displayName}
+                    {m.displayName || 'Jugador'}
                   </span>
                 </div>
               ))}

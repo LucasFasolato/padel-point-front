@@ -1,27 +1,44 @@
 import api from '@/lib/api';
+import { normalizeLeagueStatus } from '@/lib/league-utils';
 import type {
   League,
   CreateLeaguePayload,
   InviteByTokenResponse,
 } from '@/types/leagues';
 
+/** Normalise status + provide displayName fallbacks for members/standings. */
+function normalizeLeague(raw: League): League {
+  return {
+    ...raw,
+    status: normalizeLeagueStatus(raw.status),
+    members: raw.members?.map((m) => ({
+      ...m,
+      displayName: m.displayName || 'Jugador',
+    })),
+    standings: raw.standings?.map((s) => ({
+      ...s,
+      displayName: s.displayName || 'Jugador',
+    })),
+  };
+}
+
 export const leagueService = {
   /** List all leagues the current user belongs to. */
   async list(): Promise<League[]> {
     const { data } = await api.get('/leagues');
-    return data;
+    return (data as League[]).map(normalizeLeague);
   },
 
   /** Get a single league with members and standings. */
   async getById(id: string): Promise<League> {
     const { data } = await api.get(`/leagues/${id}`);
-    return data;
+    return normalizeLeague(data);
   },
 
   /** Create a new league. */
   async create(payload: CreateLeaguePayload): Promise<League> {
     const { data } = await api.post('/leagues', payload);
-    return data;
+    return normalizeLeague(data);
   },
 
   /** Send invites to one or more emails. */

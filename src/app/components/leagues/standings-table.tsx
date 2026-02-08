@@ -42,7 +42,7 @@ export function StandingsTable({ standings, currentUserId, className }: Standing
               >
                 <td className="px-3 py-3 text-slate-500 font-semibold">{entry.position}</td>
                 <td className="px-3 py-3 text-slate-900 truncate max-w-[140px]">
-                  {entry.displayName}
+                  {entry.displayName || 'Jugador'}
                   {isMe && <span className="ml-1.5 text-xs text-blue-600">(Vos)</span>}
                 </td>
                 <td className="px-3 py-3 text-center font-bold text-slate-900">{entry.points}</td>

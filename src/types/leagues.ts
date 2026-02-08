@@ -3,7 +3,7 @@ export type LeagueStatus = 'upcoming' | 'active' | 'finished';
 export interface LeagueMember {
   userId: string;
   displayName: string;
-  avatarUrl: string | null;
+  avatarUrl?: string | null;
   joinedAt: string;
 }
 

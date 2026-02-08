@@ -1,14 +1,13 @@
 import { cn } from '@/lib/utils';
-import { STATUS_LABELS, STATUS_COLORS } from '@/lib/league-utils';
-import type { LeagueStatus } from '@/types/leagues';
+import { getStatusLabel, getStatusColors } from '@/lib/league-utils';
 
 interface LeagueStatusBadgeProps {
-  status: LeagueStatus;
+  status: string;
   className?: string;
 }
 
 export function LeagueStatusBadge({ status, className }: LeagueStatusBadgeProps) {
-  const colors = STATUS_COLORS[status];
+  const colors = getStatusColors(status);
 
   return (
     <span
@@ -19,7 +18,7 @@ export function LeagueStatusBadge({ status, className }: LeagueStatusBadgeProps)
         className,
       )}
     >
-      {STATUS_LABELS[status]}
+      {getStatusLabel(status)}
     </span>
   );
 }

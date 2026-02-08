@@ -24,20 +24,27 @@ describe('leagueService', () => {
   });
 
   it('getById calls GET /leagues/:id', async () => {
-    const league = { id: 'lg-1', name: 'Test' };
+    const league = { id: 'lg-1', name: 'Test', status: 'active', startDate: '2026-01-01', endDate: '2026-03-01', creatorId: 'u-1', membersCount: 2 };
     mockedApi.get.mockResolvedValue({ data: league });
     const result = await leagueService.getById('lg-1');
     expect(mockedApi.get).toHaveBeenCalledWith('/leagues/lg-1');
-    expect(result).toEqual(league);
+    expect(result).toMatchObject({ id: 'lg-1', name: 'Test', status: 'active' });
+  });
+
+  it('getById normalises draft status to upcoming', async () => {
+    const league = { id: 'lg-2', name: 'Draft Liga', status: 'draft', startDate: '2026-01-01', endDate: '2026-03-01', creatorId: 'u-1', membersCount: 1 };
+    mockedApi.get.mockResolvedValue({ data: league });
+    const result = await leagueService.getById('lg-2');
+    expect(result.status).toBe('upcoming');
   });
 
   it('create calls POST /leagues', async () => {
     const payload = { name: 'Liga', startDate: '2026-01-01', endDate: '2026-03-01' };
-    const created = { id: 'lg-new', ...payload };
+    const created = { id: 'lg-new', ...payload, status: 'upcoming', creatorId: 'u-1', membersCount: 1 };
     mockedApi.post.mockResolvedValue({ data: created });
     const result = await leagueService.create(payload);
     expect(mockedApi.post).toHaveBeenCalledWith('/leagues', payload);
-    expect(result).toEqual(created);
+    expect(result).toMatchObject({ id: 'lg-new', name: 'Liga' });
   });
 
   it('createInvites calls POST /leagues/:id/invites', async () => {
