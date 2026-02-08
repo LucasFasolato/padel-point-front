@@ -5,6 +5,9 @@ export type NotificationType =
   | 'match_reported'
   | 'match_confirmed'
   | 'elo_updated'
+  | 'league_invite_received'
+  | 'league_invite_accepted'
+  | 'league_invite_declined'
   | 'system'
   | 'general';
 
@@ -31,6 +34,7 @@ export interface UnreadCountResponse {
 export const TOAST_WORTHY_TYPES: NotificationType[] = [
   'challenge_received',
   'match_reported',
+  'league_invite_received',
 ];
 
 /** Human-readable labels by type */
@@ -41,6 +45,9 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   match_reported: 'Resultado reportado',
   match_confirmed: 'Resultado confirmado',
   elo_updated: 'ELO actualizado',
+  league_invite_received: 'Invitación a liga',
+  league_invite_accepted: 'Invitación aceptada',
+  league_invite_declined: 'Invitación rechazada',
   system: 'Sistema',
   general: 'Notificación',
 };

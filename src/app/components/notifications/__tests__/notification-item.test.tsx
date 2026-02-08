@@ -50,4 +50,61 @@ describe('NotificationItem', () => {
     const button = container.querySelector('button');
     expect(button?.className).toContain('bg-white');
   });
+
+  it('renders league_invite_received with correct label', () => {
+    const n = makeNotification({
+      type: 'league_invite_received',
+      title: 'Te invitaron a la liga Padel Masters',
+      link: '/leagues/invite?token=abc123',
+    });
+    render(<NotificationItem notification={n} onClick={vi.fn()} />);
+    expect(screen.getByText('Invitación a liga')).toBeInTheDocument();
+    expect(screen.getByText('Te invitaron a la liga Padel Masters')).toBeInTheDocument();
+  });
+
+  it('renders league_invite_accepted with correct label', () => {
+    const n = makeNotification({
+      type: 'league_invite_accepted',
+      title: 'Carlos aceptó la invitación a Padel Masters',
+      link: '/leagues/lg-1',
+    });
+    render(<NotificationItem notification={n} onClick={vi.fn()} />);
+    expect(screen.getByText('Invitación aceptada')).toBeInTheDocument();
+  });
+
+  it('renders league_invite_declined with correct label', () => {
+    const n = makeNotification({
+      type: 'league_invite_declined',
+      title: 'María rechazó la invitación a Padel Masters',
+      link: '/leagues/lg-1',
+    });
+    render(<NotificationItem notification={n} onClick={vi.fn()} />);
+    expect(screen.getByText('Invitación rechazada')).toBeInTheDocument();
+  });
+
+  it('navigates on click for league invite notification', () => {
+    const onClick = vi.fn();
+    const n = makeNotification({
+      type: 'league_invite_received',
+      title: 'Te invitaron a la liga Padel Masters',
+      link: '/leagues/invite?token=abc123',
+    });
+    render(<NotificationItem notification={n} onClick={onClick} />);
+    fireEvent.click(screen.getByRole('button'));
+    expect(onClick).toHaveBeenCalledWith(n);
+    expect(n.link).toBe('/leagues/invite?token=abc123');
+  });
+
+  it('renders unknown notification type with generic fallback label', () => {
+    // Simulate a type the frontend does not know about yet
+    const n = makeNotification({
+      type: 'some_future_type' as AppNotification['type'],
+      title: 'Something new happened',
+    });
+    expect(() => {
+      render(<NotificationItem notification={n} onClick={vi.fn()} />);
+    }).not.toThrow();
+    expect(screen.getByText('Notificación')).toBeInTheDocument();
+    expect(screen.getByText('Something new happened')).toBeInTheDocument();
+  });
 });
