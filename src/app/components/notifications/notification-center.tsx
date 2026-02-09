@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useNotifications, useMarkRead, useMarkAllRead } from '@/hooks/use-notifications';
+import { useNotificationSocketStatus } from '@/hooks/use-notification-socket';
 import { groupByRecency, TIME_GROUP_LABELS } from '@/lib/notification-utils';
 import { NotificationItem } from './notification-item';
 import { Button } from '@/app/components/ui/button';
@@ -13,6 +15,7 @@ export function NotificationCenter() {
   const { data: notifications, isLoading, isError, refetch } = useNotifications();
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
+  const wsConnected = useNotificationSocketStatus();
 
   const handleItemClick = (notification: AppNotification) => {
     if (!notification.read) {
@@ -26,6 +29,17 @@ export function NotificationCenter() {
   // Defensive: ensure we always work with an array even if data is malformed
   const items = Array.isArray(notifications) ? notifications : [];
   const hasUnread = items.some((n) => !n.read);
+
+  // Dev-only debug log
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && !isLoading && !isError) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[notifications] loaded ${items.length} items` +
+          (items.length > 0 ? `, first type: ${items[0].type}` : '')
+      );
+    }
+  }, [items, isLoading, isError]);
 
   // Loading
   if (isLoading) {
@@ -68,14 +82,22 @@ export function NotificationCenter() {
         <p className="text-xs text-slate-500 mt-1">
           Cuando recibas desafíos o resultados, aparecen acá.
         </p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-4"
-          onClick={() => router.push('/competitive/challenges')}
-        >
-          Ver desafíos
-        </Button>
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push('/leagues')}
+          >
+            Invitá amigos a una liga
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push('/competitive')}
+          >
+            Jugá un partido competitivo
+          </Button>
+        </div>
       </div>
     );
   }
@@ -84,9 +106,18 @@ export function NotificationCenter() {
 
   return (
     <div>
-      {/* Mark all read */}
-      {hasUnread && (
-        <div className="flex justify-end px-4 py-2">
+      {/* Header actions */}
+      <div className="flex items-center justify-between px-4 py-2">
+        {/* WS disconnected indicator */}
+        {!wsConnected && (
+          <span className="text-[11px] text-slate-400">
+            Actualizando por consulta
+          </span>
+        )}
+        <span />
+
+        {/* Mark all read */}
+        {hasUnread && (
           <button
             type="button"
             onClick={() => markAllRead.mutate()}
@@ -95,8 +126,8 @@ export function NotificationCenter() {
           >
             Marcar todo como leído
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Grouped list */}
       <div className="space-y-4 px-2 pb-6">

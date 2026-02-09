@@ -11,6 +11,7 @@ export interface NotificationSocketOptions {
   url: string;
   token: string;
   queryClient: QueryClient;
+  onStatusChange?: (connected: boolean) => void;
 }
 
 /**
@@ -45,6 +46,7 @@ export class NotificationSocket {
 
     this.ws.onopen = () => {
       this.reconnectAttempt = 0;
+      this.options.onStatusChange?.(true);
     };
 
     this.ws.onmessage = (event) => {
@@ -52,6 +54,7 @@ export class NotificationSocket {
     };
 
     this.ws.onclose = () => {
+      this.options.onStatusChange?.(false);
       if (!this.disposed) {
         this.scheduleReconnect();
       }

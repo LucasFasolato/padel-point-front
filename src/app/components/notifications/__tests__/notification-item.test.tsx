@@ -131,4 +131,81 @@ describe('NotificationItem', () => {
     expect(screen.getByText('Notificación')).toBeInTheDocument();
     expect(screen.getByText('Something new happened')).toBeInTheDocument();
   });
+
+  // Challenge notification types
+  it('renders challenge_accepted with correct label', () => {
+    const n = makeNotification({
+      type: 'challenge_accepted',
+      title: 'Carlos aceptó tu desafío',
+      link: '/competitive/challenges/abc',
+    });
+    render(<NotificationItem notification={n} onClick={vi.fn()} />);
+    expect(screen.getByText('Desafío aceptado')).toBeInTheDocument();
+    expect(screen.getByText('Carlos aceptó tu desafío')).toBeInTheDocument();
+  });
+
+  it('renders challenge_rejected with correct label', () => {
+    const n = makeNotification({
+      type: 'challenge_rejected',
+      title: 'María rechazó tu desafío',
+      link: '/competitive/challenges/def',
+    });
+    render(<NotificationItem notification={n} onClick={vi.fn()} />);
+    expect(screen.getByText('Desafío rechazado')).toBeInTheDocument();
+  });
+
+  it('navigates on click for challenge_accepted notification', () => {
+    const onClick = vi.fn();
+    const n = makeNotification({
+      type: 'challenge_accepted',
+      title: 'Carlos aceptó tu desafío',
+      link: '/competitive/challenges/abc',
+    });
+    render(<NotificationItem notification={n} onClick={onClick} />);
+    fireEvent.click(screen.getByRole('button'));
+    expect(onClick).toHaveBeenCalledWith(n);
+    expect(n.link).toBe('/competitive/challenges/abc');
+  });
+
+  // Robustness tests — never crash on weird payloads
+  it('does not crash when title is empty string', () => {
+    const n = makeNotification({ title: '' });
+    expect(() => {
+      render(<NotificationItem notification={n} onClick={vi.fn()} />);
+    }).not.toThrow();
+  });
+
+  it('does not crash when message is empty string', () => {
+    const n = makeNotification({ message: '' });
+    expect(() => {
+      render(<NotificationItem notification={n} onClick={vi.fn()} />);
+    }).not.toThrow();
+  });
+
+  it('does not crash when link is null', () => {
+    const onClick = vi.fn();
+    const n = makeNotification({ link: null });
+    expect(() => {
+      render(<NotificationItem notification={n} onClick={onClick} />);
+    }).not.toThrow();
+    fireEvent.click(screen.getByRole('button'));
+    expect(onClick).toHaveBeenCalledWith(n);
+  });
+
+  it('does not crash when createdAt is an invalid date string', () => {
+    const n = makeNotification({ createdAt: 'not-a-date' });
+    expect(() => {
+      render(<NotificationItem notification={n} onClick={vi.fn()} />);
+    }).not.toThrow();
+  });
+
+  it('does not crash with extremely long title and message', () => {
+    const n = makeNotification({
+      title: 'A'.repeat(1000),
+      message: 'B'.repeat(5000),
+    });
+    expect(() => {
+      render(<NotificationItem notification={n} onClick={vi.fn()} />);
+    }).not.toThrow();
+  });
 });
