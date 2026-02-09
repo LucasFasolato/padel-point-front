@@ -1,22 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams } from 'next/navigation';
-import { Users, UserPlus, Calendar } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { Users, UserPlus, Calendar, Trophy } from 'lucide-react';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
-import { LeagueStatusBadge, StandingsTable, InviteModal } from '@/app/components/leagues';
-import { useLeagueDetail, useCreateInvites } from '@/hooks/use-leagues';
+import { LeagueStatusBadge, StandingsTable, InviteModal, ReportFromReservationModal } from '@/app/components/leagues';
+import { useLeagueDetail, useCreateInvites, useEligibleReservations, useReportFromReservation } from '@/hooks/use-leagues';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDateRange } from '@/lib/league-utils';
 
 export default function LeagueDetailPage() {
   const { id } = useParams() as { id: string };
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { data: league, isLoading, error } = useLeagueDetail(id);
   const inviteMutation = useCreateInvites(id);
+  const reportMutation = useReportFromReservation(id);
+  const { data: reservations, isLoading: reservationsLoading } = useEligibleReservations(id);
   const [showInvite, setShowInvite] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   if (isLoading) {
     return (
@@ -102,6 +106,19 @@ export default function LeagueDetailPage() {
           </section>
         )}
 
+        {/* Report result CTA */}
+        {league.status === 'active' && (
+          <Button
+            fullWidth
+            size="lg"
+            className="gap-2"
+            onClick={() => setShowReport(true)}
+          >
+            <Trophy size={18} />
+            Cargar resultado
+          </Button>
+        )}
+
         {/* Invite CTA */}
         <Button
           fullWidth
@@ -124,6 +141,25 @@ export default function LeagueDetailPage() {
           });
         }}
         isPending={inviteMutation.isPending}
+      />
+
+      <ReportFromReservationModal
+        isOpen={showReport}
+        onClose={() => setShowReport(false)}
+        onSubmit={(payload) => {
+          reportMutation.mutate(payload, {
+            onSuccess: (result) => {
+              setShowReport(false);
+              if (result?.matchId) {
+                router.push(`/matches/${result.matchId}`);
+              }
+            },
+          });
+        }}
+        isPending={reportMutation.isPending}
+        members={league.members ?? []}
+        reservations={reservations ?? []}
+        reservationsLoading={reservationsLoading}
       />
     </>
   );

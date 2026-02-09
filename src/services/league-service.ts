@@ -4,6 +4,9 @@ import type {
   League,
   CreateLeaguePayload,
   InviteByTokenResponse,
+  ReportFromReservationPayload,
+  ReportFromReservationResponse,
+  EligibleReservation,
 } from '@/types/leagues';
 
 /** Normalise status + provide displayName fallbacks for members/standings. */
@@ -60,5 +63,23 @@ export const leagueService = {
   /** Decline an invite by token. */
   async declineInvite(token: string): Promise<void> {
     await api.post(`/leagues/invites/${token}/decline`);
+  },
+
+  /** Fetch confirmed, past reservations eligible for league match reporting. */
+  async getEligibleReservations(leagueId: string): Promise<EligibleReservation[]> {
+    const { data } = await api.get(`/leagues/${leagueId}/eligible-reservations`);
+    return Array.isArray(data) ? data : [];
+  },
+
+  /** Report a league match anchored to a reservation. */
+  async reportFromReservation(
+    leagueId: string,
+    payload: ReportFromReservationPayload
+  ): Promise<ReportFromReservationResponse> {
+    const { data } = await api.post(
+      `/leagues/${leagueId}/report-from-reservation`,
+      payload
+    );
+    return data;
   },
 };

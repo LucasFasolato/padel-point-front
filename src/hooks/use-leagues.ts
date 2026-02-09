@@ -1,11 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { leagueService } from '@/services/league-service';
 import { toast } from 'sonner';
+import type { ReportFromReservationPayload } from '@/types/leagues';
+import axios from 'axios';
 
 const KEYS = {
   list: ['leagues', 'list'] as const,
   detail: (id: string) => ['leagues', 'detail', id] as const,
   invite: (token: string) => ['leagues', 'invite', token] as const,
+  eligibleReservations: (id: string) => ['leagues', 'eligible-reservations', id] as const,
 };
 
 /** List all leagues the current user belongs to. */
@@ -93,6 +96,46 @@ export function useDeclineInvite() {
     },
     onError: () => {
       toast.error('No se pudo rechazar la invitación.');
+    },
+  });
+}
+
+/** Fetch reservations eligible for league match reporting. */
+export function useEligibleReservations(leagueId: string) {
+  return useQuery({
+    queryKey: KEYS.eligibleReservations(leagueId),
+    queryFn: () => leagueService.getEligibleReservations(leagueId),
+    enabled: !!leagueId,
+  });
+}
+
+const REPORT_ERROR_MESSAGES: Record<string, string> = {
+  LEAGUE_FORBIDDEN: 'Solo miembros pueden cargar resultados.',
+  RESERVATION_NOT_ELIGIBLE: 'La reserva aún no es válida para cargar resultado.',
+  LEAGUE_MEMBERS_MISSING: 'Los jugadores deben pertenecer a la liga.',
+  MATCH_ALREADY_REPORTED: 'Ese partido ya fue cargado para esta liga.',
+};
+
+/** Report a league match from a reservation. */
+export function useReportFromReservation(leagueId: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: ReportFromReservationPayload) =>
+      leagueService.reportFromReservation(leagueId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.detail(leagueId) });
+      toast.success('Resultado cargado. Falta confirmación del rival.');
+    },
+    onError: (err) => {
+      let message = 'No se pudo cargar el resultado. Intentá de nuevo.';
+      if (axios.isAxiosError(err)) {
+        const code = err.response?.data?.code as string | undefined;
+        if (code && REPORT_ERROR_MESSAGES[code]) {
+          message = REPORT_ERROR_MESSAGES[code];
+        }
+      }
+      toast.error(message);
     },
   });
 }

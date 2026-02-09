@@ -52,3 +52,26 @@ export interface InviteByTokenResponse {
   membersCount: number;
   creatorName: string;
 }
+
+export interface ReportFromReservationPayload {
+  reservationId: string;
+  teamA1Id: string;
+  teamA2Id: string;
+  teamB1Id: string;
+  teamB2Id: string;
+  sets: { a: number; b: number }[];
+  playedAt?: string;
+}
+
+export interface ReportFromReservationResponse {
+  matchId?: string;
+}
+
+/** Reservation eligible for league match reporting. */
+export interface EligibleReservation {
+  id: string;
+  courtName: string;
+  clubName: string;
+  startAt: string;
+  endAt: string;
+}
