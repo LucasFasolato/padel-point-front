@@ -2,14 +2,26 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Users, UserPlus, Calendar, Trophy } from 'lucide-react';
+import { Users, UserPlus, Calendar, Trophy, Info } from 'lucide-react';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
-import { LeagueStatusBadge, StandingsTable, InviteModal, ReportFromReservationModal } from '@/app/components/leagues';
-import { useLeagueDetail, useCreateInvites, useEligibleReservations, useReportFromReservation } from '@/hooks/use-leagues';
+import {
+  LeagueStatusBadge,
+  StandingsTable,
+  InviteModal,
+  ReportFromReservationModal,
+  LeagueMatchCard,
+} from '@/app/components/leagues';
+import {
+  useLeagueDetail,
+  useCreateInvites,
+  useEligibleReservations,
+  useReportFromReservation,
+  useLeagueMatches,
+} from '@/hooks/use-leagues';
 import { useAuthStore } from '@/store/auth-store';
-import { formatDateRange } from '@/lib/league-utils';
+import { formatDateRange, getModeLabel } from '@/lib/league-utils';
 
 export default function LeagueDetailPage() {
   const { id } = useParams() as { id: string };
@@ -19,6 +31,7 @@ export default function LeagueDetailPage() {
   const inviteMutation = useCreateInvites(id);
   const reportMutation = useReportFromReservation(id);
   const { data: reservations, isLoading: reservationsLoading } = useEligibleReservations(id);
+  const { data: matches } = useLeagueMatches(id);
   const [showInvite, setShowInvite] = useState(false);
   const [showReport, setShowReport] = useState(false);
 
@@ -45,6 +58,13 @@ export default function LeagueDetailPage() {
     );
   }
 
+  const isOpen = league.mode === 'open';
+  const isScheduled = !isOpen;
+  const isActive = league.status === 'active';
+  const isFinished = league.status === 'finished';
+  const isUpcoming = league.status === 'upcoming';
+  const matchList = Array.isArray(matches) ? matches : [];
+
   return (
     <>
       <PublicTopBar title={league.name} backHref="/leagues" />
@@ -59,17 +79,62 @@ export default function LeagueDetailPage() {
               className="bg-white/20 text-white shrink-0"
             />
           </div>
+
+          {/* Mode label */}
+          <p className="text-sm font-medium text-emerald-50 mb-2">
+            {getModeLabel(league.mode)}
+          </p>
+
           <div className="flex items-center gap-4 text-sm text-emerald-100">
-            <span className="flex items-center gap-1.5">
-              <Calendar size={14} />
-              {formatDateRange(league.startDate, league.endDate)}
-            </span>
+            {/* Date info: only show range for scheduled leagues */}
+            {isScheduled && (
+              <span className="flex items-center gap-1.5">
+                <Calendar size={14} />
+                Temporada: {formatDateRange(league.startDate, league.endDate)}
+              </span>
+            )}
+            {isOpen && (
+              <span className="text-xs text-emerald-200">
+                Se actualiza con cada partido confirmado
+              </span>
+            )}
             <span className="flex items-center gap-1.5">
               <Users size={14} />
               {league.membersCount} jugadores
             </span>
           </div>
         </div>
+
+        {/* Status-specific CTA area */}
+        {isActive && (
+          <Button
+            fullWidth
+            size="lg"
+            className="gap-2"
+            onClick={() => setShowReport(true)}
+          >
+            <Trophy size={18} />
+            Cargar resultado
+          </Button>
+        )}
+
+        {isUpcoming && (
+          <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+            <Info size={16} className="mt-0.5 shrink-0 text-blue-500" />
+            <p className="text-sm text-blue-800">
+              La liga aún no está activa. Activala para empezar a cargar partidos.
+            </p>
+          </div>
+        )}
+
+        {isFinished && (
+          <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <Info size={16} className="mt-0.5 shrink-0 text-slate-400" />
+            <p className="text-sm text-slate-600">
+              Liga finalizada. No se pueden cargar más resultados.
+            </p>
+          </div>
+        )}
 
         {/* Standings */}
         <section>
@@ -80,6 +145,44 @@ export default function LeagueDetailPage() {
             standings={league.standings ?? []}
             currentUserId={user?.userId}
           />
+        </section>
+
+        {/* Match history */}
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-slate-500 uppercase tracking-wide">
+            Partidos
+          </h2>
+          {matchList.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
+              <p className="text-sm font-semibold text-slate-900">
+                Todavía no hay partidos
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Solo cuentan partidos vinculados a reservas confirmadas.
+              </p>
+              {isActive && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 gap-2"
+                  onClick={() => setShowReport(true)}
+                >
+                  <Trophy size={14} />
+                  Cargar primer resultado
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {matchList.map((m) => (
+                <LeagueMatchCard
+                  key={m.id}
+                  match={m}
+                  onClick={() => router.push(`/matches/${m.id}`)}
+                />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Members */}
@@ -104,19 +207,6 @@ export default function LeagueDetailPage() {
               ))}
             </div>
           </section>
-        )}
-
-        {/* Report result CTA */}
-        {league.status === 'active' && (
-          <Button
-            fullWidth
-            size="lg"
-            className="gap-2"
-            onClick={() => setShowReport(true)}
-          >
-            <Trophy size={18} />
-            Cargar resultado
-          </Button>
         )}
 
         {/* Invite CTA */}
@@ -168,11 +258,12 @@ export default function LeagueDetailPage() {
 function DetailSkeleton() {
   return (
     <div className="px-4 py-6 space-y-6">
-      <Skeleton className="h-28 w-full rounded-xl" />
+      <Skeleton className="h-32 w-full rounded-xl" />
+      <Skeleton className="h-12 w-full rounded-xl" />
       <Skeleton className="h-5 w-40 rounded" />
       <Skeleton className="h-48 w-full rounded-xl" />
       <Skeleton className="h-5 w-32 rounded" />
-      <Skeleton className="h-16 w-full rounded-lg" />
+      <Skeleton className="h-24 w-full rounded-xl" />
       <Skeleton className="h-16 w-full rounded-lg" />
     </div>
   );

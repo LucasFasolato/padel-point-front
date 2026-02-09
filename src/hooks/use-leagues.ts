@@ -9,6 +9,7 @@ const KEYS = {
   detail: (id: string) => ['leagues', 'detail', id] as const,
   invite: (token: string) => ['leagues', 'invite', token] as const,
   eligibleReservations: (id: string) => ['leagues', 'eligible-reservations', id] as const,
+  matches: (id: string) => ['leagues', 'matches', id] as const,
 };
 
 /** List all leagues the current user belongs to. */
@@ -100,6 +101,15 @@ export function useDeclineInvite() {
   });
 }
 
+/** Fetch matches linked to a league. */
+export function useLeagueMatches(leagueId: string) {
+  return useQuery({
+    queryKey: KEYS.matches(leagueId),
+    queryFn: () => leagueService.getMatches(leagueId),
+    enabled: !!leagueId,
+  });
+}
+
 /** Fetch reservations eligible for league match reporting. */
 export function useEligibleReservations(leagueId: string) {
   return useQuery({
@@ -125,6 +135,7 @@ export function useReportFromReservation(leagueId: string) {
       leagueService.reportFromReservation(leagueId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEYS.detail(leagueId) });
+      qc.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
       toast.success('Resultado cargado. Falta confirmación del rival.');
     },
     onError: (err) => {

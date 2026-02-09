@@ -1,4 +1,5 @@
 export type LeagueStatus = 'upcoming' | 'active' | 'finished';
+export type LeagueMode = 'open' | 'scheduled';
 
 export interface LeagueMember {
   userId: string;
@@ -21,12 +22,28 @@ export interface League {
   id: string;
   name: string;
   status: LeagueStatus;
+  mode?: LeagueMode;
   startDate: string;
   endDate: string;
   creatorId: string;
   membersCount: number;
   members?: LeagueMember[];
   standings?: StandingEntry[];
+}
+
+export type LeagueMatchStatus =
+  | 'pending_confirm'
+  | 'confirmed'
+  | 'disputed'
+  | 'resolved';
+
+export interface LeagueMatch {
+  id: string;
+  playedAt: string;
+  score: string;
+  status: LeagueMatchStatus;
+  teamA: { displayName: string }[];
+  teamB: { displayName: string }[];
 }
 
 export interface CreateLeaguePayload {

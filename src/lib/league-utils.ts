@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { League, LeagueStatus } from '@/types/leagues';
+import type { League, LeagueStatus, LeagueMode, LeagueMatchStatus } from '@/types/leagues';
 
 const FALLBACK_LABEL = 'Desconocido';
 const FALLBACK_COLORS = { bg: 'bg-slate-100', text: 'text-slate-600' };
@@ -68,6 +68,43 @@ export function groupLeaguesByStatus(leagues: League[]): LeagueGroup[] {
     label: LABELS[status],
     items: map.get(status)!,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Mode helpers
+// ---------------------------------------------------------------------------
+const MODE_LABELS: Record<LeagueMode, string> = {
+  open: 'Liga abierta',
+  scheduled: 'Liga por temporada',
+};
+
+export function getModeLabel(mode?: LeagueMode): string {
+  return mode ? MODE_LABELS[mode] ?? MODE_LABELS.open : MODE_LABELS.open;
+}
+
+// ---------------------------------------------------------------------------
+// Match status labels and colors
+// ---------------------------------------------------------------------------
+const MATCH_STATUS_LABELS: Record<LeagueMatchStatus, string> = {
+  pending_confirm: 'Pendiente',
+  confirmed: 'Confirmado',
+  disputed: 'Disputado',
+  resolved: 'Resuelto',
+};
+
+const MATCH_STATUS_COLORS: Record<LeagueMatchStatus, { bg: string; text: string }> = {
+  pending_confirm: { bg: 'bg-amber-100', text: 'text-amber-800' },
+  confirmed: { bg: 'bg-emerald-100', text: 'text-emerald-800' },
+  disputed: { bg: 'bg-rose-100', text: 'text-rose-800' },
+  resolved: { bg: 'bg-blue-100', text: 'text-blue-800' },
+};
+
+export function getMatchStatusLabel(status: string): string {
+  return MATCH_STATUS_LABELS[status as LeagueMatchStatus] ?? 'Desconocido';
+}
+
+export function getMatchStatusColors(status: string): { bg: string; text: string } {
+  return MATCH_STATUS_COLORS[status as LeagueMatchStatus] ?? FALLBACK_COLORS;
 }
 
 /** Format a date range for display, e.g. "15 ene – 28 feb 2026". */
