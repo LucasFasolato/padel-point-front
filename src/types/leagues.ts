@@ -19,6 +19,14 @@ export interface StandingEntry {
   draws: number;
 }
 
+export type StandingsMovementMap = Record<string, number>;
+
+export interface LeagueStandingsResponse {
+  rows: StandingEntry[];
+  movement: StandingsMovementMap;
+  computedAt?: string;
+}
+
 export interface League {
   id: string;
   name: string;

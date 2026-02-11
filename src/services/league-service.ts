@@ -11,6 +11,8 @@ import type {
   LeagueMatch,
   LeagueSettings,
   LeagueMemberRole,
+  LeagueStandingsResponse,
+  StandingsMovementMap,
 } from '@/types/leagues';
 
 /** Normalise status + provide displayName fallbacks for members/standings. */
@@ -27,6 +29,16 @@ function normalizeLeague(raw: League): League {
       displayName: s.displayName || 'Jugador',
     })),
   };
+}
+
+function normalizeStandingsMovement(value: unknown): StandingsMovementMap {
+  if (!value || typeof value !== 'object') return {};
+  const out: StandingsMovementMap = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    const n = Number(raw);
+    if (!Number.isNaN(n)) out[key] = n;
+  }
+  return out;
 }
 
 export const leagueService = {
@@ -85,6 +97,24 @@ export const leagueService = {
   async getSettings(leagueId: string): Promise<LeagueSettings> {
     const { data } = await api.get(`/leagues/${leagueId}/settings`);
     return data;
+  },
+
+  /** Fetch standings with movement deltas + computation timestamp. */
+  async getStandings(leagueId: string): Promise<LeagueStandingsResponse> {
+    const { data } = await api.get(`/leagues/${leagueId}/standings`);
+
+    const rowsRaw = (data?.rows ?? data?.standings ?? []) as League['standings'];
+    const rows = Array.isArray(rowsRaw)
+      ? rowsRaw.map((s) => ({
+          ...s,
+          displayName: s.displayName || 'Jugador',
+        }))
+      : [];
+
+    const movement = normalizeStandingsMovement(data?.movement ?? data?.movementMap);
+    const computedAt = typeof data?.computedAt === 'string' ? data.computedAt : undefined;
+
+    return { rows, movement, computedAt };
   },
 
   /** Update league settings. */

@@ -37,6 +37,15 @@ export function useLeagueDetail(id: string) {
   });
 }
 
+/** Fetch standings rows + movement map + computed timestamp. */
+export function useLeagueStandings(id: string) {
+  return useQuery({
+    queryKey: KEYS.standings(id),
+    queryFn: () => leagueService.getStandings(id),
+    enabled: !!id,
+  });
+}
+
 /** Create a new league. */
 export function useCreateLeague() {
   const qc = useQueryClient();
@@ -145,6 +154,7 @@ export function useReportFromReservation(leagueId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEYS.detail(leagueId) });
       qc.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
+      qc.invalidateQueries({ queryKey: KEYS.standings(leagueId) });
       toast.success(LEAGUE_REPORT_SUCCESS_MESSAGE);
     },
     onError: (err) => {
@@ -170,6 +180,7 @@ export function useReportManual(leagueId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEYS.detail(leagueId) });
       qc.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
+      qc.invalidateQueries({ queryKey: KEYS.standings(leagueId) });
       toast.success(LEAGUE_REPORT_SUCCESS_MESSAGE);
     },
     onError: (err) => {

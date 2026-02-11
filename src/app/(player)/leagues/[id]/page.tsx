@@ -19,6 +19,7 @@ import {
 } from '@/app/components/leagues';
 import {
   useLeagueDetail,
+  useLeagueStandings,
   useCreateInvites,
   useEligibleReservations,
   useReportFromReservation,
@@ -43,6 +44,7 @@ export default function LeagueDetailPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { data: league, isLoading, error } = useLeagueDetail(id);
+  const { data: standingsData, isLoading: standingsLoading } = useLeagueStandings(id);
   const inviteMutation = useCreateInvites(id);
   const reportFromReservation = useReportFromReservation(id);
   const reportManual = useReportManual(id);
@@ -85,6 +87,8 @@ export default function LeagueDetailPage() {
   const isFinished = league.status === 'finished';
   const isUpcoming = league.status === 'upcoming';
   const matchList = Array.isArray(matches) ? matches : [];
+  const standingsRows = standingsData?.rows ?? league.standings ?? [];
+  const showStandingsLoading = standingsLoading && standingsRows.length === 0;
 
   // Determine user role from members list
   const currentMember = league.members?.find((m) => m.userId === user?.userId);
@@ -173,7 +177,10 @@ export default function LeagueDetailPage() {
           {/* Tabla tab */}
           <TabsContent value="tabla">
             <StandingsTable
-              standings={league.standings ?? []}
+              standings={standingsRows}
+              movement={standingsData?.movement}
+              computedAt={standingsData?.computedAt}
+              isLoading={showStandingsLoading}
               currentUserId={user?.userId}
             />
           </TabsContent>
