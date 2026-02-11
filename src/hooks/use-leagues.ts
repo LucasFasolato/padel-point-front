@@ -7,6 +7,7 @@ import axios from 'axios';
 const KEYS = {
   list: ['leagues', 'list'] as const,
   detail: (id: string) => ['leagues', 'detail', id] as const,
+  standings: (id: string) => ['leagues', 'standings', id] as const,
   invite: (token: string) => ['leagues', 'invite', token] as const,
   eligibleReservations: (id: string) => ['leagues', 'eligible-reservations', id] as const,
   matches: (id: string) => ['leagues', 'matches', id] as const,
@@ -126,6 +127,7 @@ const REPORT_ERROR_MESSAGES: Record<string, string> = {
   LEAGUE_MEMBERS_MISSING: 'Los jugadores deben pertenecer a la liga.',
   MATCH_ALREADY_REPORTED: 'Ese partido ya fue cargado para esta liga.',
 };
+const LEAGUE_SETTINGS_FORBIDDEN_MESSAGE = 'No ten\u00E9s permisos para editar esta liga.';
 
 /** Report a league match from a reservation. */
 export function useReportFromReservation(leagueId: string) {
@@ -171,11 +173,12 @@ export function useUpdateLeagueSettings(leagueId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEYS.settings(leagueId) });
       qc.invalidateQueries({ queryKey: KEYS.detail(leagueId) });
+      qc.invalidateQueries({ queryKey: KEYS.standings(leagueId) });
       toast.success('Reglas actualizadas. Tabla recalculada.');
     },
     onError: (err) => {
       if (axios.isAxiosError(err) && err.response?.status === 403) {
-        toast.error('No tenés permisos para editar esta liga.');
+        toast.error(LEAGUE_SETTINGS_FORBIDDEN_MESSAGE);
       } else {
         toast.error('No se pudieron guardar los ajustes. Intentá de nuevo.');
       }
@@ -194,8 +197,12 @@ export function useUpdateMemberRole(leagueId: string) {
       qc.invalidateQueries({ queryKey: KEYS.detail(leagueId) });
       toast.success('Rol actualizado.');
     },
-    onError: () => {
-      toast.error('No se pudo actualizar el rol.');
+    onError: (err) => {
+      if (axios.isAxiosError(err) && err.response?.status === 403) {
+        toast.error(LEAGUE_SETTINGS_FORBIDDEN_MESSAGE);
+      } else {
+        toast.error('No se pudo actualizar el rol.');
+      }
     },
   });
 }
