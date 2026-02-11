@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { League, LeagueMatch } from '@/types/leagues';
 
@@ -18,6 +18,7 @@ vi.mock('@/store/auth-store', () => ({
 // Mock hooks
 const mockLeagueDetail = vi.fn<() => { data: League | undefined; isLoading: boolean; error: unknown }>();
 const mockLeagueMatches = vi.fn<() => { data: LeagueMatch[] | undefined }>();
+const mockUpdateSettings = vi.fn();
 
 vi.mock('@/hooks/use-leagues', () => ({
   useLeagueDetail: () => mockLeagueDetail(),
@@ -25,6 +26,8 @@ vi.mock('@/hooks/use-leagues', () => ({
   useReportFromReservation: () => ({ mutate: vi.fn(), isPending: false }),
   useEligibleReservations: () => ({ data: [], isLoading: false }),
   useLeagueMatches: () => mockLeagueMatches(),
+  useLeagueSettings: () => ({ data: undefined }),
+  useUpdateLeagueSettings: () => ({ mutate: mockUpdateSettings, isPending: false }),
 }));
 
 // Mock heavy components that pull in transitive deps
@@ -38,10 +41,19 @@ vi.mock('@/app/components/leagues', () => ({
       {match.teamA.map(p => p.displayName).join(' / ')} vs {match.teamB.map(p => p.displayName).join(' / ')} — {match.score}
     </button>
   ),
+  LeagueSettingsPanel: () => <div data-testid="settings-panel" />,
 }));
 
 vi.mock('@/app/components/public/public-topbar', () => ({
   PublicTopBar: ({ title }: { title: string }) => <div data-testid="topbar">{title}</div>,
+}));
+
+// Mock Radix tabs to render all content (no hidden panels)
+vi.mock('@/app/components/ui/tabs', () => ({
+  Tabs: ({ children, ...props }: { children: React.ReactNode; className?: string }) => <div data-testid="tabs" {...props}>{children}</div>,
+  TabsList: ({ children }: { children: React.ReactNode }) => <div data-testid="tabs-list">{children}</div>,
+  TabsTrigger: ({ children, value }: { children: React.ReactNode; value: string }) => <button data-testid={`tab-${value}`}>{children}</button>,
+  TabsContent: ({ children }: { children: React.ReactNode; value: string }) => <div>{children}</div>,
 }));
 
 import LeagueDetailPage from '@/app/(player)/leagues/[id]/page';
@@ -66,6 +78,20 @@ beforeEach(() => {
 });
 
 describe('LeagueDetailPage', () => {
+  // --- Tab rendering ---
+  it('renders all four tabs', () => {
+    mockLeagueDetail.mockReturnValue({
+      data: { ...BASE_LEAGUE, mode: 'open' },
+      isLoading: false,
+      error: null,
+    });
+    render(<LeagueDetailPage />);
+    expect(screen.getByText('Tabla')).toBeInTheDocument();
+    expect(screen.getByText('Partidos')).toBeInTheDocument();
+    expect(screen.getByText('Miembros')).toBeInTheDocument();
+    expect(screen.getByText('Ajustes')).toBeInTheDocument();
+  });
+
   // --- Mode tests ---
   it('renders OPEN league with "Liga abierta" and helper text', () => {
     mockLeagueDetail.mockReturnValue({
@@ -192,5 +218,16 @@ describe('LeagueDetailPage', () => {
     expect(screen.getByText(/Juan \/ Carlos/)).toBeInTheDocument();
     expect(screen.getByText(/6-4, 6-3/)).toBeInTheDocument();
     expect(screen.queryByText('Todavía no hay partidos')).not.toBeInTheDocument();
+  });
+
+  // --- Settings tab ---
+  it('renders settings panel in Ajustes tab', () => {
+    mockLeagueDetail.mockReturnValue({
+      data: { ...BASE_LEAGUE, status: 'active' },
+      isLoading: false,
+      error: null,
+    });
+    render(<LeagueDetailPage />);
+    expect(screen.getByTestId('settings-panel')).toBeInTheDocument();
   });
 });

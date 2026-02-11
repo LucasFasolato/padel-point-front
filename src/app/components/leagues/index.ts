@@ -4,3 +4,4 @@ export { StandingsTable } from './standings-table';
 export { InviteModal } from './invite-modal';
 export { ReportFromReservationModal } from './report-from-reservation-modal';
 export { LeagueMatchCard } from './league-match-card';
+export { LeagueSettingsPanel } from './league-settings';

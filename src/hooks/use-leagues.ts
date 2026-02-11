@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { leagueService } from '@/services/league-service';
 import { toast } from 'sonner';
-import type { ReportFromReservationPayload } from '@/types/leagues';
+import type { ReportFromReservationPayload, LeagueSettings, LeagueMemberRole } from '@/types/leagues';
 import axios from 'axios';
 
 const KEYS = {
@@ -10,6 +10,7 @@ const KEYS = {
   invite: (token: string) => ['leagues', 'invite', token] as const,
   eligibleReservations: (id: string) => ['leagues', 'eligible-reservations', id] as const,
   matches: (id: string) => ['leagues', 'matches', id] as const,
+  settings: (id: string) => ['leagues', 'settings', id] as const,
 };
 
 /** List all leagues the current user belongs to. */
@@ -147,6 +148,54 @@ export function useReportFromReservation(leagueId: string) {
         }
       }
       toast.error(message);
+    },
+  });
+}
+
+/** Fetch league settings (scoring, tie-breakers, sources). */
+export function useLeagueSettings(leagueId: string) {
+  return useQuery({
+    queryKey: KEYS.settings(leagueId),
+    queryFn: () => leagueService.getSettings(leagueId),
+    enabled: !!leagueId,
+  });
+}
+
+/** Update league settings with cache invalidation. */
+export function useUpdateLeagueSettings(leagueId: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: Partial<LeagueSettings>) =>
+      leagueService.updateSettings(leagueId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.settings(leagueId) });
+      qc.invalidateQueries({ queryKey: KEYS.detail(leagueId) });
+      toast.success('Reglas actualizadas. Tabla recalculada.');
+    },
+    onError: (err) => {
+      if (axios.isAxiosError(err) && err.response?.status === 403) {
+        toast.error('No tenés permisos para editar esta liga.');
+      } else {
+        toast.error('No se pudieron guardar los ajustes. Intentá de nuevo.');
+      }
+    },
+  });
+}
+
+/** Update a member's role in the league. */
+export function useUpdateMemberRole(leagueId: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: LeagueMemberRole }) =>
+      leagueService.updateMemberRole(leagueId, userId, role),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.detail(leagueId) });
+      toast.success('Rol actualizado.');
+    },
+    onError: () => {
+      toast.error('No se pudo actualizar el rol.');
     },
   });
 }

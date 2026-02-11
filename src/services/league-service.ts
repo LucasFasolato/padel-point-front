@@ -8,6 +8,8 @@ import type {
   ReportFromReservationResponse,
   EligibleReservation,
   LeagueMatch,
+  LeagueSettings,
+  LeagueMemberRole,
 } from '@/types/leagues';
 
 /** Normalise status + provide displayName fallbacks for members/standings. */
@@ -76,6 +78,23 @@ export const leagueService = {
   async getEligibleReservations(leagueId: string): Promise<EligibleReservation[]> {
     const { data } = await api.get(`/leagues/${leagueId}/eligible-reservations`);
     return Array.isArray(data) ? data : [];
+  },
+
+  /** Fetch league settings (scoring, tie-breakers, sources). */
+  async getSettings(leagueId: string): Promise<LeagueSettings> {
+    const { data } = await api.get(`/leagues/${leagueId}/settings`);
+    return data;
+  },
+
+  /** Update league settings. */
+  async updateSettings(leagueId: string, payload: Partial<LeagueSettings>): Promise<LeagueSettings> {
+    const { data } = await api.patch(`/leagues/${leagueId}/settings`, payload);
+    return data;
+  },
+
+  /** Update a member's role in the league. */
+  async updateMemberRole(leagueId: string, userId: string, role: LeagueMemberRole): Promise<void> {
+    await api.patch(`/leagues/${leagueId}/members/${userId}/role`, { role });
   },
 
   /** Report a league match anchored to a reservation. */

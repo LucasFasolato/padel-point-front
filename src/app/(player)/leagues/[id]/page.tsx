@@ -6,12 +6,14 @@ import { Users, UserPlus, Calendar, Trophy, Info } from 'lucide-react';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/app/components/ui/tabs';
 import {
   LeagueStatusBadge,
   StandingsTable,
   InviteModal,
   ReportFromReservationModal,
   LeagueMatchCard,
+  LeagueSettingsPanel,
 } from '@/app/components/leagues';
 import {
   useLeagueDetail,
@@ -19,6 +21,8 @@ import {
   useEligibleReservations,
   useReportFromReservation,
   useLeagueMatches,
+  useLeagueSettings,
+  useUpdateLeagueSettings,
 } from '@/hooks/use-leagues';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDateRange, getModeLabel } from '@/lib/league-utils';
@@ -32,6 +36,8 @@ export default function LeagueDetailPage() {
   const reportMutation = useReportFromReservation(id);
   const { data: reservations, isLoading: reservationsLoading } = useEligibleReservations(id);
   const { data: matches } = useLeagueMatches(id);
+  const { data: settings } = useLeagueSettings(id);
+  const updateSettings = useUpdateLeagueSettings(id);
   const [showInvite, setShowInvite] = useState(false);
   const [showReport, setShowReport] = useState(false);
 
@@ -65,6 +71,11 @@ export default function LeagueDetailPage() {
   const isUpcoming = league.status === 'upcoming';
   const matchList = Array.isArray(matches) ? matches : [];
 
+  // Determine user role from members list
+  const currentMember = league.members?.find((m) => m.userId === user?.userId);
+  const userRole = currentMember?.role ?? 'member';
+  const isReadOnly = userRole === 'member';
+
   return (
     <>
       <PublicTopBar title={league.name} backHref="/leagues" />
@@ -86,7 +97,6 @@ export default function LeagueDetailPage() {
           </p>
 
           <div className="flex items-center gap-4 text-sm text-emerald-100">
-            {/* Date info: only show range for scheduled leagues */}
             {isScheduled && (
               <span className="flex items-center gap-1.5">
                 <Calendar size={14} />
@@ -136,90 +146,104 @@ export default function LeagueDetailPage() {
           </div>
         )}
 
-        {/* Standings */}
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-500 uppercase tracking-wide">
-            Tabla de posiciones
-          </h2>
-          <StandingsTable
-            standings={league.standings ?? []}
-            currentUserId={user?.userId}
-          />
-        </section>
+        {/* Tabs */}
+        <Tabs defaultValue="tabla" className="w-full">
+          <TabsList className="w-full grid grid-cols-4">
+            <TabsTrigger value="tabla">Tabla</TabsTrigger>
+            <TabsTrigger value="partidos">Partidos</TabsTrigger>
+            <TabsTrigger value="miembros">Miembros</TabsTrigger>
+            <TabsTrigger value="ajustes">Ajustes</TabsTrigger>
+          </TabsList>
 
-        {/* Match history */}
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-500 uppercase tracking-wide">
-            Partidos
-          </h2>
-          {matchList.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
-              <p className="text-sm font-semibold text-slate-900">
-                Todavía no hay partidos
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Solo cuentan partidos vinculados a reservas confirmadas.
-              </p>
-              {isActive && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 gap-2"
-                  onClick={() => setShowReport(true)}
-                >
-                  <Trophy size={14} />
-                  Cargar primer resultado
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {matchList.map((m) => (
-                <LeagueMatchCard
-                  key={m.id}
-                  match={m}
-                  onClick={() => router.push(`/matches/${m.id}`)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+          {/* Tabla tab */}
+          <TabsContent value="tabla">
+            <StandingsTable
+              standings={league.standings ?? []}
+              currentUserId={user?.userId}
+            />
+          </TabsContent>
 
-        {/* Members */}
-        {league.members && league.members.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-semibold text-slate-500 uppercase tracking-wide">
-              Miembros
-            </h2>
-            <div className="space-y-2">
-              {league.members.map((m) => (
-                <div
-                  key={m.userId}
-                  className="flex items-center gap-3 rounded-lg border border-slate-100 bg-white px-4 py-3"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
-                    {(m.displayName || 'J').charAt(0).toUpperCase()}
+          {/* Partidos tab */}
+          <TabsContent value="partidos">
+            {matchList.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
+                <p className="text-sm font-semibold text-slate-900">
+                  Todavía no hay partidos
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Solo cuentan partidos vinculados a reservas confirmadas.
+                </p>
+                {isActive && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 gap-2"
+                    onClick={() => setShowReport(true)}
+                  >
+                    <Trophy size={14} />
+                    Cargar primer resultado
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {matchList.map((m) => (
+                  <LeagueMatchCard
+                    key={m.id}
+                    match={m}
+                    onClick={() => router.push(`/matches/${m.id}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Miembros tab */}
+          <TabsContent value="miembros">
+            {league.members && league.members.length > 0 ? (
+              <div className="space-y-2">
+                {league.members.map((m) => (
+                  <div
+                    key={m.userId}
+                    className="flex items-center gap-3 rounded-lg border border-slate-100 bg-white px-4 py-3"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
+                      {(m.displayName || 'J').charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-sm font-medium text-slate-900 truncate">
+                      {m.displayName || 'Jugador'}
+                    </span>
                   </div>
-                  <span className="text-sm font-medium text-slate-900 truncate">
-                    {m.displayName || 'Jugador'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+                ))}
+              </div>
+            ) : (
+              <p className="py-8 text-center text-sm text-slate-500">
+                No hay miembros todavía.
+              </p>
+            )}
 
-        {/* Invite CTA */}
-        <Button
-          fullWidth
-          size="lg"
-          variant="secondary"
-          className="gap-2"
-          onClick={() => setShowInvite(true)}
-        >
-          <UserPlus size={18} />
-          Invitar jugadores
-        </Button>
+            <Button
+              fullWidth
+              size="lg"
+              variant="secondary"
+              className="gap-2 mt-4"
+              onClick={() => setShowInvite(true)}
+            >
+              <UserPlus size={18} />
+              Invitar jugadores
+            </Button>
+          </TabsContent>
+
+          {/* Ajustes tab */}
+          <TabsContent value="ajustes">
+            <LeagueSettingsPanel
+              settings={settings}
+              isReadOnly={isReadOnly}
+              onSave={(s) => updateSettings.mutate(s)}
+              isSaving={updateSettings.isPending}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <InviteModal

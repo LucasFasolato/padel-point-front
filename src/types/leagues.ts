@@ -5,6 +5,7 @@ export interface LeagueMember {
   userId: string;
   displayName: string;
   avatarUrl?: string | null;
+  role?: LeagueMemberRole;
   joinedAt: string;
 }
 
@@ -29,6 +30,15 @@ export interface League {
   membersCount: number;
   members?: LeagueMember[];
   standings?: StandingEntry[];
+}
+
+export type TieBreaker = 'points' | 'wins' | 'set_difference' | 'game_difference';
+export type LeagueMemberRole = 'member' | 'admin' | 'owner';
+
+export interface LeagueSettings {
+  scoring: { win: number; draw: number; loss: number };
+  tieBreakers: TieBreaker[];
+  includeSources: { reservation: boolean; manual: boolean };
 }
 
 export type LeagueMatchStatus =
