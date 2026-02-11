@@ -6,6 +6,8 @@ import type {
   ReportManualPayload,
   LeagueSettings,
   LeagueMemberRole,
+  CreateLeagueChallengePayload,
+  LeagueChallengeScope,
 } from '@/types/leagues';
 import axios from 'axios';
 
@@ -13,6 +15,9 @@ const KEYS = {
   list: ['leagues', 'list'] as const,
   detail: (id: string) => ['leagues', 'detail', id] as const,
   standings: (id: string) => ['leagues', 'standings', id] as const,
+  challengesRoot: (id: string) => ['leagues', 'challenges', id] as const,
+  challenges: (id: string, scope: LeagueChallengeScope) =>
+    ['leagues', 'challenges', id, scope] as const,
   invite: (token: string) => ['leagues', 'invite', token] as const,
   eligibleReservations: (id: string) => ['leagues', 'eligible-reservations', id] as const,
   matches: (id: string) => ['leagues', 'matches', id] as const,
@@ -126,6 +131,16 @@ export function useLeagueMatches(leagueId: string) {
   });
 }
 
+/** Fetch league challenges by scope (active/history). */
+export function useLeagueChallenges(leagueId: string, scope: LeagueChallengeScope) {
+  return useQuery({
+    queryKey: KEYS.challenges(leagueId, scope),
+    queryFn: () => leagueService.getChallenges(leagueId, scope),
+    enabled: !!leagueId,
+    staleTime: 1000 * 30,
+  });
+}
+
 /** Fetch reservations eligible for league match reporting. */
 export function useEligibleReservations(leagueId: string) {
   return useQuery({
@@ -143,6 +158,7 @@ const REPORT_ERROR_MESSAGES: Record<string, string> = {
 };
 const LEAGUE_SETTINGS_FORBIDDEN_MESSAGE = 'No ten\u00E9s permisos para editar esta liga.';
 const LEAGUE_REPORT_SUCCESS_MESSAGE = 'Resultado cargado. Falta confirmaci\u00F3n del rival.';
+const LEAGUE_CHALLENGE_FORBIDDEN_MESSAGE = 'No ten\u00E9s permisos para desafiar en esta liga.';
 
 /** Report a league match from a reservation. */
 export function useReportFromReservation(leagueId: string) {
@@ -192,6 +208,77 @@ export function useReportManual(leagueId: string) {
         }
       }
       toast.error(message);
+    },
+  });
+}
+
+/** Create a new challenge in a league. */
+export function useCreateLeagueChallenge(leagueId: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: CreateLeagueChallengePayload) =>
+      leagueService.createChallenge(leagueId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.challengesRoot(leagueId) });
+      toast.success('Desafío enviado.');
+    },
+    onError: (err) => {
+      if (axios.isAxiosError(err) && err.response?.status === 403) {
+        toast.error(LEAGUE_CHALLENGE_FORBIDDEN_MESSAGE);
+      } else {
+        toast.error('No se pudo crear el desafío. Intenta de nuevo.');
+      }
+    },
+  });
+}
+
+/** Accept a league challenge. */
+export function useAcceptLeagueChallenge(leagueId: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (challengeId: string) => leagueService.acceptChallenge(challengeId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.challengesRoot(leagueId) });
+      toast.success('Desafío aceptado.');
+    },
+    onError: () => {
+      toast.error('No se pudo aceptar el desafío.');
+    },
+  });
+}
+
+/** Decline a league challenge. */
+export function useDeclineLeagueChallenge(leagueId: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (challengeId: string) => leagueService.declineChallenge(challengeId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.challengesRoot(leagueId) });
+      toast.success('Desafío rechazado.');
+    },
+    onError: () => {
+      toast.error('No se pudo rechazar el desafío.');
+    },
+  });
+}
+
+/** Link a confirmed match to a challenge (optional flow). */
+export function useLinkLeagueChallengeMatch(leagueId: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ challengeId, matchId }: { challengeId: string; matchId: string }) =>
+      leagueService.linkChallengeMatch(challengeId, matchId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.challengesRoot(leagueId) });
+      qc.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
+      toast.success('Desafío vinculado al partido.');
+    },
+    onError: () => {
+      toast.error('No se pudo vincular el desafío.');
     },
   });
 }

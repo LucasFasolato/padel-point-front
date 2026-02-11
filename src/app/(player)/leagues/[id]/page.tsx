@@ -14,6 +14,7 @@ import {
   ReportFromReservationModal,
   ReportManualModal,
   ReportMethodSheet,
+  LeagueChallengesSection,
   LeagueMatchCard,
   LeagueSettingsPanel,
 } from '@/app/components/leagues';
@@ -57,6 +58,7 @@ export default function LeagueDetailPage() {
   const [showReportMethodSheet, setShowReportMethodSheet] = useState(false);
   const [showReservationReport, setShowReservationReport] = useState(false);
   const [showManualReport, setShowManualReport] = useState(false);
+  const [partidosView, setPartidosView] = useState<'matches' | 'challenges'>('matches');
 
   if (isLoading) {
     return (
@@ -185,38 +187,71 @@ export default function LeagueDetailPage() {
             />
           </TabsContent>
 
-          {/* Partidos tab */}
+                    {/* Partidos tab */}
           <TabsContent value="partidos">
-            {matchList.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
-                <p className="text-sm font-semibold text-slate-900">
-                  TodavÃ­a no hay partidos
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  PodÃ©s cargar partidos desde reserva o manualmente.
-                </p>
-                {isActive && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-3 gap-2"
-                    onClick={() => setShowReportMethodSheet(true)}
-                  >
-                    <Trophy size={14} />
-                    Cargar primer resultado
-                  </Button>
-                )}
-              </div>
+            <div className="mb-3 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+              <button
+                type="button"
+                onClick={() => setPartidosView('matches')}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  partidosView === 'matches'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500'
+                }`}
+              >
+                Partidos
+              </button>
+              <button
+                type="button"
+                onClick={() => setPartidosView('challenges')}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  partidosView === 'challenges'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500'
+                }`}
+              >
+                Desafíos
+              </button>
+            </div>
+
+            {partidosView === 'matches' ? (
+              matchList.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Todavía no hay partidos
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Podés cargar partidos desde reserva o manualmente.
+                  </p>
+                  {isActive && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 gap-2"
+                      onClick={() => setShowReportMethodSheet(true)}
+                    >
+                      <Trophy size={14} />
+                      Cargar primer resultado
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {matchList.map((m) => (
+                    <LeagueMatchCard
+                      key={m.id}
+                      match={m}
+                      onClick={() => router.push(`/matches/${m.id}`)}
+                    />
+                  ))}
+                </div>
+              )
             ) : (
-              <div className="space-y-2">
-                {matchList.map((m) => (
-                  <LeagueMatchCard
-                    key={m.id}
-                    match={m}
-                    onClick={() => router.push(`/matches/${m.id}`)}
-                  />
-                ))}
-              </div>
+              <LeagueChallengesSection
+                leagueId={id}
+                members={league.members ?? []}
+                currentUserId={user?.userId}
+              />
             )}
           </TabsContent>
 
@@ -382,3 +417,4 @@ function DetailSkeleton() {
     </div>
   );
 }
+

@@ -66,6 +66,29 @@ export interface LeagueMatch {
   teamB: { displayName: string }[];
 }
 
+export type LeagueChallengeScope = 'active' | 'history';
+
+export interface LeagueChallengeParticipant {
+  userId: string;
+  displayName: string;
+}
+
+export interface LeagueChallenge {
+  id: string;
+  status: string;
+  message?: string | null;
+  createdAt: string;
+  expiresAt?: string | null;
+  challenger: LeagueChallengeParticipant;
+  opponent: LeagueChallengeParticipant;
+  matchId?: string | null;
+}
+
+export interface CreateLeagueChallengePayload {
+  opponentUserId: string;
+  message?: string;
+}
+
 export interface CreateLeaguePayload {
   name: string;
   startDate: string;

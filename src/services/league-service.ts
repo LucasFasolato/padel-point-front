@@ -13,6 +13,10 @@ import type {
   LeagueMemberRole,
   LeagueStandingsResponse,
   StandingsMovementMap,
+  CreateLeagueChallengePayload,
+  LeagueChallenge,
+  LeagueChallengeScope,
+  LeagueChallengeParticipant,
 } from '@/types/leagues';
 
 /** Normalise status + provide displayName fallbacks for members/standings. */
@@ -39,6 +43,44 @@ function normalizeStandingsMovement(value: unknown): StandingsMovementMap {
     if (!Number.isNaN(n)) out[key] = n;
   }
   return out;
+}
+
+function normalizeChallengeParticipant(
+  raw: unknown,
+  idFallback?: string,
+  nameFallback?: string
+): LeagueChallengeParticipant {
+  const data = (raw ?? {}) as Record<string, unknown>;
+  return {
+    userId: String(data.userId ?? idFallback ?? ''),
+    displayName: String(data.displayName ?? data.name ?? nameFallback ?? 'Jugador'),
+  };
+}
+
+function normalizeLeagueChallenge(raw: unknown): LeagueChallenge {
+  const data = (raw ?? {}) as Record<string, unknown>;
+
+  const challenger = normalizeChallengeParticipant(
+    data.challenger ?? data.creator ?? data.fromUser ?? data.teamA,
+    typeof data.challengerUserId === 'string' ? data.challengerUserId : undefined,
+    typeof data.challengerDisplayName === 'string' ? data.challengerDisplayName : undefined
+  );
+  const opponent = normalizeChallengeParticipant(
+    data.opponent ?? data.invitedOpponent ?? data.toUser ?? data.teamB,
+    typeof data.opponentUserId === 'string' ? data.opponentUserId : undefined,
+    typeof data.opponentDisplayName === 'string' ? data.opponentDisplayName : undefined
+  );
+
+  return {
+    id: String(data.id ?? ''),
+    status: String(data.status ?? data.state ?? 'pending'),
+    message: typeof data.message === 'string' ? data.message : null,
+    createdAt: String(data.createdAt ?? new Date().toISOString()),
+    expiresAt: typeof data.expiresAt === 'string' ? data.expiresAt : null,
+    challenger,
+    opponent,
+    matchId: typeof data.matchId === 'string' ? data.matchId : null,
+  };
 }
 
 export const leagueService = {
@@ -150,5 +192,44 @@ export const leagueService = {
       payload
     );
     return data;
+  },
+
+  /** Create a league challenge. */
+  async createChallenge(
+    leagueId: string,
+    payload: CreateLeagueChallengePayload
+  ): Promise<LeagueChallenge> {
+    const { data } = await api.post(`/leagues/${leagueId}/challenges`, payload);
+    return normalizeLeagueChallenge(data);
+  },
+
+  /** List league challenges by scope (active/history). */
+  async getChallenges(
+    leagueId: string,
+    scope: LeagueChallengeScope
+  ): Promise<LeagueChallenge[]> {
+    const { data } = await api.get(`/leagues/${leagueId}/challenges`, {
+      params: { status: scope },
+    });
+    const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+    return list.map(normalizeLeagueChallenge);
+  },
+
+  /** Accept challenge invitation. */
+  async acceptChallenge(challengeId: string): Promise<LeagueChallenge> {
+    const { data } = await api.post(`/challenges/${challengeId}/accept`);
+    return normalizeLeagueChallenge(data);
+  },
+
+  /** Decline challenge invitation. */
+  async declineChallenge(challengeId: string): Promise<LeagueChallenge> {
+    const { data } = await api.post(`/challenges/${challengeId}/decline`);
+    return normalizeLeagueChallenge(data);
+  },
+
+  /** Link a confirmed match to a challenge. */
+  async linkChallengeMatch(challengeId: string, matchId: string): Promise<LeagueChallenge> {
+    const { data } = await api.post(`/challenges/${challengeId}/link-match`, { matchId });
+    return normalizeLeagueChallenge(data);
   },
 };

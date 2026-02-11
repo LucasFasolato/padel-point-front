@@ -5,5 +5,7 @@ export { InviteModal } from './invite-modal';
 export { ReportFromReservationModal } from './report-from-reservation-modal';
 export { ReportManualModal } from './report-manual-modal';
 export { ReportMethodSheet } from './report-method-sheet';
+export { LeagueChallengesSection } from './league-challenges-section';
+export { LeagueChallengeCreateModal } from './league-challenge-create-modal';
 export { LeagueMatchCard } from './league-match-card';
 export { LeagueSettingsPanel } from './league-settings';
