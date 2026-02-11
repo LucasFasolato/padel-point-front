@@ -12,6 +12,8 @@ import {
   StandingsTable,
   InviteModal,
   ReportFromReservationModal,
+  ReportManualModal,
+  ReportMethodSheet,
   LeagueMatchCard,
   LeagueSettingsPanel,
 } from '@/app/components/leagues';
@@ -20,6 +22,7 @@ import {
   useCreateInvites,
   useEligibleReservations,
   useReportFromReservation,
+  useReportManual,
   useLeagueMatches,
   useLeagueSettings,
   useUpdateLeagueSettings,
@@ -41,14 +44,17 @@ export default function LeagueDetailPage() {
   const user = useAuthStore((s) => s.user);
   const { data: league, isLoading, error } = useLeagueDetail(id);
   const inviteMutation = useCreateInvites(id);
-  const reportMutation = useReportFromReservation(id);
+  const reportFromReservation = useReportFromReservation(id);
+  const reportManual = useReportManual(id);
   const { data: reservations, isLoading: reservationsLoading } = useEligibleReservations(id);
   const { data: matches } = useLeagueMatches(id);
   const { data: settings } = useLeagueSettings(id);
   const updateSettings = useUpdateLeagueSettings(id);
   const updateMemberRole = useUpdateMemberRole(id);
   const [showInvite, setShowInvite] = useState(false);
-  const [showReport, setShowReport] = useState(false);
+  const [showReportMethodSheet, setShowReportMethodSheet] = useState(false);
+  const [showReservationReport, setShowReservationReport] = useState(false);
+  const [showManualReport, setShowManualReport] = useState(false);
 
   if (isLoading) {
     return (
@@ -130,7 +136,7 @@ export default function LeagueDetailPage() {
             fullWidth
             size="lg"
             className="gap-2"
-            onClick={() => setShowReport(true)}
+            onClick={() => setShowReportMethodSheet(true)}
           >
             <Trophy size={18} />
             Cargar resultado
@@ -180,14 +186,14 @@ export default function LeagueDetailPage() {
                   Todavía no hay partidos
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Solo cuentan partidos vinculados a reservas confirmadas.
+                  Podés cargar partidos desde reserva o manualmente.
                 </p>
                 {isActive && (
                   <Button
                     variant="outline"
                     size="sm"
                     className="mt-3 gap-2"
-                    onClick={() => setShowReport(true)}
+                    onClick={() => setShowReportMethodSheet(true)}
                   >
                     <Trophy size={14} />
                     Cargar primer resultado
@@ -304,23 +310,53 @@ export default function LeagueDetailPage() {
         isPending={inviteMutation.isPending}
       />
 
+      <ReportMethodSheet
+        isOpen={showReportMethodSheet}
+        onClose={() => setShowReportMethodSheet(false)}
+        onReservation={() => {
+          setShowReportMethodSheet(false);
+          setShowReservationReport(true);
+        }}
+        onManual={() => {
+          setShowReportMethodSheet(false);
+          setShowManualReport(true);
+        }}
+      />
+
       <ReportFromReservationModal
-        isOpen={showReport}
-        onClose={() => setShowReport(false)}
+        isOpen={showReservationReport}
+        onClose={() => setShowReservationReport(false)}
         onSubmit={(payload) => {
-          reportMutation.mutate(payload, {
+          reportFromReservation.mutate(payload, {
             onSuccess: (result) => {
-              setShowReport(false);
+              setShowReservationReport(false);
               if (result?.matchId) {
                 router.push(`/matches/${result.matchId}`);
               }
             },
           });
         }}
-        isPending={reportMutation.isPending}
+        isPending={reportFromReservation.isPending}
         members={league.members ?? []}
         reservations={reservations ?? []}
         reservationsLoading={reservationsLoading}
+      />
+
+      <ReportManualModal
+        isOpen={showManualReport}
+        onClose={() => setShowManualReport(false)}
+        onSubmit={(payload) => {
+          reportManual.mutate(payload, {
+            onSuccess: (result) => {
+              setShowManualReport(false);
+              if (result?.matchId) {
+                router.push(`/matches/${result.matchId}`);
+              }
+            },
+          });
+        }}
+        isPending={reportManual.isPending}
+        members={league.members ?? []}
       />
     </>
   );

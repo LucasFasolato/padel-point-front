@@ -1,7 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { leagueService } from '@/services/league-service';
 import { toast } from 'sonner';
-import type { ReportFromReservationPayload, LeagueSettings, LeagueMemberRole } from '@/types/leagues';
+import type {
+  ReportFromReservationPayload,
+  ReportManualPayload,
+  LeagueSettings,
+  LeagueMemberRole,
+} from '@/types/leagues';
 import axios from 'axios';
 
 const KEYS = {
@@ -128,6 +133,7 @@ const REPORT_ERROR_MESSAGES: Record<string, string> = {
   MATCH_ALREADY_REPORTED: 'Ese partido ya fue cargado para esta liga.',
 };
 const LEAGUE_SETTINGS_FORBIDDEN_MESSAGE = 'No ten\u00E9s permisos para editar esta liga.';
+const LEAGUE_REPORT_SUCCESS_MESSAGE = 'Resultado cargado. Falta confirmaci\u00F3n del rival.';
 
 /** Report a league match from a reservation. */
 export function useReportFromReservation(leagueId: string) {
@@ -139,10 +145,35 @@ export function useReportFromReservation(leagueId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEYS.detail(leagueId) });
       qc.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
-      toast.success('Resultado cargado. Falta confirmación del rival.');
+      toast.success(LEAGUE_REPORT_SUCCESS_MESSAGE);
     },
     onError: (err) => {
-      let message = 'No se pudo cargar el resultado. Intentá de nuevo.';
+      let message = 'No se pudo cargar el resultado. Intenta de nuevo.';
+      if (axios.isAxiosError(err)) {
+        const code = err.response?.data?.code as string | undefined;
+        if (code && REPORT_ERROR_MESSAGES[code]) {
+          message = REPORT_ERROR_MESSAGES[code];
+        }
+      }
+      toast.error(message);
+    },
+  });
+}
+
+/** Report a league match manually. */
+export function useReportManual(leagueId: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: ReportManualPayload) =>
+      leagueService.reportManual(leagueId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.detail(leagueId) });
+      qc.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
+      toast.success(LEAGUE_REPORT_SUCCESS_MESSAGE);
+    },
+    onError: (err) => {
+      let message = 'No se pudo cargar el resultado. Intenta de nuevo.';
       if (axios.isAxiosError(err)) {
         const code = err.response?.data?.code as string | undefined;
         if (code && REPORT_ERROR_MESSAGES[code]) {
@@ -208,3 +239,4 @@ export function useUpdateMemberRole(leagueId: string) {
 }
 
 export const LEAGUE_QUERY_KEYS = KEYS;
+

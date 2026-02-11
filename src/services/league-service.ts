@@ -5,6 +5,7 @@ import type {
   CreateLeaguePayload,
   InviteByTokenResponse,
   ReportFromReservationPayload,
+  ReportManualPayload,
   ReportFromReservationResponse,
   EligibleReservation,
   LeagueMatch,
@@ -104,6 +105,18 @@ export const leagueService = {
   ): Promise<ReportFromReservationResponse> {
     const { data } = await api.post(
       `/leagues/${leagueId}/report-from-reservation`,
+      payload
+    );
+    return data;
+  },
+
+  /** Report a league match manually (without reservation anchor). */
+  async reportManual(
+    leagueId: string,
+    payload: ReportManualPayload
+  ): Promise<ReportFromReservationResponse> {
+    const { data } = await api.post(
+      `/leagues/${leagueId}/report-manual`,
       payload
     );
     return data;

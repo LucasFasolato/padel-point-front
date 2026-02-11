@@ -12,6 +12,7 @@ import { DisputeModal } from '@/app/components/competitive/dispute-modal';
 import { useMatch, useMatchActions } from '@/hooks/use-matches';
 import { useAuthStore } from '@/store/auth-store';
 import { MatchResultStatus } from '@/types/competitive';
+import { getMatchSourceColors, getMatchSourceLabel } from '@/lib/league-utils';
 import { cn } from '@/lib/utils';
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -40,7 +41,7 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
 export default function MatchDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: match, isLoading, isError, refetch } = useMatch(id);
-  const { disputeMatch } = useMatchActions();
+  const { confirmMatch, disputeMatch, resolveConfirmAsIs } = useMatchActions();
   const user = useAuthStore((s) => s.user);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
 
@@ -76,14 +77,40 @@ export default function MatchDetailPage() {
     className: 'bg-slate-100 text-slate-700',
   };
 
-  const isParticipant =
-    match.reportedByUserId === user?.userId ||
-    match.confirmedByUserId === user?.userId;
+  const participantIds = new Set<string>();
+  if (match.reportedByUserId) participantIds.add(match.reportedByUserId);
+  if (match.confirmedByUserId) participantIds.add(match.confirmedByUserId);
 
-  const canDispute =
-    isParticipant && match.status === MatchResultStatus.CONFIRMED;
+  if (match.challenge) {
+    participantIds.add(match.challenge.teamA.p1.userId);
+    if (match.challenge.teamA.p2?.userId) participantIds.add(match.challenge.teamA.p2.userId);
+    if (match.challenge.teamB.p1?.userId) participantIds.add(match.challenge.teamB.p1.userId);
+    if (match.challenge.teamB.p2?.userId) participantIds.add(match.challenge.teamB.p2.userId);
+  }
 
+  (match.teamA ?? []).forEach((p) => {
+    if (p.userId) participantIds.add(p.userId);
+  });
+  (match.teamB ?? []).forEach((p) => {
+    if (p.userId) participantIds.add(p.userId);
+  });
+
+  const isParticipant = !!user?.userId && participantIds.has(user.userId);
+  const isPendingConfirm = match.status === MatchResultStatus.PENDING_CONFIRM;
   const isDisputed = match.status === MatchResultStatus.DISPUTED;
+
+  const canConfirm = isParticipant && isPendingConfirm;
+  const canDispute = isParticipant && (isPendingConfirm || match.status === MatchResultStatus.CONFIRMED);
+
+  const isLeagueOwnerOrAdmin =
+    match.leagueContextRole === 'owner' || match.leagueContextRole === 'admin';
+  const isPlatformAdmin = user?.role === 'ADMIN';
+  const canResolveAsIs =
+    (isLeagueOwnerOrAdmin || isPlatformAdmin) &&
+    (isPendingConfirm || isDisputed);
+
+  const sourceLabel = getMatchSourceLabel(match.source);
+  const sourceColors = getMatchSourceColors(match.source);
 
   const sets = [
     { a: match.teamASet1, b: match.teamBSet1 },
@@ -160,6 +187,20 @@ export default function MatchDetailPage() {
 
         {/* Match info */}
         <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-2">
+          {sourceLabel && (
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">Fuente</span>
+              <span
+                className={cn(
+                  'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold',
+                  sourceColors.bg,
+                  sourceColors.text
+                )}
+              >
+                {sourceLabel}
+              </span>
+            </div>
+          )}
           {match.eloApplied && (
             <div className="flex justify-between text-sm">
               <span className="text-slate-500">ELO aplicado</span>
@@ -174,7 +215,16 @@ export default function MatchDetailPage() {
           )}
         </div>
 
-        {/* Dispute button */}
+        {canConfirm && (
+          <Button
+            fullWidth
+            onClick={() => confirmMatch.mutate(match.id)}
+            loading={confirmMatch.isPending}
+          >
+            Confirmar
+          </Button>
+        )}
+
         {canDispute && (
           <Button
             variant="outline"
@@ -183,6 +233,17 @@ export default function MatchDetailPage() {
             className="border-amber-300 text-amber-700 hover:border-amber-400 hover:bg-amber-50"
           >
             Disputar resultado
+          </Button>
+        )}
+
+        {canResolveAsIs && (
+          <Button
+            variant="secondary"
+            fullWidth
+            onClick={() => resolveConfirmAsIs.mutate(match.id)}
+            loading={resolveConfirmAsIs.isPending}
+          >
+            Confirmar tal cual
           </Button>
         )}
       </div>

@@ -2,7 +2,12 @@
 
 import { Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getMatchStatusLabel, getMatchStatusColors } from '@/lib/league-utils';
+import {
+  getMatchStatusLabel,
+  getMatchStatusColors,
+  getMatchSourceLabel,
+  getMatchSourceColors,
+} from '@/lib/league-utils';
 import type { LeagueMatch } from '@/types/leagues';
 
 interface LeagueMatchCardProps {
@@ -26,6 +31,8 @@ function formatMatchDate(iso: string): string {
 
 export function LeagueMatchCard({ match, onClick }: LeagueMatchCardProps) {
   const statusColors = getMatchStatusColors(match.status);
+  const sourceColors = getMatchSourceColors(match.source);
+  const sourceLabel = getMatchSourceLabel(match.source);
   const teamANames = match.teamA.map((p) => p.displayName).join(' / ');
   const teamBNames = match.teamB.map((p) => p.displayName).join(' / ');
 
@@ -44,15 +51,28 @@ export function LeagueMatchCard({ match, onClick }: LeagueMatchCardProps) {
           <Calendar size={12} />
           {formatMatchDate(match.playedAt)}
         </span>
-        <span
-          className={cn(
-            'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
-            statusColors.bg,
-            statusColors.text
+        <div className="flex items-center gap-1.5">
+          {sourceLabel && (
+            <span
+              className={cn(
+                'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                sourceColors.bg,
+                sourceColors.text
+              )}
+            >
+              {sourceLabel}
+            </span>
           )}
-        >
-          {getMatchStatusLabel(match.status)}
-        </span>
+          <span
+            className={cn(
+              'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
+              statusColors.bg,
+              statusColors.text
+            )}
+          >
+            {getMatchStatusLabel(match.status)}
+          </span>
+        </div>
       </div>
 
       {/* Teams & score */}

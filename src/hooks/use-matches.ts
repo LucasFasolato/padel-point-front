@@ -18,6 +18,13 @@ function getDisputeErrorMessage(error: unknown): string {
   return 'Error al enviar la disputa. Intentá de nuevo.';
 }
 
+function getResolveErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error) && error.response?.status === 403) {
+    return 'No ten\u00E9s permisos para resolver este resultado.';
+  }
+  return 'No se pudo resolver el resultado. Intent\u00E1 de nuevo.';
+}
+
 export function useMyMatches() {
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
@@ -143,9 +150,10 @@ export function useMatchActions() {
   const confirmMatch = useMutation({
     mutationFn: (matchId: string) => matchesService.confirmMatch(matchId),
     onSuccess: () => {
-      toast.success('Resultado confirmado. ELO actualizado!');
+      toast.success('Resultado confirmado.');
       invalidate();
     },
+    onError: () => toast.error('No se pudo confirmar el resultado.'),
   });
 
   const rejectMatch = useMutation({
@@ -173,5 +181,16 @@ export function useMatchActions() {
     },
   });
 
-  return { reportMatch, confirmMatch, rejectMatch, disputeMatch };
+  const resolveConfirmAsIs = useMutation({
+    mutationFn: (matchId: string) => matchesService.resolveConfirmAsIs(matchId),
+    onSuccess: () => {
+      toast.success('Resultado confirmado por administración.');
+      invalidate();
+    },
+    onError: (error: unknown) => {
+      toast.error(getResolveErrorMessage(error));
+    },
+  });
+
+  return { reportMatch, confirmMatch, rejectMatch, disputeMatch, resolveConfirmAsIs };
 }

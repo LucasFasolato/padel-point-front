@@ -1,5 +1,5 @@
-import  api  from '@/lib/api';
-import type { MatchResult, MatchView } from '@/types/competitive';
+import api from '@/lib/api';
+import type { MatchResult } from '@/types/competitive';
 
 export const matchesService = {
   /**
@@ -19,6 +19,14 @@ export const matchesService = {
    */
   async confirmMatch(matchId: string): Promise<MatchResult> {
     const { data } = await api.patch(`/matches/${matchId}/confirm`);
+    return data;
+  },
+
+  /**
+   * Resolver disputa confirmando resultado "tal cual" (admin/owner)
+   */
+  async resolveConfirmAsIs(matchId: string): Promise<MatchResult> {
+    const { data } = await api.post(`/matches/${matchId}/resolve-confirm-as-is`);
     return data;
   },
 

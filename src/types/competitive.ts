@@ -26,6 +26,9 @@ export enum WinnerTeam {
   B = 'B',
 }
 
+export type MatchSource = 'RESERVATION' | 'MANUAL';
+export type LeagueContextRole = 'member' | 'admin' | 'owner';
+
 export interface CompetitiveProfile {
   userId: string;
   email: string;
@@ -85,7 +88,9 @@ export interface Challenge {
 export interface MatchResult {
   id: string;
   challengeId: string;
+  leagueId?: string | null;
   playedAt: string;
+  source?: MatchSource;
   
   // Sets
   teamASet1: number;
@@ -102,6 +107,9 @@ export interface MatchResult {
   confirmedByUserId: string | null;
   rejectionReason: string | null;
   eloApplied: boolean;
+  leagueContextRole?: LeagueContextRole | null;
+  teamA?: { userId: string; displayName: string }[];
+  teamB?: { userId: string; displayName: string }[];
   
   createdAt: string;
   updatedAt: string;

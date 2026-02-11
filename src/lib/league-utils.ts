@@ -1,6 +1,12 @@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { League, LeagueStatus, LeagueMode, LeagueMatchStatus } from '@/types/leagues';
+import type {
+  League,
+  LeagueStatus,
+  LeagueMode,
+  LeagueMatchStatus,
+  LeagueMatchSource,
+} from '@/types/leagues';
 
 const FALLBACK_LABEL = 'Desconocido';
 const FALLBACK_COLORS = { bg: 'bg-slate-100', text: 'text-slate-600' };
@@ -99,12 +105,32 @@ const MATCH_STATUS_COLORS: Record<LeagueMatchStatus, { bg: string; text: string 
   resolved: { bg: 'bg-blue-100', text: 'text-blue-800' },
 };
 
+const MATCH_SOURCE_LABELS: Record<LeagueMatchSource, string> = {
+  RESERVATION: 'Verificado',
+  MANUAL: 'Manual',
+};
+
+const MATCH_SOURCE_COLORS: Record<LeagueMatchSource, { bg: string; text: string }> = {
+  RESERVATION: { bg: 'bg-emerald-100', text: 'text-emerald-800' },
+  MANUAL: { bg: 'bg-slate-100', text: 'text-slate-700' },
+};
+
 export function getMatchStatusLabel(status: string): string {
   return MATCH_STATUS_LABELS[status as LeagueMatchStatus] ?? 'Desconocido';
 }
 
 export function getMatchStatusColors(status: string): { bg: string; text: string } {
   return MATCH_STATUS_COLORS[status as LeagueMatchStatus] ?? FALLBACK_COLORS;
+}
+
+export function getMatchSourceLabel(source?: string): string {
+  if (!source) return '';
+  return MATCH_SOURCE_LABELS[source as LeagueMatchSource] ?? source;
+}
+
+export function getMatchSourceColors(source?: string): { bg: string; text: string } {
+  if (!source) return FALLBACK_COLORS;
+  return MATCH_SOURCE_COLORS[source as LeagueMatchSource] ?? FALLBACK_COLORS;
 }
 
 /** Format a date range for display, e.g. "15 ene – 28 feb 2026". */

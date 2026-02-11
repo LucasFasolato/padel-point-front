@@ -46,12 +46,14 @@ export type LeagueMatchStatus =
   | 'confirmed'
   | 'disputed'
   | 'resolved';
+export type LeagueMatchSource = 'RESERVATION' | 'MANUAL';
 
 export interface LeagueMatch {
   id: string;
   playedAt: string;
   score: string;
   status: LeagueMatchStatus;
+  source?: LeagueMatchSource;
   teamA: { displayName: string }[];
   teamB: { displayName: string }[];
 }
@@ -82,6 +84,15 @@ export interface InviteByTokenResponse {
 
 export interface ReportFromReservationPayload {
   reservationId: string;
+  teamA1Id: string;
+  teamA2Id: string;
+  teamB1Id: string;
+  teamB2Id: string;
+  sets: { a: number; b: number }[];
+  playedAt?: string;
+}
+
+export interface ReportManualPayload {
   teamA1Id: string;
   teamA2Id: string;
   teamB1Id: string;
