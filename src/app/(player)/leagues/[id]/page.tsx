@@ -187,7 +187,7 @@ export default function LeagueDetailPage() {
             />
           </TabsContent>
 
-                    {/* Partidos tab */}
+          {/* Partidos tab */}
           <TabsContent value="partidos">
             <div className="mb-3 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
               <button
@@ -210,7 +210,7 @@ export default function LeagueDetailPage() {
                     : 'text-slate-500'
                 }`}
               >
-                Desafíos
+                DesafÃ­os
               </button>
             </div>
 
@@ -218,10 +218,10 @@ export default function LeagueDetailPage() {
               matchList.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
                   <p className="text-sm font-semibold text-slate-900">
-                    Todavía no hay partidos
+                    TodavÃ­a no hay partidos
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Podés cargar partidos desde reserva o manualmente.
+                    PodÃ©s cargar partidos desde reserva o manualmente.
                   </p>
                   {isActive && (
                     <Button
@@ -417,4 +417,3 @@ function DetailSkeleton() {
     </div>
   );
 }
-
