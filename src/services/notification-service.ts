@@ -32,10 +32,10 @@ export const notificationService = {
   },
 
   async markRead(id: string): Promise<void> {
-    await api.patch(`/notifications/${id}/read`);
+    await api.post(`/notifications/${id}/read`);
   },
 
   async markAllRead(): Promise<void> {
-    await api.patch('/notifications/read-all');
-  },
+    await api.post('/notifications/read-all');
+  }
 };
