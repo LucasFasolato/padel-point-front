@@ -36,7 +36,6 @@ import type { LeagueMemberRole } from '@/types/leagues';
 
 const ROLE_LABELS: Record<LeagueMemberRole, string> = {
   member: 'Miembro',
-  admin: 'Admin',
   owner: 'Owner',
 };
 
@@ -94,9 +93,15 @@ export default function LeagueDetailPage() {
 
   // Determine user role from members list
   const currentMember = league.members?.find((m) => m.userId === user?.userId);
-  const userRole = currentMember?.role ?? 'member';
-  const isReadOnly = userRole === 'member';
-
+const userRole = (currentMember?.role ?? 'member').toLowerCase() as LeagueMemberRole;
+const isReadOnly = userRole === 'member';
+  console.log({
+    userId: user?.userId,
+    members: league.members,
+    currentMember,
+    userRole,
+    isReadOnly,
+  });
   return (
     <>
       <PublicTopBar title={league.name} backHref="/leagues" />
@@ -290,12 +295,11 @@ export default function LeagueDetailPage() {
                           className="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                         >
                           <option value="member">{ROLE_LABELS.member}</option>
-                          <option value="admin">{ROLE_LABELS.admin}</option>
                           <option value="owner">{ROLE_LABELS.owner}</option>
                         </select>
                       ) : (
                         <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
-                          {ROLE_LABELS[memberRole]}
+                          {ROLE_LABELS[memberRole] ?? memberRole}
                         </span>
                       )}
                     </div>

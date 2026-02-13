@@ -41,7 +41,7 @@ export interface League {
 }
 
 export type TieBreaker = 'points' | 'wins' | 'set_difference' | 'game_difference';
-export type LeagueMemberRole = 'member' | 'admin' | 'owner';
+export type LeagueMemberRole = 'member' | 'owner';
 
 export interface LeagueSettings {
   scoring: { win: number; draw: number; loss: number };
