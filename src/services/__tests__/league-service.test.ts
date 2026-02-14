@@ -5,11 +5,13 @@ vi.mock('@/lib/api', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
+    patch: vi.fn(),
   },
 }));
 
 import api from '@/lib/api';
 const mockedApi = vi.mocked(api);
+const LEAGUE_ID = '11111111-1111-4111-8111-111111111111';
 
 describe('leagueService', () => {
   beforeEach(() => {
@@ -24,18 +26,23 @@ describe('leagueService', () => {
   });
 
   it('getById calls GET /leagues/:id', async () => {
-    const league = { id: 'lg-1', name: 'Test', status: 'active', startDate: '2026-01-01', endDate: '2026-03-01', creatorId: 'u-1', membersCount: 2 };
+    const league = { id: LEAGUE_ID, name: 'Test', status: 'active', startDate: '2026-01-01', endDate: '2026-03-01', creatorId: 'u-1', membersCount: 2 };
     mockedApi.get.mockResolvedValue({ data: league });
-    const result = await leagueService.getById('lg-1');
-    expect(mockedApi.get).toHaveBeenCalledWith('/leagues/lg-1');
-    expect(result).toMatchObject({ id: 'lg-1', name: 'Test', status: 'active' });
+    const result = await leagueService.getById(LEAGUE_ID);
+    expect(mockedApi.get).toHaveBeenCalledWith(`/leagues/${LEAGUE_ID}`);
+    expect(result).toMatchObject({ id: LEAGUE_ID, name: 'Test', status: 'active' });
   });
 
   it('getById normalises draft status to upcoming', async () => {
-    const league = { id: 'lg-2', name: 'Draft Liga', status: 'draft', startDate: '2026-01-01', endDate: '2026-03-01', creatorId: 'u-1', membersCount: 1 };
+    const league = { id: LEAGUE_ID, name: 'Draft Liga', status: 'draft', startDate: '2026-01-01', endDate: '2026-03-01', creatorId: 'u-1', membersCount: 1 };
     mockedApi.get.mockResolvedValue({ data: league });
-    const result = await leagueService.getById('lg-2');
+    const result = await leagueService.getById(LEAGUE_ID);
     expect(result.status).toBe('upcoming');
+  });
+
+  it('throws before API call when league id is invalid', async () => {
+    await expect(leagueService.getById('undefined')).rejects.toThrow('Invalid leagueId');
+    expect(mockedApi.get).not.toHaveBeenCalled();
   });
 
   it('create calls POST /leagues', async () => {
@@ -51,8 +58,8 @@ describe('leagueService', () => {
     mockedApi.post.mockResolvedValue({
       data: [{ id: 'inv-1', email: 'a@b.com', invitedUserId: null }],
     });
-    const result = await leagueService.createInvites('lg-1', ['a@b.com']);
-    expect(mockedApi.post).toHaveBeenCalledWith('/leagues/lg-1/invites', { emails: ['a@b.com'] });
+    const result = await leagueService.createInvites(LEAGUE_ID, ['a@b.com']);
+    expect(mockedApi.post).toHaveBeenCalledWith(`/leagues/${LEAGUE_ID}/invites`, { emails: ['a@b.com'] });
     expect(result).toEqual([{ inviteId: 'inv-1', email: 'a@b.com', invitedUserId: null }]);
   });
 
@@ -62,7 +69,7 @@ describe('leagueService', () => {
         invites: [{ id: 'inv-2', email: 'known@b.com', invitedUserId: 'u-1' }],
       },
     });
-    const result = await leagueService.createInvites('lg-1', ['known@b.com']);
+    const result = await leagueService.createInvites(LEAGUE_ID, ['known@b.com']);
     expect(result).toEqual([{ inviteId: 'inv-2', email: 'known@b.com', invitedUserId: 'u-1' }]);
   });
 

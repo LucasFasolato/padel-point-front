@@ -24,7 +24,7 @@ vi.mock('@/store/auth-store', () => ({
 const mockLeagueDetail = vi.fn<() => { data: League | undefined; isLoading: boolean; error: unknown }>();
 const mockLeagueMatches = vi.fn<() => { data: LeagueMatch[] | undefined }>();
 const mockUpdateSettings = vi.fn();
-const useLeagueDetailMock = vi.fn((id: string) => mockLeagueDetail());
+const useLeagueDetailMock = vi.fn(() => mockLeagueDetail());
 const useLeagueStandingsMock = vi.fn(() => ({ data: undefined, isLoading: false }));
 const useCreateInvitesMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
 const useReportFromReservationMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
@@ -261,7 +261,7 @@ describe('LeagueDetailPage', () => {
     expect(screen.getByTestId('settings-panel')).toBeInTheDocument();
   });
 
-  it('renders invalid-link state and never passes undefined id to hooks', () => {
+  it('renders invalid-link state and never mounts league hooks', () => {
     paramsId = 'undefined';
     mockLeagueDetail.mockReturnValue({ data: undefined, isLoading: false, error: null });
 
@@ -271,10 +271,10 @@ describe('LeagueDetailPage', () => {
     expect(screen.getByText('El enlace es inválido o la liga no existe.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Volver a Ligas' })).toBeInTheDocument();
 
-    expect(useLeagueDetailMock).toHaveBeenCalledWith('');
-    expect(useLeagueStandingsMock).toHaveBeenCalledWith('');
-    expect(useCreateInvitesMock).toHaveBeenCalledWith('');
-    expect(useReportFromReservationMock).toHaveBeenCalledWith('');
-    expect(useReportManualMock).toHaveBeenCalledWith('');
+    expect(useLeagueDetailMock).not.toHaveBeenCalled();
+    expect(useLeagueStandingsMock).not.toHaveBeenCalled();
+    expect(useCreateInvitesMock).not.toHaveBeenCalled();
+    expect(useReportFromReservationMock).not.toHaveBeenCalled();
+    expect(useReportManualMock).not.toHaveBeenCalled();
   });
 });

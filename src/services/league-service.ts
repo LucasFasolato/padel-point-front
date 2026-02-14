@@ -1,4 +1,5 @@
 import api from '@/lib/api';
+import { isUuid } from '@/lib/id-utils';
 import { normalizeLeagueStatus } from '@/lib/league-utils';
 import type {
   League,
@@ -128,6 +129,13 @@ function normalizeCreateInvitesResponse(raw: unknown): LeagueInviteDispatchResul
   return [];
 }
 
+function assertValidLeagueId(leagueId: string): string {
+  if (!isUuid(leagueId)) {
+    throw new Error('Invalid leagueId');
+  }
+  return leagueId;
+}
+
 export const leagueService = {
   /** List all leagues the current user belongs to. */
   async list(): Promise<League[]> {
@@ -137,7 +145,8 @@ export const leagueService = {
 
   /** Get a single league with members and standings. */
   async getById(id: string): Promise<League> {
-    const { data } = await api.get(`/leagues/${id}`);
+    const validLeagueId = assertValidLeagueId(id);
+    const { data } = await api.get(`/leagues/${validLeagueId}`);
     return normalizeLeague(data);
   },
 
@@ -149,7 +158,8 @@ export const leagueService = {
 
   /** Send invites to one or more emails. */
   async createInvites(leagueId: string, emails: string[]): Promise<LeagueInviteDispatchResult[]> {
-    const { data } = await api.post(`/leagues/${leagueId}/invites`, { emails });
+    const validLeagueId = assertValidLeagueId(leagueId);
+    const { data } = await api.post(`/leagues/${validLeagueId}/invites`, { emails });
     return normalizeCreateInvitesResponse(data);
   },
 
@@ -171,25 +181,29 @@ export const leagueService = {
 
   /** Fetch matches linked to a league. */
   async getMatches(leagueId: string): Promise<LeagueMatch[]> {
-    const { data } = await api.get(`/leagues/${leagueId}/matches`);
+    const validLeagueId = assertValidLeagueId(leagueId);
+    const { data } = await api.get(`/leagues/${validLeagueId}/matches`);
     return Array.isArray(data) ? data : [];
   },
 
   /** Fetch confirmed, past reservations eligible for league match reporting. */
   async getEligibleReservations(leagueId: string): Promise<EligibleReservation[]> {
-    const { data } = await api.get(`/leagues/${leagueId}/eligible-reservations`);
+    const validLeagueId = assertValidLeagueId(leagueId);
+    const { data } = await api.get(`/leagues/${validLeagueId}/eligible-reservations`);
     return Array.isArray(data) ? data : [];
   },
 
   /** Fetch league settings (scoring, tie-breakers, sources). */
   async getSettings(leagueId: string): Promise<LeagueSettings> {
-    const { data } = await api.get(`/leagues/${leagueId}/settings`);
+    const validLeagueId = assertValidLeagueId(leagueId);
+    const { data } = await api.get(`/leagues/${validLeagueId}/settings`);
     return data;
   },
 
   /** Fetch standings with movement deltas + computation timestamp. */
   async getStandings(leagueId: string): Promise<LeagueStandingsResponse> {
-    const { data } = await api.get(`/leagues/${leagueId}/standings`);
+    const validLeagueId = assertValidLeagueId(leagueId);
+    const { data } = await api.get(`/leagues/${validLeagueId}/standings`);
 
     const rowsRaw = (data?.rows ?? data?.standings ?? []) as League['standings'];
     const rows = Array.isArray(rowsRaw)
@@ -207,13 +221,15 @@ export const leagueService = {
 
   /** Update league settings. */
   async updateSettings(leagueId: string, payload: Partial<LeagueSettings>): Promise<LeagueSettings> {
-    const { data } = await api.patch(`/leagues/${leagueId}/settings`, payload);
+    const validLeagueId = assertValidLeagueId(leagueId);
+    const { data } = await api.patch(`/leagues/${validLeagueId}/settings`, payload);
     return data;
   },
 
   /** Update a member's role in the league. */
   async updateMemberRole(leagueId: string, userId: string, role: LeagueMemberRole): Promise<void> {
-    await api.patch(`/leagues/${leagueId}/members/${userId}/role`, { role });
+    const validLeagueId = assertValidLeagueId(leagueId);
+    await api.patch(`/leagues/${validLeagueId}/members/${userId}/role`, { role });
   },
 
   /** Report a league match anchored to a reservation. */
@@ -221,8 +237,9 @@ export const leagueService = {
     leagueId: string,
     payload: ReportFromReservationPayload
   ): Promise<ReportFromReservationResponse> {
+    const validLeagueId = assertValidLeagueId(leagueId);
     const { data } = await api.post(
-      `/leagues/${leagueId}/report-from-reservation`,
+      `/leagues/${validLeagueId}/report-from-reservation`,
       payload
     );
     return data;
@@ -233,8 +250,9 @@ export const leagueService = {
     leagueId: string,
     payload: ReportManualPayload
   ): Promise<ReportFromReservationResponse> {
+    const validLeagueId = assertValidLeagueId(leagueId);
     const { data } = await api.post(
-      `/leagues/${leagueId}/report-manual`,
+      `/leagues/${validLeagueId}/report-manual`,
       payload
     );
     return data;
@@ -245,7 +263,8 @@ export const leagueService = {
     leagueId: string,
     payload: CreateLeagueChallengePayload
   ): Promise<LeagueChallenge> {
-    const { data } = await api.post(`/leagues/${leagueId}/challenges`, payload);
+    const validLeagueId = assertValidLeagueId(leagueId);
+    const { data } = await api.post(`/leagues/${validLeagueId}/challenges`, payload);
     return normalizeLeagueChallenge(data);
   },
 
@@ -254,7 +273,8 @@ export const leagueService = {
     leagueId: string,
     scope: LeagueChallengeScope
   ): Promise<LeagueChallenge[]> {
-    const { data } = await api.get(`/leagues/${leagueId}/challenges`, {
+    const validLeagueId = assertValidLeagueId(leagueId);
+    const { data } = await api.get(`/leagues/${validLeagueId}/challenges`, {
       params: { status: scope },
     });
     const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];

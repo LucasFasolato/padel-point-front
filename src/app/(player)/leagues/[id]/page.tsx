@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Users, UserPlus, Calendar, Trophy, Info } from 'lucide-react';
@@ -64,18 +64,25 @@ function isForbiddenOrNotFound(error: unknown): boolean {
 
 export default function LeagueDetailPage() {
   const params = useParams<{ id?: string | string[] }>();
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const user = useAuthStore((s) => s.user);
   const rawId = getSingleParam(params?.id);
-  const leagueId = isUuid(rawId) ? rawId : '';
-  const isValidLeagueId = leagueId.length > 0;
+  if (!isUuid(rawId)) {
+    return <LeagueNotFoundState />;
+  }
 
-  // Support deep-linking via ?tab=ajustes and ?tab=settings
   const tabParam = searchParams.get('tab');
-  const initialTab = resolveInitialTab(tabParam);
-  const [activeTab, setActiveTab] = useState(initialTab);
-  const handleTabChange = (value: string) => setActiveTab(resolveInitialTab(value));
+
+  return <LeagueDetailContent leagueId={rawId} initialTabParam={tabParam} />;
+}
+
+interface LeagueDetailContentProps {
+  leagueId: string;
+  initialTabParam: string | null;
+}
+
+function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentProps) {
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const { data: league, isLoading, error } = useLeagueDetail(leagueId);
   const { data: standingsData, isLoading: standingsLoading } = useLeagueStandings(leagueId);
   const inviteMutation = useCreateInvites(leagueId);
@@ -91,10 +98,15 @@ export default function LeagueDetailPage() {
   const [showReservationReport, setShowReservationReport] = useState(false);
   const [showManualReport, setShowManualReport] = useState(false);
   const [partidosView, setPartidosView] = useState<'matches' | 'challenges'>('matches');
+  const [activeTab, setActiveTab] = useState<LeagueDetailTab>(() =>
+    resolveInitialTab(initialTabParam)
+  );
 
-  if (!isValidLeagueId) {
-    return <LeagueNotFoundState />;
-  }
+  useEffect(() => {
+    setActiveTab(resolveInitialTab(initialTabParam));
+  }, [initialTabParam]);
+
+  const handleTabChange = (value: string) => setActiveTab(resolveInitialTab(value));
 
   if (isLoading) {
     return (

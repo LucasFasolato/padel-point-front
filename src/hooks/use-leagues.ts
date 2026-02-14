@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { leagueService } from '@/services/league-service';
 import { toast } from 'sonner';
+import { isUuid } from '@/lib/id-utils';
 import type {
   ReportFromReservationPayload,
   ReportManualPayload,
@@ -36,19 +37,21 @@ export function useLeaguesList() {
 
 /** Fetch a single league with standings and members. */
 export function useLeagueDetail(id: string) {
+  const enabled = isUuid(id);
   return useQuery({
     queryKey: KEYS.detail(id),
     queryFn: () => leagueService.getById(id),
-    enabled: !!id,
+    enabled,
   });
 }
 
 /** Fetch standings rows + movement map + computed timestamp. */
 export function useLeagueStandings(id: string) {
+  const enabled = isUuid(id);
   return useQuery({
     queryKey: KEYS.standings(id),
     queryFn: () => leagueService.getStandings(id),
-    enabled: !!id,
+    enabled,
   });
 }
 
@@ -125,29 +128,32 @@ export function useDeclineInvite() {
 
 /** Fetch matches linked to a league. */
 export function useLeagueMatches(leagueId: string) {
+  const enabled = isUuid(leagueId);
   return useQuery({
     queryKey: KEYS.matches(leagueId),
     queryFn: () => leagueService.getMatches(leagueId),
-    enabled: !!leagueId,
+    enabled,
   });
 }
 
 /** Fetch league challenges by scope (active/history). */
 export function useLeagueChallenges(leagueId: string, scope: LeagueChallengeScope) {
+  const enabled = isUuid(leagueId);
   return useQuery({
     queryKey: KEYS.challenges(leagueId, scope),
     queryFn: () => leagueService.getChallenges(leagueId, scope),
-    enabled: !!leagueId,
+    enabled,
     staleTime: 1000 * 30,
   });
 }
 
 /** Fetch reservations eligible for league match reporting. */
 export function useEligibleReservations(leagueId: string) {
+  const enabled = isUuid(leagueId);
   return useQuery({
     queryKey: KEYS.eligibleReservations(leagueId),
     queryFn: () => leagueService.getEligibleReservations(leagueId),
-    enabled: !!leagueId,
+    enabled,
   });
 }
 
@@ -306,10 +312,11 @@ export function useLinkLeagueChallengeMatch(leagueId: string) {
 
 /** Fetch league settings (scoring, tie-breakers, sources). */
 export function useLeagueSettings(leagueId: string) {
+  const enabled = isUuid(leagueId);
   return useQuery({
     queryKey: KEYS.settings(leagueId),
     queryFn: () => leagueService.getSettings(leagueId),
-    enabled: !!leagueId,
+    enabled,
   });
 }
 
