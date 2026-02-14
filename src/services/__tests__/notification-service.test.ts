@@ -121,6 +121,39 @@ describe('normalizeList', () => {
     expect(result[0].actionMeta).toEqual({ inviteId: 'inv-456' });
   });
 
+  it('maps readAt to read=true deterministically', () => {
+    const result = normalizeList([
+      {
+        id: '3',
+        type: 'league_invite_received',
+        title: 'Inv',
+        message: '',
+        createdAt: '2025-01-01T00:00:00.000Z',
+        readAt: '2025-01-02T00:00:00.000Z',
+        data: { inviteId: 'inv-789' },
+      },
+    ]);
+
+    expect(result[0].read).toBe(true);
+    expect(result[0].actionMeta).toEqual({ inviteId: 'inv-789' });
+  });
+
+  it('does not map generic data.status into inviteStatus', () => {
+    const result = normalizeList([
+      {
+        id: '4',
+        type: 'league_invite_received',
+        title: 'Inv',
+        message: '',
+        createdAt: '2025-01-01T00:00:00.000Z',
+        data: { inviteId: 'inv-999', status: 'read' },
+      },
+    ]);
+
+    expect(result[0].data?.inviteStatus).toBeUndefined();
+    expect(result[0].actionMeta).toEqual({ inviteId: 'inv-999' });
+  });
+
   it('unwraps { items: [...] }', () => {
     const items = [{ id: '1', type: 'general', title: 'Hi', message: '', createdAt: '2025-01-01T00:00:00.000Z' }];
     expect(normalizeList({ items })).toHaveLength(1);

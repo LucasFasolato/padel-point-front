@@ -131,6 +131,49 @@ describe('NotificationItem', () => {
     expect(screen.getByRole('button', { name: 'Rechazar' })).toBeInTheDocument();
   });
 
+  it('shows Accept/Decline even when notification has readAt metadata', () => {
+    const n = {
+      ...makeNotification({
+        type: 'LEAGUE_INVITE_RECEIVED',
+        read: true,
+        data: { inviteId: 'inv-1' },
+      }),
+      readAt: '2025-01-02T00:00:00.000Z',
+    } as AppNotification & { readAt: string };
+
+    render(
+      <NotificationItem
+        notification={n}
+        onClick={vi.fn()}
+        onAccept={vi.fn()}
+        onDecline={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Aceptar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rechazar' })).toBeInTheDocument();
+  });
+
+  it('does not treat generic data.status as resolved invite state', () => {
+    const n = makeNotification({
+      type: 'LEAGUE_INVITE_RECEIVED',
+      read: true,
+      data: { inviteId: 'inv-1', status: 'read' },
+    });
+
+    render(
+      <NotificationItem
+        notification={n}
+        onClick={vi.fn()}
+        onAccept={vi.fn()}
+        onDecline={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Aceptar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rechazar' })).toBeInTheDocument();
+  });
+
   it('hides Accept/Decline when inviteId is missing', () => {
     const n = makeNotification({
       type: 'LEAGUE_INVITE_RECEIVED',

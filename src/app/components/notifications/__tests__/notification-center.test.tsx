@@ -181,6 +181,34 @@ describe('NotificationCenter', () => {
     expect(mockMarkAllRead).not.toHaveBeenCalled();
   });
 
+  it('renders invite actions when readAt is present and invite is actionable', () => {
+    mockNotifications.mockReturnValue({
+      data: [
+        {
+          id: 'n-invite',
+          type: 'league_invite_received',
+          title: 'Te invitaron a la liga',
+          message: '',
+          priority: 'normal',
+          read: true,
+          readAt: '2025-01-02T00:00:00.000Z',
+          link: null,
+          createdAt: new Date().toISOString(),
+          data: { inviteId: 'inv-1', leagueId: '11111111-1111-4111-8111-111111111111' },
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<NotificationCenter />);
+
+    expect(screen.getByRole('button', { name: 'Aceptar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rechazar' })).toBeInTheDocument();
+    expect(mockMarkRead).not.toHaveBeenCalled();
+  });
+
   it('marks notification as read and navigates on click', () => {
     mockNotifications.mockReturnValue({
       data: [
