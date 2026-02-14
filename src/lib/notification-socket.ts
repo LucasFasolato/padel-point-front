@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type { AppNotification } from '@/types/notifications';
-import { TOAST_WORTHY_TYPES } from '@/types/notifications';
+import { TOAST_WORTHY_TYPES, normalizeNotificationType } from '@/types/notifications';
 import { NOTIFICATION_QUERY_KEYS } from '@/hooks/use-notifications';
 import { toastManager } from '@/lib/toast';
 
@@ -137,7 +137,8 @@ export class NotificationSocket {
     }
 
     // Show toast only for high-priority types
-    if (TOAST_WORTHY_TYPES.includes(notification.type)) {
+    const type = normalizeNotificationType(notification.type);
+    if (type && TOAST_WORTHY_TYPES.includes(type)) {
       toastManager.info(notification.title, {
         idempotencyKey: `notif-${notification.id}`,
       });

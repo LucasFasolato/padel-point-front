@@ -113,14 +113,14 @@ export const leagueService = {
     return data;
   },
 
-  /** Accept an invite by token. */
-  async acceptInvite(token: string): Promise<void> {
-    await api.post(`/leagues/invites/${token}/accept`);
+  /** Accept an invite by inviteId. */
+  async acceptInvite(inviteId: string): Promise<void> {
+    await api.post(`/leagues/invites/${inviteId}/accept`);
   },
 
-  /** Decline an invite by token. */
-  async declineInvite(token: string): Promise<void> {
-    await api.post(`/leagues/invites/${token}/decline`);
+  /** Decline an invite by inviteId. */
+  async declineInvite(inviteId: string): Promise<void> {
+    await api.post(`/leagues/invites/${inviteId}/decline`);
   },
 
   /** Fetch matches linked to a league. */

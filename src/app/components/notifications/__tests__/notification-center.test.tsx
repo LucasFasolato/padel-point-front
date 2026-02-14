@@ -22,6 +22,8 @@ vi.mock('@/hooks/use-notifications', () => ({
   useNotifications: () => mockNotifications(),
   useMarkRead: () => ({ mutate: mockMarkRead }),
   useMarkAllRead: () => ({ mutate: mockMarkAllRead, isPending: false }),
+  useAcceptNotificationInvite: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeclineNotificationInvite: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 vi.mock('@/hooks/use-notification-socket', () => ({

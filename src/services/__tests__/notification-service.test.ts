@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { notificationService, normalizeList } from '../notification-service';
+import { NOTIFICATION_TYPES } from '@/types/notifications';
 
 vi.mock('@/lib/api', () => ({
   default: {
@@ -48,10 +49,22 @@ describe('notificationService', () => {
   });
 
   it('list normalizes { items: [...] } wrapper', async () => {
-    const items = [{ id: '1', type: 'system', title: 'Hi' }];
+    const createdAt = '2025-01-01T00:00:00.000Z';
+    const items = [{ id: '1', type: 'system', title: 'Hi', message: '', createdAt }];
     mockedApi.get.mockResolvedValue({ data: { items } });
     const result = await notificationService.list();
-    expect(result).toEqual(items);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: '1',
+      type: NOTIFICATION_TYPES.SYSTEM,
+      title: 'Hi',
+      message: '',
+      priority: 'normal',
+      read: false,
+      link: null,
+      createdAt,
+    });
   });
 
   it('list returns empty array when backend returns null', async () => {
@@ -62,19 +75,43 @@ describe('notificationService', () => {
 });
 
 describe('normalizeList', () => {
-  it('returns array as-is', () => {
-    const arr = [{ id: '1' }];
-    expect(normalizeList(arr)).toBe(arr);
+  it('normalizes arrays', () => {
+    const createdAt = '2025-01-01T00:00:00.000Z';
+    const arr = [{ id: '1', type: 'league_invite_received', title: 'Inv', message: '', createdAt }];
+    const result = normalizeList(arr);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: '1',
+      type: NOTIFICATION_TYPES.LEAGUE_INVITE_RECEIVED,
+      title: 'Inv',
+      message: '',
+      createdAt,
+    });
+  });
+
+  it('maps actionMeta.inviteToken to actionMeta.inviteId', () => {
+    const result = normalizeList([
+      {
+        id: '1',
+        type: 'league_invite_received',
+        title: 'Inv',
+        message: '',
+        createdAt: '2025-01-01T00:00:00.000Z',
+        actionMeta: { inviteToken: 'inv-123', leagueId: 'lg-1' },
+      },
+    ]);
+
+    expect(result[0].actionMeta).toEqual({ inviteId: 'inv-123', leagueId: 'lg-1' });
   });
 
   it('unwraps { items: [...] }', () => {
-    const items = [{ id: '1' }];
-    expect(normalizeList({ items })).toBe(items);
+    const items = [{ id: '1', type: 'general', title: 'Hi', message: '', createdAt: '2025-01-01T00:00:00.000Z' }];
+    expect(normalizeList({ items })).toHaveLength(1);
   });
 
   it('unwraps { data: [...] }', () => {
-    const data = [{ id: '1' }];
-    expect(normalizeList({ data })).toBe(data);
+    const data = [{ id: '1', type: 'general', title: 'Hi', message: '', createdAt: '2025-01-01T00:00:00.000Z' }];
+    expect(normalizeList({ data })).toHaveLength(1);
   });
 
   it('returns [] for null', () => {

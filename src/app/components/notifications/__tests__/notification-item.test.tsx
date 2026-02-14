@@ -40,20 +40,20 @@ describe('NotificationItem', () => {
   it('applies unread styles when not read', () => {
     const n = makeNotification({ read: false });
     const { container } = render(<NotificationItem notification={n} onClick={vi.fn()} />);
-    const button = container.querySelector('button');
-    expect(button?.className).toContain('bg-emerald-50');
+    const item = container.querySelector('[role=\"button\"]');
+    expect(item?.className).toContain('bg-emerald-50');
   });
 
   it('applies read styles when read', () => {
     const n = makeNotification({ read: true });
     const { container } = render(<NotificationItem notification={n} onClick={vi.fn()} />);
-    const button = container.querySelector('button');
-    expect(button?.className).toContain('bg-white');
+    const item = container.querySelector('[role=\"button\"]');
+    expect(item?.className).toContain('bg-white');
   });
 
   it('renders league_invite_received with correct label', () => {
     const n = makeNotification({
-      type: 'league_invite_received',
+      type: 'LEAGUE_INVITE_RECEIVED',
       title: 'Te invitaron a la liga Padel Masters',
       link: '/leagues/invite?token=abc123',
     });
@@ -93,6 +93,99 @@ describe('NotificationItem', () => {
     fireEvent.click(screen.getByRole('button'));
     expect(onClick).toHaveBeenCalledWith(n);
     expect(n.link).toBe('/leagues/invite?token=abc123');
+  });
+
+  it('shows Accept/Decline only for unread invite notifications with inviteId', () => {
+    const n = makeNotification({
+      type: 'LEAGUE_INVITE_RECEIVED',
+      read: false,
+      actionMeta: { inviteId: 'inv-1' },
+    });
+    render(
+      <NotificationItem
+        notification={n}
+        onClick={vi.fn()}
+        onAccept={vi.fn()}
+        onDecline={vi.fn()}
+      />
+    );
+    expect(screen.getByRole('button', { name: 'Aceptar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rechazar' })).toBeInTheDocument();
+  });
+
+  it('hides Accept/Decline for read notifications', () => {
+    const n = makeNotification({
+      type: 'LEAGUE_INVITE_RECEIVED',
+      read: true,
+      actionMeta: { inviteId: 'inv-1' },
+    });
+    render(
+      <NotificationItem
+        notification={n}
+        onClick={vi.fn()}
+        onAccept={vi.fn()}
+        onDecline={vi.fn()}
+      />
+    );
+    expect(screen.queryByRole('button', { name: 'Aceptar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rechazar' })).not.toBeInTheDocument();
+  });
+
+  it('hides Accept/Decline when inviteId is missing', () => {
+    const n = makeNotification({
+      type: 'LEAGUE_INVITE_RECEIVED',
+      read: false,
+      actionMeta: { leagueId: 'lg-1' },
+    });
+    render(
+      <NotificationItem
+        notification={n}
+        onClick={vi.fn()}
+        onAccept={vi.fn()}
+        onDecline={vi.fn()}
+      />
+    );
+    expect(screen.queryByRole('button', { name: 'Aceptar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rechazar' })).not.toBeInTheDocument();
+  });
+
+  it('does not bubble to item click when Accept is clicked', () => {
+    const onClick = vi.fn();
+    const onAccept = vi.fn();
+    const n = makeNotification({
+      type: 'LEAGUE_INVITE_RECEIVED',
+      actionMeta: { inviteId: 'inv-1' },
+    });
+    render(
+      <NotificationItem
+        notification={n}
+        onClick={onClick}
+        onAccept={onAccept}
+        onDecline={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Aceptar' }));
+    expect(onAccept).toHaveBeenCalledWith(n);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('disables both action buttons while request is in-flight', () => {
+    const n = makeNotification({
+      type: 'LEAGUE_INVITE_RECEIVED',
+      actionMeta: { inviteId: 'inv-1' },
+    });
+    render(
+      <NotificationItem
+        notification={n}
+        onClick={vi.fn()}
+        onAccept={vi.fn()}
+        onDecline={vi.fn()}
+        isActing
+        actingAction="accept"
+      />
+    );
+    expect(screen.getByRole('button', { name: /^Aceptar$/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Rechazar$/i })).toBeDisabled();
   });
 
   it('renders match_disputed with correct label and navigates to match', () => {

@@ -98,7 +98,7 @@ export function useAcceptInvite() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: (token: string) => leagueService.acceptInvite(token),
+    mutationFn: (inviteId: string) => leagueService.acceptInvite(inviteId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEYS.list });
       toast.success('¡Te uniste a la liga!');
@@ -112,7 +112,7 @@ export function useAcceptInvite() {
 /** Decline a league invite. */
 export function useDeclineInvite() {
   return useMutation({
-    mutationFn: (token: string) => leagueService.declineInvite(token),
+    mutationFn: (inviteId: string) => leagueService.declineInvite(inviteId),
     onSuccess: () => {
       toast.success('Invitación rechazada.');
     },

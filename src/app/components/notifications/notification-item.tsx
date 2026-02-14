@@ -2,21 +2,64 @@
 
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/notification-utils';
-import { NOTIFICATION_TYPE_LABELS } from '@/types/notifications';
+import {
+  NOTIFICATION_TYPE_LABELS,
+  NOTIFICATION_TYPES,
+  normalizeNotificationType,
+} from '@/types/notifications';
+import { Button } from '@/app/components/ui/button';
 import type { AppNotification } from '@/types/notifications';
 
 interface NotificationItemProps {
   notification: AppNotification;
   onClick: (notification: AppNotification) => void;
+  /** Called when the user accepts a league invite */
+  onAccept?: (notification: AppNotification) => void;
+  /** Called when the user declines a league invite */
+  onDecline?: (notification: AppNotification) => void;
+  /** Whether an accept/decline action is in-flight */
+  isActing?: boolean;
+  /** Which action is currently loading: 'accept' | 'decline' */
+  actingAction?: 'accept' | 'decline' | null;
+  /** Whether this notification has already been acted on (hides buttons) */
+  acted?: boolean;
 }
 
-export function NotificationItem({ notification, onClick }: NotificationItemProps) {
-  const typeLabel = NOTIFICATION_TYPE_LABELS[notification.type] ?? 'Notificación';
+function hasInviteAction(notification: AppNotification, acted: boolean): boolean {
+  const type = normalizeNotificationType(notification.type);
 
   return (
-    <button
-      type="button"
+    type === NOTIFICATION_TYPES.LEAGUE_INVITE_RECEIVED &&
+    !!notification.actionMeta?.inviteId &&
+    !notification.read &&
+    !acted
+  );
+}
+
+export function NotificationItem({
+  notification,
+  onClick,
+  onAccept,
+  onDecline,
+  isActing = false,
+  actingAction = null,
+  acted = false,
+}: NotificationItemProps) {
+  const normalizedType = normalizeNotificationType(notification.type);
+  const typeLabel = normalizedType ? NOTIFICATION_TYPE_LABELS[normalizedType] : 'Notificación';
+  const showActions = hasInviteAction(notification, acted) && onAccept && onDecline;
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => onClick(notification)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick(notification);
+        }
+      }}
       className={cn(
         'flex w-full gap-3 rounded-xl px-4 py-3 text-left transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1',
@@ -60,7 +103,40 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
             {notification.message}
           </p>
         )}
+
+        {/* Action buttons for league invites */}
+        {showActions && (
+          <div
+            className="mt-2 flex gap-2"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <Button
+              size="sm"
+              variant="outline"
+              loading={isActing && actingAction === 'decline'}
+              disabled={isActing}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDecline(notification);
+              }}
+            >
+              Rechazar
+            </Button>
+            <Button
+              size="sm"
+              loading={isActing && actingAction === 'accept'}
+              disabled={isActing}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAccept(notification);
+              }}
+            >
+              Aceptar
+            </Button>
+          </div>
+        )}
       </div>
-    </button>
+    </div>
   );
 }

@@ -1,8 +1,14 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useNotifications, useMarkRead, useMarkAllRead } from '@/hooks/use-notifications';
+import {
+  useNotifications,
+  useMarkRead,
+  useMarkAllRead,
+  useAcceptNotificationInvite,
+  useDeclineNotificationInvite,
+} from '@/hooks/use-notifications';
 import { useNotificationSocketStatus } from '@/hooks/use-notification-socket';
 import { groupByRecency, TIME_GROUP_LABELS } from '@/lib/notification-utils';
 import { NotificationItem } from './notification-item';
@@ -16,15 +22,88 @@ export function NotificationCenter() {
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
   const wsConnected = useNotificationSocketStatus();
+  const acceptInvite = useAcceptNotificationInvite();
+  const declineInvite = useDeclineNotificationInvite();
 
-  const handleItemClick = (notification: AppNotification) => {
-    if (!notification.read) {
-      markRead.mutate(notification.id);
-    }
-    if (notification.link) {
-      router.push(notification.link);
-    }
-  };
+  /** Track which notification is currently being acted on */
+  const [actingNotificationId, setActingNotificationId] = useState<string | null>(null);
+  const [actingAction, setActingAction] = useState<'accept' | 'decline' | null>(null);
+
+  /** IDs of notifications already acted on — hides buttons even before cache refresh */
+  const [actedIds, setActedIds] = useState<Set<string>>(() => new Set());
+
+  const markActed = useCallback((notificationId: string) => {
+    setActedIds((prev) => {
+      if (prev.has(notificationId)) return prev;
+      const next = new Set(prev);
+      next.add(notificationId);
+      return next;
+    });
+  }, []);
+
+  const handleItemClick = useCallback(
+    (notification: AppNotification) => {
+      if (!notification.read) {
+        markRead.mutate(notification.id);
+      }
+      if (notification.link) {
+        router.push(notification.link);
+      }
+    },
+    [markRead, router]
+  );
+
+  const handleAccept = useCallback(
+    (notification: AppNotification) => {
+      const inviteId = notification.actionMeta?.inviteId;
+      if (!inviteId) return;
+
+      setActingNotificationId(notification.id);
+      setActingAction('accept');
+
+      acceptInvite.mutate(
+        { notificationId: notification.id, inviteId },
+        {
+          onSuccess: () => {
+            markActed(notification.id);
+            const leagueId = notification.actionMeta?.leagueId;
+            if (leagueId) {
+              router.push(`/leagues/${leagueId}`);
+            }
+          },
+          onSettled: () => {
+            setActingNotificationId(null);
+            setActingAction(null);
+          },
+        }
+      );
+    },
+    [acceptInvite, markActed, router]
+  );
+
+  const handleDecline = useCallback(
+    (notification: AppNotification) => {
+      const inviteId = notification.actionMeta?.inviteId;
+      if (!inviteId) return;
+
+      setActingNotificationId(notification.id);
+      setActingAction('decline');
+
+      declineInvite.mutate(
+        { notificationId: notification.id, inviteId },
+        {
+          onSuccess: () => {
+            markActed(notification.id);
+          },
+          onSettled: () => {
+            setActingNotificationId(null);
+            setActingAction(null);
+          },
+        }
+      );
+    },
+    [declineInvite, markActed]
+  );
 
   // Defensive: ensure we always work with an array even if data is malformed
   const items = Array.isArray(notifications) ? notifications : [];
@@ -33,7 +112,6 @@ export function NotificationCenter() {
   // Dev-only debug log
   useEffect(() => {
     if (process.env.NODE_ENV === 'development' && !isLoading && !isError) {
-      // eslint-disable-next-line no-console
       console.log(
         `[notifications] loaded ${items.length} items` +
           (items.length > 0 ? `, first type: ${items[0].type}` : '')
@@ -142,6 +220,11 @@ export function NotificationCenter() {
                   key={n.id}
                   notification={n}
                   onClick={handleItemClick}
+                  onAccept={handleAccept}
+                  onDecline={handleDecline}
+                  isActing={actingNotificationId === n.id}
+                  actingAction={actingNotificationId === n.id ? actingAction : null}
+                  acted={actedIds.has(n.id)}
                 />
               ))}
             </div>
