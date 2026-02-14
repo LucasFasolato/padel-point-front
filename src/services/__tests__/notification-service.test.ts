@@ -105,6 +105,43 @@ describe('normalizeList', () => {
     expect(result[0].actionMeta).toEqual({ inviteId: 'inv-123', leagueId: 'lg-1' });
   });
 
+  it('normalizes dot-notation invite type to canonical enum', () => {
+    const result = normalizeList([
+      {
+        id: 'dot-1',
+        type: 'league.invite_received',
+        title: 'Inv',
+        message: '',
+        createdAt: '2025-01-01T00:00:00.000Z',
+        data: { inviteId: 'inv-dot-1' },
+      },
+    ]);
+
+    expect(result[0].type).toBe(NOTIFICATION_TYPES.LEAGUE_INVITE_RECEIVED);
+  });
+
+  it('normalizes dot-notation match types to canonical enum', () => {
+    const result = normalizeList([
+      {
+        id: 'dot-2',
+        type: 'match.disputed',
+        title: 'Disputed',
+        message: '',
+        createdAt: '2025-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'dot-3',
+        type: 'match.resolved',
+        title: 'Resolved',
+        message: '',
+        createdAt: '2025-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    expect(result[0].type).toBe(NOTIFICATION_TYPES.MATCH_DISPUTED);
+    expect(result[1].type).toBe(NOTIFICATION_TYPES.MATCH_RESOLVED);
+  });
+
   it('maps data.inviteToken to data.inviteId and fallback actionMeta', () => {
     const result = normalizeList([
       {

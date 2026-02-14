@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { NotificationItem } from '../notification-item';
 import type { AppNotification } from '@/types/notifications';
+import { normalizeList } from '@/services/notification-service';
 
 const makeNotification = (overrides: Partial<AppNotification> = {}): AppNotification => ({
   id: '1',
@@ -60,6 +61,33 @@ describe('NotificationItem', () => {
     render(<NotificationItem notification={n} onClick={vi.fn()} />);
     expect(screen.getByText('Invitación a liga')).toBeInTheDocument();
     expect(screen.getByText('Te invitaron a la liga Padel Masters')).toBeInTheDocument();
+  });
+
+  it('renders actions and label for API dot-notation invite type', () => {
+    const [n] = normalizeList([
+      {
+        id: 'dot-api-1',
+        type: 'league.invite_received',
+        title: 'Te invitaron a una liga',
+        message: '',
+        createdAt: new Date().toISOString(),
+        data: { inviteId: 'inv-dot-1' },
+      },
+    ]);
+
+    render(
+      <NotificationItem
+        notification={n}
+        onClick={vi.fn()}
+        onAccept={vi.fn()}
+        onDecline={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Invitación a liga')).toBeInTheDocument();
+    expect(screen.queryByText('Notificación')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Aceptar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rechazar' })).toBeInTheDocument();
   });
 
   it('renders league_invite_accepted with correct label', () => {
