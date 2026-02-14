@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Users, UserPlus, Calendar, Trophy, Info } from 'lucide-react';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { Button } from '@/app/components/ui/button';
@@ -39,10 +39,32 @@ const ROLE_LABELS: Record<LeagueMemberRole, string> = {
   owner: 'Owner',
 };
 
+type LeagueDetailTab = 'tabla' | 'partidos' | 'miembros' | 'ajustes';
+
+const TAB_ALIASES: Record<string, LeagueDetailTab> = {
+  tabla: 'tabla',
+  partidos: 'partidos',
+  miembros: 'miembros',
+  ajustes: 'ajustes',
+  settings: 'ajustes',
+};
+
+function resolveInitialTab(tab: string | null): LeagueDetailTab {
+  if (!tab) return 'tabla';
+  return TAB_ALIASES[tab] ?? 'tabla';
+}
+
 export default function LeagueDetailPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useAuthStore((s) => s.user);
+
+  // Support deep-linking via ?tab=ajustes and ?tab=settings
+  const tabParam = searchParams.get('tab');
+  const initialTab = resolveInitialTab(tabParam);
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const handleTabChange = (value: string) => setActiveTab(resolveInitialTab(value));
   const { data: league, isLoading, error } = useLeagueDetail(id);
   const { data: standingsData, isLoading: standingsLoading } = useLeagueStandings(id);
   const inviteMutation = useCreateInvites(id);
@@ -173,7 +195,7 @@ const isReadOnly = userRole === 'member';
         )}
 
         {/* Tabs */}
-        <Tabs defaultValue="tabla" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="w-full grid grid-cols-4">
             <TabsTrigger value="tabla">Tabla</TabsTrigger>
             <TabsTrigger value="partidos">Partidos</TabsTrigger>
