@@ -43,17 +43,19 @@ function normalizePayloadData(raw: unknown): NotificationPayloadData | undefined
   const data = raw as Record<string, unknown>;
   const normalizedInviteId = normalizeInviteId(data);
   const normalizedInviteStatus =
-    typeof data.inviteStatus === 'string'
-      ? data.inviteStatus
-      : typeof data.status === 'string'
-        ? data.status
-        : undefined;
+    typeof data.inviteStatus === 'string' ? data.inviteStatus : undefined;
 
   return {
     ...data,
     inviteId: normalizedInviteId,
     inviteStatus: normalizedInviteStatus,
   };
+}
+
+function normalizeReadFlag(data: Record<string, unknown>): boolean {
+  if (data.read === true) return true;
+  if (typeof data.readAt === 'string' && data.readAt.length > 0) return true;
+  return false;
 }
 
 function normalizeNotification(raw: unknown): AppNotification | null {
@@ -76,7 +78,7 @@ function normalizeNotification(raw: unknown): AppNotification | null {
     title: typeof data.title === 'string' ? data.title : '',
     message: typeof data.message === 'string' ? data.message : '',
     priority: normalizePriority(data.priority),
-    read: data.read === true,
+    read: normalizeReadFlag(data),
     link: typeof data.link === 'string' ? data.link : null,
     createdAt:
       typeof data.createdAt === 'string' ? data.createdAt : new Date().toISOString(),

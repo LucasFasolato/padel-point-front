@@ -18,17 +18,11 @@ import { Skeleton } from '@/app/components/ui/skeleton';
 import type { AppNotification } from '@/types/notifications';
 
 function resolveInviteId(notification: AppNotification): string | null {
-  const inviteId = notification.actionMeta?.inviteId;
-  if (typeof inviteId === 'string' && inviteId.length > 0) {
-    return inviteId;
-  }
-
-  const dataInviteId = notification.data?.inviteId ?? notification.data?.inviteToken;
-  if (typeof dataInviteId === 'string' && dataInviteId.length > 0) {
-    return dataInviteId;
-  }
-
-  return null;
+  const inviteId =
+    notification.actionMeta?.inviteId ??
+    notification.data?.inviteId ??
+    notification.data?.inviteToken;
+  return typeof inviteId === 'string' && inviteId.length > 0 ? inviteId : null;
 }
 
 function resolveLeagueId(notification: AppNotification): string | null {
