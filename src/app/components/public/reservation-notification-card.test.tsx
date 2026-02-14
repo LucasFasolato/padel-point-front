@@ -22,7 +22,7 @@ describe('ReservationNotificationCard', () => {
       />,
     );
 
-    expect(screen.getByText(/Notific/i)).toBeInTheDocument();
+    expect(screen.getByText('Notificación')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reenviar' })).toBeInTheDocument();
   });
 

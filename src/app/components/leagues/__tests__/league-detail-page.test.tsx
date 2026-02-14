@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { League, LeagueMatch } from '@/types/leagues';
 
@@ -7,6 +8,7 @@ const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: 'lg-1' }),
   useRouter: () => ({ push: pushMock }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 // Mock auth store
@@ -20,29 +22,46 @@ const mockLeagueDetail = vi.fn<() => { data: League | undefined; isLoading: bool
 const mockLeagueMatches = vi.fn<() => { data: LeagueMatch[] | undefined }>();
 const mockUpdateSettings = vi.fn();
 
-vi.mock('@/hooks/use-leagues', () => ({
-  useLeagueDetail: () => mockLeagueDetail(),
-  useCreateInvites: () => ({ mutate: vi.fn(), isPending: false }),
-  useReportFromReservation: () => ({ mutate: vi.fn(), isPending: false }),
-  useEligibleReservations: () => ({ data: [], isLoading: false }),
-  useLeagueMatches: () => mockLeagueMatches(),
-  useLeagueSettings: () => ({ data: undefined }),
-  useUpdateLeagueSettings: () => ({ mutate: mockUpdateSettings, isPending: false }),
-}));
+vi.mock('@/hooks/use-leagues', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/use-leagues')>();
+  return {
+    ...actual,
+    useLeagueDetail: () => mockLeagueDetail(),
+    useLeagueStandings: () => ({ data: undefined, isLoading: false }),
+    useCreateInvites: () => ({ mutate: vi.fn(), isPending: false }),
+    useReportFromReservation: () => ({ mutate: vi.fn(), isPending: false }),
+    useReportManual: () => ({ mutate: vi.fn(), isPending: false }),
+    useEligibleReservations: () => ({ data: [], isLoading: false }),
+    useLeagueMatches: () => mockLeagueMatches(),
+    useLeagueSettings: () => ({ data: undefined }),
+    useUpdateLeagueSettings: () => ({ mutate: mockUpdateSettings, isPending: false }),
+    useUpdateMemberRole: () => ({ mutate: vi.fn(), isPending: false }),
+  };
+});
 
 // Mock heavy components that pull in transitive deps
-vi.mock('@/app/components/leagues', () => ({
-  LeagueStatusBadge: ({ status }: { status: string }) => <span data-testid="status-badge">{status}</span>,
-  StandingsTable: () => <div data-testid="standings-table" />,
-  InviteModal: () => null,
-  ReportFromReservationModal: () => null,
-  LeagueMatchCard: ({ match, onClick }: { match: LeagueMatch; onClick: () => void }) => (
-    <button data-testid={`match-${match.id}`} onClick={onClick}>
-      {match.teamA.map(p => p.displayName).join(' / ')} vs {match.teamB.map(p => p.displayName).join(' / ')} — {match.score}
-    </button>
-  ),
-  LeagueSettingsPanel: () => <div data-testid="settings-panel" />,
-}));
+vi.mock('@/app/components/leagues', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/leagues')>();
+  return {
+    ...actual,
+    LeagueStatusBadge: ({ status }: { status: string }) => (
+      <span data-testid="status-badge">{status}</span>
+    ),
+    StandingsTable: () => <div data-testid="standings-table" />,
+    InviteModal: () => null,
+    ReportMethodSheet: () => null,
+    ReportFromReservationModal: () => null,
+    ReportManualModal: () => null,
+    LeagueChallengesSection: () => <div data-testid="league-challenges-section" />,
+    LeagueMatchCard: ({ match, onClick }: { match: LeagueMatch; onClick: () => void }) => (
+      <button data-testid={`match-${match.id}`} onClick={onClick}>
+        {match.teamA.map((p) => p.displayName).join(' / ')} vs{' '}
+        {match.teamB.map((p) => p.displayName).join(' / ')} - {match.score}
+      </button>
+    ),
+    LeagueSettingsPanel: () => <div data-testid="settings-panel" />,
+  };
+});
 
 vi.mock('@/app/components/public/public-topbar', () => ({
   PublicTopBar: ({ title }: { title: string }) => <div data-testid="topbar">{title}</div>,
@@ -50,10 +69,16 @@ vi.mock('@/app/components/public/public-topbar', () => ({
 
 // Mock Radix tabs to render all content (no hidden panels)
 vi.mock('@/app/components/ui/tabs', () => ({
-  Tabs: ({ children, ...props }: { children: React.ReactNode; className?: string }) => <div data-testid="tabs" {...props}>{children}</div>,
-  TabsList: ({ children }: { children: React.ReactNode }) => <div data-testid="tabs-list">{children}</div>,
-  TabsTrigger: ({ children, value }: { children: React.ReactNode; value: string }) => <button data-testid={`tab-${value}`}>{children}</button>,
-  TabsContent: ({ children }: { children: React.ReactNode; value: string }) => <div>{children}</div>,
+  Tabs: ({ children, ...props }: { children: ReactNode; className?: string }) => (
+    <div data-testid="tabs" {...props}>
+      {children}
+    </div>
+  ),
+  TabsList: ({ children }: { children: ReactNode }) => <div data-testid="tabs-list">{children}</div>,
+  TabsTrigger: ({ children, value }: { children: ReactNode; value: string }) => (
+    <button data-testid={`tab-${value}`}>{children}</button>
+  ),
+  TabsContent: ({ children }: { children: ReactNode; value: string }) => <div>{children}</div>,
 }));
 
 import LeagueDetailPage from '@/app/(player)/leagues/[id]/page';
@@ -66,9 +91,7 @@ const BASE_LEAGUE: League = {
   endDate: '2025-12-31',
   creatorId: 'u-1',
   membersCount: 8,
-  members: [
-    { userId: 'u-1', displayName: 'Juan', joinedAt: '2025-01-01T00:00:00Z' },
-  ],
+  members: [{ userId: 'u-1', displayName: 'Juan', joinedAt: '2025-01-01T00:00:00Z' }],
   standings: [],
 };
 
@@ -78,7 +101,6 @@ beforeEach(() => {
 });
 
 describe('LeagueDetailPage', () => {
-  // --- Tab rendering ---
   it('renders all four tabs', () => {
     mockLeagueDetail.mockReturnValue({
       data: { ...BASE_LEAGUE, mode: 'open' },
@@ -86,13 +108,12 @@ describe('LeagueDetailPage', () => {
       error: null,
     });
     render(<LeagueDetailPage />);
-    expect(screen.getByText('Tabla')).toBeInTheDocument();
-    expect(screen.getByText('Partidos')).toBeInTheDocument();
-    expect(screen.getByText('Miembros')).toBeInTheDocument();
-    expect(screen.getByText('Ajustes')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-tabla')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-partidos')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-miembros')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-ajustes')).toBeInTheDocument();
   });
 
-  // --- Mode tests ---
   it('renders OPEN league with "Liga abierta" and helper text', () => {
     mockLeagueDetail.mockReturnValue({
       data: { ...BASE_LEAGUE, mode: 'open' },
@@ -135,7 +156,6 @@ describe('LeagueDetailPage', () => {
     expect(screen.getByText('Liga abierta')).toBeInTheDocument();
   });
 
-  // --- CTA tests ---
   it('shows "Cargar resultado" CTA when league is ACTIVE', () => {
     mockLeagueDetail.mockReturnValue({
       data: { ...BASE_LEAGUE, status: 'active' },
@@ -168,7 +188,6 @@ describe('LeagueDetailPage', () => {
     expect(screen.getByText(/Liga finalizada/)).toBeInTheDocument();
   });
 
-  // --- Match history tests ---
   it('shows match history empty state', () => {
     mockLeagueDetail.mockReturnValue({
       data: { ...BASE_LEAGUE, status: 'active' },
@@ -178,9 +197,7 @@ describe('LeagueDetailPage', () => {
     mockLeagueMatches.mockReturnValue({ data: [] });
     render(<LeagueDetailPage />);
     expect(screen.getByText('Todavía no hay partidos')).toBeInTheDocument();
-    expect(
-      screen.getByText('Solo cuentan partidos vinculados a reservas confirmadas.')
-    ).toBeInTheDocument();
+    expect(screen.getByText(/cargar partidos desde reserva o manualmente/i)).toBeInTheDocument();
     expect(screen.getByText('Cargar primer resultado')).toBeInTheDocument();
   });
 
@@ -220,7 +237,6 @@ describe('LeagueDetailPage', () => {
     expect(screen.queryByText('Todavía no hay partidos')).not.toBeInTheDocument();
   });
 
-  // --- Settings tab ---
   it('renders settings panel in Ajustes tab', () => {
     mockLeagueDetail.mockReturnValue({
       data: { ...BASE_LEAGUE, status: 'active' },

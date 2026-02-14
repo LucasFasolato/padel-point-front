@@ -47,19 +47,14 @@ describe('StandingsTable', () => {
     expect(screen.queryByText('(Vos)')).not.toBeInTheDocument();
   });
 
-  it('renders wins, losses, and draws columns', () => {
+  it('renders points and movement columns', () => {
     const standings = [makeEntry({ position: 1, points: 15, wins: 7, losses: 4, draws: 3 })];
     render(<StandingsTable standings={standings} />);
 
-    // Column headers
-    expect(screen.getByText('V')).toBeInTheDocument();
-    expect(screen.getByText('D')).toBeInTheDocument();
-    expect(screen.getByText('E')).toBeInTheDocument();
-
-    // Values (using getAllByText for numbers that may appear in multiple cells)
-    expect(screen.getByText('7')).toBeInTheDocument();
-    expect(screen.getByText('4')).toBeInTheDocument();
-    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText('Pts')).toBeInTheDocument();
+    expect(screen.getByText('Mov')).toBeInTheDocument();
+    expect(screen.getByText('15')).toBeInTheDocument();
+    expect(screen.getByText('•')).toBeInTheDocument();
   });
 
   it('renders "Jugador" fallback when displayName is empty', () => {
