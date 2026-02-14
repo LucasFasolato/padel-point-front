@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { isUuid } from '@/lib/id-utils';
 
 interface LeagueSettingsRedirectPageProps {
   params: { id: string };
@@ -16,6 +17,10 @@ export default function LeagueSettingsRedirectPage({
   searchParams,
 }: LeagueSettingsRedirectPageProps) {
   const { id } = params;
+  if (!isUuid(id)) {
+    redirect('/leagues');
+  }
+
   const rawSearchParams = searchParams ?? {};
   const nextSearchParams = new URLSearchParams();
 
