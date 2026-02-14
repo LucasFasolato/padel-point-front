@@ -105,6 +105,12 @@ export interface LeagueInvite {
   status: 'pending' | 'accepted' | 'declined' | 'expired';
 }
 
+export interface LeagueInviteDispatchResult {
+  inviteId?: string;
+  email?: string;
+  invitedUserId: string | null;
+}
+
 export interface InviteByTokenResponse {
   leagueName: string;
   startDate: string;

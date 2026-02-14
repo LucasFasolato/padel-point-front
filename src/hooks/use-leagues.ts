@@ -8,6 +8,7 @@ import type {
   LeagueMemberRole,
   CreateLeagueChallengePayload,
   LeagueChallengeScope,
+  LeagueInviteDispatchResult,
 } from '@/types/leagues';
 import axios from 'axios';
 
@@ -73,9 +74,9 @@ export function useCreateInvites(leagueId: string) {
 
   return useMutation({
     mutationFn: (emails: string[]) => leagueService.createInvites(leagueId, emails),
-    onSuccess: () => {
+    onSuccess: (results) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(leagueId) });
-      toast.success('¡Invitaciones enviadas!');
+      toast.success(getInviteSuccessMessage(results));
     },
     onError: () => {
       toast.error('No se pudieron enviar las invitaciones.');
@@ -159,6 +160,26 @@ const REPORT_ERROR_MESSAGES: Record<string, string> = {
 const LEAGUE_SETTINGS_FORBIDDEN_MESSAGE = 'No ten\u00E9s permisos para editar esta liga.';
 const LEAGUE_REPORT_SUCCESS_MESSAGE = 'Resultado cargado. Falta confirmaci\u00F3n del rival.';
 const LEAGUE_CHALLENGE_FORBIDDEN_MESSAGE = 'No ten\u00E9s permisos para desafiar en esta liga.';
+const INVITE_NOTIFICATION_MESSAGE = 'Invitación enviada. Le llegó una notificación.';
+const INVITE_EMAIL_FALLBACK_MESSAGE =
+  'Invitación enviada por email. La notificación aparecerá cuando el usuario cree su cuenta.';
+const INVITE_MIXED_MESSAGE =
+  'Invitaciones enviadas. Algunas llegaron como notificación y otras por email hasta que el usuario cree su cuenta.';
+
+function getInviteSuccessMessage(results: LeagueInviteDispatchResult[]): string {
+  if (!Array.isArray(results) || results.length === 0) {
+    return '¡Invitaciones enviadas!';
+  }
+
+  const hasKnownUser = results.some(
+    (result) => typeof result.invitedUserId === 'string' && result.invitedUserId.length > 0
+  );
+  const hasUnknownUser = results.some((result) => result.invitedUserId === null);
+
+  if (hasKnownUser && hasUnknownUser) return INVITE_MIXED_MESSAGE;
+  if (hasKnownUser) return INVITE_NOTIFICATION_MESSAGE;
+  return INVITE_EMAIL_FALLBACK_MESSAGE;
+}
 
 /** Report a league match from a reservation. */
 export function useReportFromReservation(leagueId: string) {
@@ -337,4 +358,5 @@ export function useUpdateMemberRole(leagueId: string) {
 }
 
 export const LEAGUE_QUERY_KEYS = KEYS;
+
 

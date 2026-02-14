@@ -17,6 +17,7 @@ import type {
   LeagueChallenge,
   LeagueChallengeScope,
   LeagueChallengeParticipant,
+  LeagueInviteDispatchResult,
 } from '@/types/leagues';
 
 /** Normalise status + provide displayName fallbacks for members/standings. */
@@ -83,6 +84,50 @@ function normalizeLeagueChallenge(raw: unknown): LeagueChallenge {
   };
 }
 
+function normalizeInviteDispatchResult(raw: unknown): LeagueInviteDispatchResult | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const data = raw as Record<string, unknown>;
+
+  const invitedUserId =
+    typeof data.invitedUserId === 'string'
+      ? data.invitedUserId
+      : data.invitedUserId === null
+        ? null
+        : null;
+
+  const result: LeagueInviteDispatchResult = {
+    inviteId: typeof data.id === 'string' ? data.id : undefined,
+    email: typeof data.email === 'string' ? data.email : undefined,
+    invitedUserId,
+  };
+
+  return result;
+}
+
+function normalizeCreateInvitesResponse(raw: unknown): LeagueInviteDispatchResult[] {
+  if (Array.isArray(raw)) {
+    return raw
+      .map(normalizeInviteDispatchResult)
+      .filter((item): item is LeagueInviteDispatchResult => item !== null);
+  }
+
+  if (raw && typeof raw === 'object') {
+    const data = raw as Record<string, unknown>;
+
+    const wrappedList = data.items ?? data.invites ?? data.data;
+    if (Array.isArray(wrappedList)) {
+      return wrappedList
+        .map(normalizeInviteDispatchResult)
+        .filter((item): item is LeagueInviteDispatchResult => item !== null);
+    }
+
+    const single = normalizeInviteDispatchResult(raw);
+    return single ? [single] : [];
+  }
+
+  return [];
+}
+
 export const leagueService = {
   /** List all leagues the current user belongs to. */
   async list(): Promise<League[]> {
@@ -103,8 +148,9 @@ export const leagueService = {
   },
 
   /** Send invites to one or more emails. */
-  async createInvites(leagueId: string, emails: string[]): Promise<void> {
-    await api.post(`/leagues/${leagueId}/invites`, { emails });
+  async createInvites(leagueId: string, emails: string[]): Promise<LeagueInviteDispatchResult[]> {
+    const { data } = await api.post(`/leagues/${leagueId}/invites`, { emails });
+    return normalizeCreateInvitesResponse(data);
   },
 
   /** Get invite details by token (public, no auth required). */

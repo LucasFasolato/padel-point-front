@@ -48,9 +48,22 @@ describe('leagueService', () => {
   });
 
   it('createInvites calls POST /leagues/:id/invites', async () => {
-    mockedApi.post.mockResolvedValue({});
-    await leagueService.createInvites('lg-1', ['a@b.com']);
+    mockedApi.post.mockResolvedValue({
+      data: [{ id: 'inv-1', email: 'a@b.com', invitedUserId: null }],
+    });
+    const result = await leagueService.createInvites('lg-1', ['a@b.com']);
     expect(mockedApi.post).toHaveBeenCalledWith('/leagues/lg-1/invites', { emails: ['a@b.com'] });
+    expect(result).toEqual([{ inviteId: 'inv-1', email: 'a@b.com', invitedUserId: null }]);
+  });
+
+  it('createInvites unwraps object response with invites list', async () => {
+    mockedApi.post.mockResolvedValue({
+      data: {
+        invites: [{ id: 'inv-2', email: 'known@b.com', invitedUserId: 'u-1' }],
+      },
+    });
+    const result = await leagueService.createInvites('lg-1', ['known@b.com']);
+    expect(result).toEqual([{ inviteId: 'inv-2', email: 'known@b.com', invitedUserId: 'u-1' }]);
   });
 
   it('acceptInvite calls POST /leagues/invites/:token/accept', async () => {
