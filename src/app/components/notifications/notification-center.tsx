@@ -11,6 +11,7 @@ import {
 } from '@/hooks/use-notifications';
 import { useNotificationSocketStatus } from '@/hooks/use-notification-socket';
 import { groupByRecency, TIME_GROUP_LABELS } from '@/lib/notification-utils';
+import { isUuid } from '@/lib/id-utils';
 import { NotificationItem } from './notification-item';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
@@ -67,7 +68,7 @@ export function NotificationCenter() {
           onSuccess: () => {
             markActed(notification.id);
             const leagueId = notification.actionMeta?.leagueId;
-            if (leagueId) {
+            if (isUuid(leagueId)) {
               router.push(`/leagues/${leagueId}`);
             }
           },

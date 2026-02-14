@@ -5,8 +5,11 @@ import type { League, LeagueMatch } from '@/types/leagues';
 
 // Mock next/navigation
 const pushMock = vi.fn();
+const VALID_UUID = '11111111-1111-4111-8111-111111111111';
+let paramsId: string | undefined = VALID_UUID;
+
 vi.mock('next/navigation', () => ({
-  useParams: () => ({ id: 'lg-1' }),
+  useParams: () => ({ id: paramsId }),
   useRouter: () => ({ push: pushMock }),
   useSearchParams: () => new URLSearchParams(),
 }));
@@ -21,21 +24,31 @@ vi.mock('@/store/auth-store', () => ({
 const mockLeagueDetail = vi.fn<() => { data: League | undefined; isLoading: boolean; error: unknown }>();
 const mockLeagueMatches = vi.fn<() => { data: LeagueMatch[] | undefined }>();
 const mockUpdateSettings = vi.fn();
+const useLeagueDetailMock = vi.fn((id: string) => mockLeagueDetail());
+const useLeagueStandingsMock = vi.fn(() => ({ data: undefined, isLoading: false }));
+const useCreateInvitesMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
+const useReportFromReservationMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
+const useReportManualMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
+const useEligibleReservationsMock = vi.fn(() => ({ data: [], isLoading: false }));
+const useLeagueMatchesMock = vi.fn(() => mockLeagueMatches());
+const useLeagueSettingsMock = vi.fn(() => ({ data: undefined }));
+const useUpdateLeagueSettingsMock = vi.fn(() => ({ mutate: mockUpdateSettings, isPending: false }));
+const useUpdateMemberRoleMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
 
 vi.mock('@/hooks/use-leagues', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/use-leagues')>();
   return {
     ...actual,
-    useLeagueDetail: () => mockLeagueDetail(),
-    useLeagueStandings: () => ({ data: undefined, isLoading: false }),
-    useCreateInvites: () => ({ mutate: vi.fn(), isPending: false }),
-    useReportFromReservation: () => ({ mutate: vi.fn(), isPending: false }),
-    useReportManual: () => ({ mutate: vi.fn(), isPending: false }),
-    useEligibleReservations: () => ({ data: [], isLoading: false }),
-    useLeagueMatches: () => mockLeagueMatches(),
-    useLeagueSettings: () => ({ data: undefined }),
-    useUpdateLeagueSettings: () => ({ mutate: mockUpdateSettings, isPending: false }),
-    useUpdateMemberRole: () => ({ mutate: vi.fn(), isPending: false }),
+    useLeagueDetail: (id: string) => useLeagueDetailMock(id),
+    useLeagueStandings: (id: string) => useLeagueStandingsMock(id),
+    useCreateInvites: (id: string) => useCreateInvitesMock(id),
+    useReportFromReservation: (id: string) => useReportFromReservationMock(id),
+    useReportManual: (id: string) => useReportManualMock(id),
+    useEligibleReservations: (id: string) => useEligibleReservationsMock(id),
+    useLeagueMatches: (id: string) => useLeagueMatchesMock(id),
+    useLeagueSettings: (id: string) => useLeagueSettingsMock(id),
+    useUpdateLeagueSettings: (id: string) => useUpdateLeagueSettingsMock(id),
+    useUpdateMemberRole: (id: string) => useUpdateMemberRoleMock(id),
   };
 });
 
@@ -97,6 +110,7 @@ const BASE_LEAGUE: League = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  paramsId = VALID_UUID;
   mockLeagueMatches.mockReturnValue({ data: [] });
 });
 
@@ -245,5 +259,22 @@ describe('LeagueDetailPage', () => {
     });
     render(<LeagueDetailPage />);
     expect(screen.getByTestId('settings-panel')).toBeInTheDocument();
+  });
+
+  it('renders invalid-link state and never passes undefined id to hooks', () => {
+    paramsId = 'undefined';
+    mockLeagueDetail.mockReturnValue({ data: undefined, isLoading: false, error: null });
+
+    render(<LeagueDetailPage />);
+
+    expect(screen.getByText('Liga no encontrada')).toBeInTheDocument();
+    expect(screen.getByText('El enlace es inválido o la liga no existe.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Volver a Ligas' })).toBeInTheDocument();
+
+    expect(useLeagueDetailMock).toHaveBeenCalledWith('');
+    expect(useLeagueStandingsMock).toHaveBeenCalledWith('');
+    expect(useCreateInvitesMock).toHaveBeenCalledWith('');
+    expect(useReportFromReservationMock).toHaveBeenCalledWith('');
+    expect(useReportManualMock).toHaveBeenCalledWith('');
   });
 });

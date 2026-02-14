@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import axios from 'axios';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Users, UserPlus, Calendar, Trophy, Info } from 'lucide-react';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
@@ -32,6 +33,7 @@ import {
 } from '@/hooks/use-leagues';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDateRange, getModeLabel } from '@/lib/league-utils';
+import { getSingleParam, isUuid } from '@/lib/id-utils';
 import type { LeagueMemberRole } from '@/types/leagues';
 
 const ROLE_LABELS: Record<LeagueMemberRole, string> = {
@@ -54,32 +56,45 @@ function resolveInitialTab(tab: string | null): LeagueDetailTab {
   return TAB_ALIASES[tab] ?? 'tabla';
 }
 
+function isForbiddenOrNotFound(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false;
+  const status = error.response?.status;
+  return status === 403 || status === 404;
+}
+
 export default function LeagueDetailPage() {
-  const { id } = useParams() as { id: string };
+  const params = useParams<{ id?: string | string[] }>();
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useAuthStore((s) => s.user);
+  const rawId = getSingleParam(params?.id);
+  const leagueId = isUuid(rawId) ? rawId : '';
+  const isValidLeagueId = leagueId.length > 0;
 
   // Support deep-linking via ?tab=ajustes and ?tab=settings
   const tabParam = searchParams.get('tab');
   const initialTab = resolveInitialTab(tabParam);
   const [activeTab, setActiveTab] = useState(initialTab);
   const handleTabChange = (value: string) => setActiveTab(resolveInitialTab(value));
-  const { data: league, isLoading, error } = useLeagueDetail(id);
-  const { data: standingsData, isLoading: standingsLoading } = useLeagueStandings(id);
-  const inviteMutation = useCreateInvites(id);
-  const reportFromReservation = useReportFromReservation(id);
-  const reportManual = useReportManual(id);
-  const { data: reservations, isLoading: reservationsLoading } = useEligibleReservations(id);
-  const { data: matches } = useLeagueMatches(id);
-  const { data: settings } = useLeagueSettings(id);
-  const updateSettings = useUpdateLeagueSettings(id);
-  const updateMemberRole = useUpdateMemberRole(id);
+  const { data: league, isLoading, error } = useLeagueDetail(leagueId);
+  const { data: standingsData, isLoading: standingsLoading } = useLeagueStandings(leagueId);
+  const inviteMutation = useCreateInvites(leagueId);
+  const reportFromReservation = useReportFromReservation(leagueId);
+  const reportManual = useReportManual(leagueId);
+  const { data: reservations, isLoading: reservationsLoading } = useEligibleReservations(leagueId);
+  const { data: matches } = useLeagueMatches(leagueId);
+  const { data: settings } = useLeagueSettings(leagueId);
+  const updateSettings = useUpdateLeagueSettings(leagueId);
+  const updateMemberRole = useUpdateMemberRole(leagueId);
   const [showInvite, setShowInvite] = useState(false);
   const [showReportMethodSheet, setShowReportMethodSheet] = useState(false);
   const [showReservationReport, setShowReservationReport] = useState(false);
   const [showManualReport, setShowManualReport] = useState(false);
   const [partidosView, setPartidosView] = useState<'matches' | 'challenges'>('matches');
+
+  if (!isValidLeagueId) {
+    return <LeagueNotFoundState />;
+  }
 
   if (isLoading) {
     return (
@@ -90,7 +105,11 @@ export default function LeagueDetailPage() {
     );
   }
 
-  if (error || !league) {
+  if (isForbiddenOrNotFound(error) || !league) {
+    return <LeagueNotFoundState />;
+  }
+
+  if (error) {
     return (
       <>
         <PublicTopBar title="Liga" backHref="/leagues" />
@@ -115,15 +134,8 @@ export default function LeagueDetailPage() {
 
   // Determine user role from members list
   const currentMember = league.members?.find((m) => m.userId === user?.userId);
-const userRole = (currentMember?.role ?? 'member').toLowerCase() as LeagueMemberRole;
-const isReadOnly = userRole === 'member';
-  console.log({
-    userId: user?.userId,
-    members: league.members,
-    currentMember,
-    userRole,
-    isReadOnly,
-  });
+  const userRole = (currentMember?.role ?? 'member').toLowerCase() as LeagueMemberRole;
+  const isReadOnly = userRole === 'member';
   return (
     <>
       <PublicTopBar title={league.name} backHref="/leagues" />
@@ -275,7 +287,7 @@ const isReadOnly = userRole === 'member';
               )
             ) : (
               <LeagueChallengesSection
-                leagueId={id}
+                leagueId={leagueId}
                 members={league.members ?? []}
                 currentUserId={user?.userId}
               />
@@ -441,5 +453,29 @@ function DetailSkeleton() {
       <Skeleton className="h-24 w-full rounded-xl" />
       <Skeleton className="h-16 w-full rounded-lg" />
     </div>
+  );
+}
+
+function LeagueNotFoundState() {
+  const router = useRouter();
+
+  return (
+    <>
+      <PublicTopBar title="Liga" backHref="/leagues" />
+      <div className="px-4 py-16 text-center">
+        <h1 className="text-lg font-bold text-slate-900">Liga no encontrada</h1>
+        <p className="mt-2 text-sm text-slate-600">
+          El enlace es inválido o la liga no existe.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-4"
+          onClick={() => router.push('/leagues')}
+        >
+          Volver a Ligas
+        </Button>
+      </div>
+    </>
   );
 }

@@ -6,6 +6,7 @@ vi.mock('@/lib/api', () => ({
   default: {
     get: vi.fn(),
     patch: vi.fn(),
+    post: vi.fn(),
   },
 }));
 
@@ -30,16 +31,16 @@ describe('notificationService', () => {
     expect(result).toBe(7);
   });
 
-  it('markRead calls PATCH /notifications/:id/read', async () => {
-    mockedApi.patch.mockResolvedValue({});
+  it('markRead calls POST /notifications/:id/read', async () => {
+    mockedApi.post.mockResolvedValue({});
     await notificationService.markRead('abc123');
-    expect(mockedApi.patch).toHaveBeenCalledWith('/notifications/abc123/read');
+    expect(mockedApi.post).toHaveBeenCalledWith('/notifications/abc123/read');
   });
 
-  it('markAllRead calls PATCH /notifications/read-all', async () => {
-    mockedApi.patch.mockResolvedValue({});
+  it('markAllRead calls POST /notifications/read-all', async () => {
+    mockedApi.post.mockResolvedValue({});
     await notificationService.markAllRead();
-    expect(mockedApi.patch).toHaveBeenCalledWith('/notifications/read-all');
+    expect(mockedApi.post).toHaveBeenCalledWith('/notifications/read-all');
   });
 
   it('list returns empty array when backend returns non-array', async () => {
