@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   useNotifications,
@@ -16,6 +16,25 @@ import { NotificationItem } from './notification-item';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { AppNotification } from '@/types/notifications';
+
+function resolveInviteId(notification: AppNotification): string | null {
+  const inviteId = notification.actionMeta?.inviteId;
+  if (typeof inviteId === 'string' && inviteId.length > 0) {
+    return inviteId;
+  }
+
+  const dataInviteId = notification.data?.inviteId ?? notification.data?.inviteToken;
+  if (typeof dataInviteId === 'string' && dataInviteId.length > 0) {
+    return dataInviteId;
+  }
+
+  return null;
+}
+
+function resolveLeagueId(notification: AppNotification): string | null {
+  const leagueId = notification.actionMeta?.leagueId ?? notification.data?.leagueId;
+  return typeof leagueId === 'string' && leagueId.length > 0 ? leagueId : null;
+}
 
 export function NotificationCenter() {
   const router = useRouter();
@@ -56,7 +75,7 @@ export function NotificationCenter() {
 
   const handleAccept = useCallback(
     (notification: AppNotification) => {
-      const inviteId = notification.actionMeta?.inviteId;
+      const inviteId = resolveInviteId(notification);
       if (!inviteId) return;
 
       setActingNotificationId(notification.id);
@@ -67,7 +86,7 @@ export function NotificationCenter() {
         {
           onSuccess: () => {
             markActed(notification.id);
-            const leagueId = notification.actionMeta?.leagueId;
+            const leagueId = resolveLeagueId(notification);
             if (isUuid(leagueId)) {
               router.push(`/leagues/${leagueId}`);
             }
@@ -84,7 +103,7 @@ export function NotificationCenter() {
 
   const handleDecline = useCallback(
     (notification: AppNotification) => {
-      const inviteId = notification.actionMeta?.inviteId;
+      const inviteId = resolveInviteId(notification);
       if (!inviteId) return;
 
       setActingNotificationId(notification.id);
@@ -109,16 +128,6 @@ export function NotificationCenter() {
   // Defensive: ensure we always work with an array even if data is malformed
   const items = Array.isArray(notifications) ? notifications : [];
   const hasUnread = items.some((n) => !n.read);
-
-  // Dev-only debug log
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && !isLoading && !isError) {
-      console.log(
-        `[notifications] loaded ${items.length} items` +
-          (items.length > 0 ? `, first type: ${items[0].type}` : '')
-      );
-    }
-  }, [items, isLoading, isError]);
 
   // Loading
   if (isLoading) {

@@ -25,13 +25,44 @@ interface NotificationItemProps {
   acted?: boolean;
 }
 
+const NON_ACTIONABLE_INVITE_STATUSES = new Set([
+  'accepted',
+  'declined',
+  'rejected',
+  'expired',
+  'revoked',
+  'cancelled',
+  'canceled',
+]);
+
+function resolveInviteId(notification: AppNotification): string | null {
+  const inviteId = notification.actionMeta?.inviteId;
+  if (typeof inviteId === 'string' && inviteId.length > 0) {
+    return inviteId;
+  }
+
+  const dataInviteId = notification.data?.inviteId ?? notification.data?.inviteToken;
+  if (typeof dataInviteId === 'string' && dataInviteId.length > 0) {
+    return dataInviteId;
+  }
+
+  return null;
+}
+
+function isInviteResolved(notification: AppNotification): boolean {
+  const status =
+    notification.actionMeta?.inviteStatus ?? notification.data?.inviteStatus ?? notification.data?.status;
+  if (typeof status !== 'string') return false;
+  return NON_ACTIONABLE_INVITE_STATUSES.has(status.toLowerCase());
+}
+
 function hasInviteAction(notification: AppNotification, acted: boolean): boolean {
   const type = normalizeNotificationType(notification.type);
 
   return (
     type === NOTIFICATION_TYPES.LEAGUE_INVITE_RECEIVED &&
-    !!notification.actionMeta?.inviteId &&
-    !notification.read &&
+    !!resolveInviteId(notification) &&
+    !isInviteResolved(notification) &&
     !acted
   );
 }

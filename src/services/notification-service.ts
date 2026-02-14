@@ -2,30 +2,32 @@ import api from '@/lib/api';
 import type {
   AppNotification,
   NotificationActionMeta,
+  NotificationPayloadData,
   NotificationPriority,
   UnreadCountResponse,
 } from '@/types/notifications';
 import { normalizeNotificationType } from '@/types/notifications';
 
+function normalizeInviteId(raw: Record<string, unknown>): string | undefined {
+  if (typeof raw.inviteId === 'string') return raw.inviteId;
+  if (typeof raw.inviteToken === 'string') return raw.inviteToken;
+  return undefined;
+}
+
 function normalizeActionMeta(raw: unknown): NotificationActionMeta | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
 
   const meta = raw as Record<string, unknown>;
-  const inviteId =
-    typeof meta.inviteId === 'string'
-      ? meta.inviteId
-      : typeof meta.inviteToken === 'string'
-        ? meta.inviteToken
-        : undefined;
+  const inviteId = normalizeInviteId(meta);
+  const next: NotificationActionMeta = {};
 
-  const next: NotificationActionMeta = {
-    inviteId,
-    leagueId: typeof meta.leagueId === 'string' ? meta.leagueId : undefined,
-    leagueName: typeof meta.leagueName === 'string' ? meta.leagueName : undefined,
-    inviterName: typeof meta.inviterName === 'string' ? meta.inviterName : undefined,
-  };
+  if (inviteId) next.inviteId = inviteId;
+  if (typeof meta.inviteStatus === 'string') next.inviteStatus = meta.inviteStatus;
+  if (typeof meta.leagueId === 'string') next.leagueId = meta.leagueId;
+  if (typeof meta.leagueName === 'string') next.leagueName = meta.leagueName;
+  if (typeof meta.inviterName === 'string') next.inviterName = meta.inviterName;
 
-  return Object.values(next).some((value) => typeof value === 'string') ? next : undefined;
+  return Object.keys(next).length > 0 ? next : undefined;
 }
 
 function normalizePriority(value: unknown): NotificationPriority {
@@ -35,12 +37,38 @@ function normalizePriority(value: unknown): NotificationPriority {
   return 'normal';
 }
 
+function normalizePayloadData(raw: unknown): NotificationPayloadData | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+
+  const data = raw as Record<string, unknown>;
+  const normalizedInviteId = normalizeInviteId(data);
+  const normalizedInviteStatus =
+    typeof data.inviteStatus === 'string'
+      ? data.inviteStatus
+      : typeof data.status === 'string'
+        ? data.status
+        : undefined;
+
+  return {
+    ...data,
+    inviteId: normalizedInviteId,
+    inviteStatus: normalizedInviteStatus,
+  };
+}
+
 function normalizeNotification(raw: unknown): AppNotification | null {
   if (!raw || typeof raw !== 'object') return null;
 
   const data = raw as Record<string, unknown>;
   const rawType = typeof data.type === 'string' ? data.type : 'GENERAL';
   const normalizedType = normalizeNotificationType(rawType);
+  const normalizedPayloadData = normalizePayloadData(data.data);
+
+  const actionMeta =
+    normalizeActionMeta(data.actionMeta) ??
+    (normalizedPayloadData?.inviteId
+      ? { inviteId: normalizedPayloadData.inviteId, inviteStatus: normalizedPayloadData.inviteStatus }
+      : undefined);
 
   return {
     id: String(data.id ?? ''),
@@ -52,7 +80,8 @@ function normalizeNotification(raw: unknown): AppNotification | null {
     link: typeof data.link === 'string' ? data.link : null,
     createdAt:
       typeof data.createdAt === 'string' ? data.createdAt : new Date().toISOString(),
-    actionMeta: normalizeActionMeta(data.actionMeta),
+    actionMeta,
+    data: normalizedPayloadData,
   };
 }
 

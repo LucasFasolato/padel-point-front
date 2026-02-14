@@ -54,9 +54,19 @@ export type NotificationPriority = 'high' | 'normal' | 'low';
 /** Metadata for actionable notifications (e.g. league invites). */
 export interface NotificationActionMeta {
   inviteId?: string;
+  inviteStatus?: string;
   leagueId?: string;
   leagueName?: string;
   inviterName?: string;
+}
+
+/** Optional backend payload object (kept loose for forward compatibility). */
+export interface NotificationPayloadData {
+  inviteId?: string;
+  inviteToken?: string;
+  inviteStatus?: string;
+  status?: string;
+  [key: string]: unknown;
 }
 
 /** Notification types that support inline Accept/Decline actions */
@@ -76,6 +86,8 @@ export interface AppNotification {
   createdAt: string;
   /** Optional metadata for actionable notifications */
   actionMeta?: NotificationActionMeta;
+  /** Optional raw payload data for backward/forward compatibility */
+  data?: NotificationPayloadData;
 }
 
 export interface UnreadCountResponse {
