@@ -52,6 +52,7 @@ export function OnboardingWizard() {
 
     // Sync category-locked from server
     if (serverOnboarding.categoryLocked) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCategoryLocked(true);
     }
   }, [serverOnboarding, completed, router]);

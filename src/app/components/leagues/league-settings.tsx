@@ -43,6 +43,7 @@ export function LeagueSettingsPanel({
   // Sync when server data changes
   useEffect(() => {
     if (!settings) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setWin(settings.scoring.win);
     setDraw(settings.scoring.draw);
     setLoss(settings.scoring.loss);

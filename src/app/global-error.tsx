@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { AlertTriangle, Home, RotateCcw } from 'lucide-react';
 
 interface GlobalErrorProps {
@@ -63,13 +64,13 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                 Reintentar
               </button>
 
-              <a
+              <Link
                 href="/"
                 className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2"
               >
                 <Home size={16} />
                 Volver al inicio
-              </a>
+              </Link>
             </div>
           </div>
         </div>
