@@ -2,11 +2,27 @@ import api from '@/lib/api';
 import type {
   AppNotification,
   NotificationActionMeta,
+  NotificationType,
   NotificationPayloadData,
   NotificationPriority,
   UnreadCountResponse,
 } from '@/types/notifications';
-import { normalizeNotificationType } from '@/types/notifications';
+import {
+  NOTIFICATION_TYPES,
+  normalizeNotificationType as normalizeNotificationTypeValue,
+} from '@/types/notifications';
+
+const DOT_NOTATION_TYPE_MAP: Record<string, NotificationType> = {
+  'league.invite_received': NOTIFICATION_TYPES.LEAGUE_INVITE_RECEIVED,
+  'league.invite_accepted': NOTIFICATION_TYPES.LEAGUE_INVITE_ACCEPTED,
+  'league.invite_declined': NOTIFICATION_TYPES.LEAGUE_INVITE_DECLINED,
+  'match.disputed': NOTIFICATION_TYPES.MATCH_DISPUTED,
+  'match.resolved': NOTIFICATION_TYPES.MATCH_RESOLVED,
+};
+
+function normalizeNotificationType(type: string): NotificationType | null {
+  return DOT_NOTATION_TYPE_MAP[type] ?? normalizeNotificationTypeValue(type);
+}
 
 function normalizeInviteId(raw: Record<string, unknown>): string | undefined {
   if (typeof raw.inviteId === 'string') return raw.inviteId;
