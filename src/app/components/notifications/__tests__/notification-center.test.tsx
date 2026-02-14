@@ -156,6 +156,31 @@ describe('NotificationCenter', () => {
     expect(screen.getByText('Sin notificaciones')).toBeInTheDocument();
   });
 
+  it('does not mark notifications as read on initial render', () => {
+    mockNotifications.mockReturnValue({
+      data: [
+        {
+          id: 'n1',
+          type: 'LEAGUE_INVITE_RECEIVED',
+          title: 'Te invitaron a la liga',
+          message: '',
+          priority: 'normal',
+          read: false,
+          link: null,
+          createdAt: new Date().toISOString(),
+          actionMeta: { inviteId: 'inv-1' },
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<NotificationCenter />);
+    expect(mockMarkRead).not.toHaveBeenCalled();
+    expect(mockMarkAllRead).not.toHaveBeenCalled();
+  });
+
   it('marks notification as read and navigates on click', () => {
     mockNotifications.mockReturnValue({
       data: [

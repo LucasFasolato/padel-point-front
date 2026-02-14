@@ -105,6 +105,22 @@ describe('normalizeList', () => {
     expect(result[0].actionMeta).toEqual({ inviteId: 'inv-123', leagueId: 'lg-1' });
   });
 
+  it('maps data.inviteToken to data.inviteId and fallback actionMeta', () => {
+    const result = normalizeList([
+      {
+        id: '2',
+        type: 'league_invite_received',
+        title: 'Inv',
+        message: '',
+        createdAt: '2025-01-01T00:00:00.000Z',
+        data: { inviteToken: 'inv-456' },
+      },
+    ]);
+
+    expect(result[0].data?.inviteId).toBe('inv-456');
+    expect(result[0].actionMeta).toEqual({ inviteId: 'inv-456' });
+  });
+
   it('unwraps { items: [...] }', () => {
     const items = [{ id: '1', type: 'general', title: 'Hi', message: '', createdAt: '2025-01-01T00:00:00.000Z' }];
     expect(normalizeList({ items })).toHaveLength(1);

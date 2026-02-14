@@ -95,10 +95,10 @@ describe('NotificationItem', () => {
     expect(n.link).toBe('/leagues/invite?token=abc123');
   });
 
-  it('shows Accept/Decline only for unread invite notifications with inviteId', () => {
+  it('shows Accept/Decline for invite notifications with inviteId even when read', () => {
     const n = makeNotification({
       type: 'LEAGUE_INVITE_RECEIVED',
-      read: false,
+      read: true,
       actionMeta: { inviteId: 'inv-1' },
     });
     render(
@@ -113,11 +113,29 @@ describe('NotificationItem', () => {
     expect(screen.getByRole('button', { name: 'Rechazar' })).toBeInTheDocument();
   });
 
-  it('hides Accept/Decline for read notifications', () => {
+  it('shows Accept/Decline when inviteId comes from data payload', () => {
     const n = makeNotification({
       type: 'LEAGUE_INVITE_RECEIVED',
       read: true,
-      actionMeta: { inviteId: 'inv-1' },
+      data: { inviteId: 'inv-1' },
+    });
+    render(
+      <NotificationItem
+        notification={n}
+        onClick={vi.fn()}
+        onAccept={vi.fn()}
+        onDecline={vi.fn()}
+      />
+    );
+    expect(screen.getByRole('button', { name: 'Aceptar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rechazar' })).toBeInTheDocument();
+  });
+
+  it('hides Accept/Decline when inviteId is missing', () => {
+    const n = makeNotification({
+      type: 'LEAGUE_INVITE_RECEIVED',
+      read: false,
+      actionMeta: { leagueId: 'lg-1' },
     });
     render(
       <NotificationItem
@@ -131,11 +149,11 @@ describe('NotificationItem', () => {
     expect(screen.queryByRole('button', { name: 'Rechazar' })).not.toBeInTheDocument();
   });
 
-  it('hides Accept/Decline when inviteId is missing', () => {
+  it('hides Accept/Decline when invite is already resolved', () => {
     const n = makeNotification({
       type: 'LEAGUE_INVITE_RECEIVED',
-      read: false,
-      actionMeta: { leagueId: 'lg-1' },
+      read: true,
+      actionMeta: { inviteId: 'inv-1', inviteStatus: 'accepted' },
     });
     render(
       <NotificationItem
