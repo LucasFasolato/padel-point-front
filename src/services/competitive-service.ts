@@ -6,7 +6,7 @@ export const competitiveService = {
    * Obtiene mi perfil competitivo (o lo crea si no existe)
    */
   async getMyProfile(): Promise<CompetitiveProfile> {
-    const { data } = await api.get('/competitive/profile/me');
+    const { data } = await api.get('/competitive/me');
     return data;
   },
 

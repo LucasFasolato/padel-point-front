@@ -34,6 +34,11 @@ export interface CompetitiveProfile {
   email: string;
   displayName: string;
   elo: number;
+  winStreakCurrent?: number;
+  winStreakBest?: number;
+  last10?: ('W' | 'L')[];
+  eloDelta30d?: number;
+  peakElo?: number;
   category: Category; // derivado de ELO en backend
   initialCategory: number | null;
   categoryLocked: boolean;
