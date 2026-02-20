@@ -3,6 +3,8 @@ import { leagueService } from '@/services/league-service';
 import { toast } from 'sonner';
 import { isUuid } from '@/lib/id-utils';
 import type {
+  CreateMiniLeaguePayload,
+  CreateMiniLeagueResponse,
   ReportFromReservationPayload,
   ReportManualPayload,
   LeagueSettings,
@@ -133,6 +135,19 @@ export function useLeagueMatches(leagueId: string) {
     queryKey: KEYS.matches(leagueId),
     queryFn: () => leagueService.getMatches(leagueId),
     enabled,
+  });
+}
+
+/** Create a mini league with optional email invites. */
+export function useCreateMiniLeague() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: CreateMiniLeaguePayload): Promise<CreateMiniLeagueResponse> =>
+      leagueService.createMiniLeague(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.list });
+    },
   });
 }
 

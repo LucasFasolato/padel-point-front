@@ -4,6 +4,8 @@ import { normalizeLeagueStatus } from '@/lib/league-utils';
 import type {
   League,
   CreateLeaguePayload,
+  CreateMiniLeaguePayload,
+  CreateMiniLeagueResponse,
   InviteByTokenResponse,
   ReportFromReservationPayload,
   ReportManualPayload,
@@ -129,6 +131,21 @@ function normalizeCreateInvitesResponse(raw: unknown): LeagueInviteDispatchResul
   return [];
 }
 
+function normalizeCreateMiniLeagueResponse(raw: unknown): CreateMiniLeagueResponse {
+  const data = (raw ?? {}) as Record<string, unknown>;
+  const toCount = (value: unknown): number => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  return {
+    leagueId: typeof data.leagueId === 'string' ? data.leagueId : '',
+    invitedExistingUsers: toCount(data.invitedExistingUsers),
+    invitedByEmailOnly: toCount(data.invitedByEmailOnly),
+    skipped: toCount(data.skipped),
+  };
+}
+
 function assertValidLeagueId(leagueId: string): string {
   if (!isUuid(leagueId)) {
     throw new Error('Invalid leagueId');
@@ -154,6 +171,12 @@ export const leagueService = {
   async create(payload: CreateLeaguePayload): Promise<League> {
     const { data } = await api.post('/leagues', payload);
     return normalizeLeague(data);
+  },
+
+  /** Create a mini league with optional invites. */
+  async createMiniLeague(payload: CreateMiniLeaguePayload): Promise<CreateMiniLeagueResponse> {
+    const { data } = await api.post('/leagues/mini', payload);
+    return normalizeCreateMiniLeagueResponse(data);
   },
 
   /** Send invites to one or more emails. */

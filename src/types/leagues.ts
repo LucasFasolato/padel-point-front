@@ -97,6 +97,18 @@ export interface CreateLeaguePayload {
   endDate: string;
 }
 
+export interface CreateMiniLeaguePayload {
+  name: string;
+  inviteEmails?: string[];
+}
+
+export interface CreateMiniLeagueResponse {
+  leagueId: string;
+  invitedExistingUsers: number;
+  invitedByEmailOnly: number;
+  skipped: number;
+}
+
 export interface LeagueInvite {
   id: string;
   leagueId: string;
