@@ -17,6 +17,8 @@ interface NotificationItemProps {
   onAccept?: (notification: AppNotification) => void;
   /** Called when the user declines a league invite */
   onDecline?: (notification: AppNotification) => void;
+  /** Called when a CTA link should be navigated to */
+  onNavigate?: (path: string) => void;
   /** Whether an accept/decline action is in-flight */
   isActing?: boolean;
   /** Which action is currently loading: 'accept' | 'decline' */
@@ -56,11 +58,79 @@ function hasInviteAction(notification: AppNotification, acted: boolean): boolean
   );
 }
 
+/* ── Ranking movement helpers ────────────────────────────────────── */
+
+interface RankingMovementView {
+  title: string;
+  subtitle: string | null;
+  deltaBadge: { label: string; className: string } | null;
+  leagueId: string;
+}
+
+function resolveRankingMovement(notification: AppNotification): RankingMovementView | null {
+  const d = notification.data;
+  const leagueId =
+    notification.actionMeta?.leagueId ??
+    (typeof d?.leagueId === 'string' ? d.leagueId : null);
+  if (!leagueId) return null;
+
+  const leagueName =
+    notification.actionMeta?.leagueName ??
+    (typeof d?.leagueName === 'string' ? d.leagueName : 'tu liga');
+
+  const movementType = typeof d?.movementType === 'string' ? d.movementType.toUpperCase() : null;
+  const newPos = typeof d?.newPosition === 'number' ? d.newPosition : null;
+  const oldPos = typeof d?.oldPosition === 'number' ? d.oldPosition : null;
+  const delta = typeof d?.delta === 'number' ? d.delta : null;
+
+  // Title: prefer backend-provided, then build from data, then fallback
+  let title = notification.title;
+  if (!title || title.trim().length === 0) {
+    if (newPos != null && movementType) {
+      switch (movementType) {
+        case 'UP':
+          title = `Subiste al #${newPos} en ${leagueName} 🔥`;
+          break;
+        case 'DOWN':
+          title = `Bajaste al #${newPos} en ${leagueName}`;
+          break;
+        case 'NEW':
+          title = `Nueva entrada: estás #${newPos} en ${leagueName} ✨`;
+          break;
+        default:
+          title = `Ranking actualizado en ${leagueName}`;
+      }
+    } else {
+      title = `Ranking actualizado en ${leagueName}`;
+    }
+  }
+
+  // Subtitle
+  let subtitle: string | null = null;
+  if (oldPos != null && newPos != null) {
+    subtitle = `Del #${oldPos} → #${newPos}`;
+  } else if (newPos != null) {
+    subtitle = `Posición actual: #${newPos}`;
+  }
+
+  // Delta badge
+  let deltaBadge: RankingMovementView['deltaBadge'] = null;
+  if (delta != null && delta !== 0) {
+    deltaBadge =
+      delta > 0
+        ? { label: `+${delta}`, className: 'bg-emerald-100 text-emerald-700' }
+        : { label: `${delta}`, className: 'bg-rose-100 text-rose-600' };
+  }
+
+  return { title, subtitle, deltaBadge, leagueId };
+}
+
 export function NotificationItem({
   notification,
   onClick,
   onAccept,
   onDecline,
+  onNavigate,
   isActing = false,
   actingAction = null,
   acted = false,
@@ -68,6 +138,10 @@ export function NotificationItem({
   const normalizedType = normalizeNotificationType(notification.type);
   const typeLabel = normalizedType ? NOTIFICATION_TYPE_LABELS[normalizedType] : 'Notificación';
   const showActions = hasInviteAction(notification, acted) && onAccept && onDecline;
+  const rankingView =
+    normalizedType === NOTIFICATION_TYPES.LEAGUE_RANKING_MOVED
+      ? resolveRankingMovement(notification)
+      : null;
 
   return (
     <div
@@ -116,12 +190,45 @@ export function NotificationItem({
             notification.read ? 'text-slate-600' : 'font-semibold text-slate-900'
           )}
         >
-          {notification.title}
+          {rankingView ? rankingView.title : notification.title}
         </p>
-        {notification.message && (
-          <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">
-            {notification.message}
-          </p>
+        {rankingView ? (
+          <>
+            {(rankingView.subtitle || rankingView.deltaBadge) && (
+              <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+                {rankingView.subtitle && <span>{rankingView.subtitle}</span>}
+                {rankingView.deltaBadge && (
+                  <span className={cn('inline-block rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none', rankingView.deltaBadge.className)}>
+                    {rankingView.deltaBadge.label}
+                  </span>
+                )}
+              </p>
+            )}
+            {onNavigate && (
+              <div
+                className="mt-2 flex gap-2"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigate(`/leagues/${rankingView.leagueId}?tab=tabla`);
+                  }}
+                >
+                  Ver tabla
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
+          notification.message && (
+            <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">
+              {notification.message}
+            </p>
+          )
         )}
 
         {/* Action buttons for league invites */}

@@ -10,6 +10,7 @@ export const NOTIFICATION_TYPES = {
   LEAGUE_INVITE_DECLINED: 'LEAGUE_INVITE_DECLINED',
   MATCH_DISPUTED: 'MATCH_DISPUTED',
   MATCH_RESOLVED: 'MATCH_RESOLVED',
+  LEAGUE_RANKING_MOVED: 'LEAGUE_RANKING_MOVED',
   SYSTEM: 'SYSTEM',
   GENERAL: 'GENERAL',
 } as const;
@@ -25,7 +26,7 @@ export type AppNotificationType = NotificationType | LegacyNotificationType | (s
 
 const NOTIFICATION_TYPE_SET = new Set<string>(Object.values(NOTIFICATION_TYPES));
 
-const LEGACY_NOTIFICATION_TYPE_MAP: Record<LegacyNotificationType, NotificationType> = {
+const LEGACY_NOTIFICATION_TYPE_MAP: Record<string, NotificationType> = {
   challenge_received: NOTIFICATION_TYPES.CHALLENGE_RECEIVED,
   challenge_accepted: NOTIFICATION_TYPES.CHALLENGE_ACCEPTED,
   challenge_rejected: NOTIFICATION_TYPES.CHALLENGE_REJECTED,
@@ -37,6 +38,8 @@ const LEGACY_NOTIFICATION_TYPE_MAP: Record<LegacyNotificationType, NotificationT
   league_invite_declined: NOTIFICATION_TYPES.LEAGUE_INVITE_DECLINED,
   match_disputed: NOTIFICATION_TYPES.MATCH_DISPUTED,
   match_resolved: NOTIFICATION_TYPES.MATCH_RESOLVED,
+  league_ranking_moved: NOTIFICATION_TYPES.LEAGUE_RANKING_MOVED,
+  'league.ranking_moved': NOTIFICATION_TYPES.LEAGUE_RANKING_MOVED,
   system: NOTIFICATION_TYPES.SYSTEM,
   general: NOTIFICATION_TYPES.GENERAL,
 };
@@ -100,6 +103,7 @@ export const TOAST_WORTHY_TYPES: NotificationType[] = [
   NOTIFICATION_TYPES.MATCH_REPORTED,
   NOTIFICATION_TYPES.LEAGUE_INVITE_RECEIVED,
   NOTIFICATION_TYPES.MATCH_DISPUTED,
+  NOTIFICATION_TYPES.LEAGUE_RANKING_MOVED,
 ];
 
 /** Human-readable labels by type */
@@ -115,6 +119,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   [NOTIFICATION_TYPES.LEAGUE_INVITE_DECLINED]: 'Invitación rechazada',
   [NOTIFICATION_TYPES.MATCH_DISPUTED]: 'Resultado disputado',
   [NOTIFICATION_TYPES.MATCH_RESOLVED]: 'Disputa resuelta',
+  [NOTIFICATION_TYPES.LEAGUE_RANKING_MOVED]: 'Ranking actualizado',
   [NOTIFICATION_TYPES.SYSTEM]: 'Sistema',
   [NOTIFICATION_TYPES.GENERAL]: 'Notificación',
 };

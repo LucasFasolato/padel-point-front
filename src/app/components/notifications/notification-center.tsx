@@ -67,6 +67,13 @@ export function NotificationCenter() {
     [markRead, router]
   );
 
+  const handleNavigate = useCallback(
+    (path: string) => {
+      router.push(path);
+    },
+    [router]
+  );
+
   const handleAccept = useCallback(
     (notification: AppNotification) => {
       const inviteId = resolveInviteId(notification);
@@ -226,6 +233,7 @@ export function NotificationCenter() {
                   onClick={handleItemClick}
                   onAccept={handleAccept}
                   onDecline={handleDecline}
+                  onNavigate={handleNavigate}
                   isActing={actingNotificationId === n.id}
                   actingAction={actingNotificationId === n.id ? actingAction : null}
                   acted={actedIds.has(n.id)}
