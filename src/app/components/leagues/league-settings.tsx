@@ -17,6 +17,12 @@ const DEFAULT_SETTINGS: LeagueSettingsType = {
   tieBreakers: ['points', 'wins', 'set_difference', 'game_difference'],
   includeSources: { reservation: true, manual: true },
 };
+const VALID_TIE_BREAKERS: TieBreaker[] = [
+  'points',
+  'wins',
+  'set_difference',
+  'game_difference',
+];
 
 interface LeagueSettingsProps {
   settings?: LeagueSettingsType;
@@ -25,13 +31,51 @@ interface LeagueSettingsProps {
   isSaving: boolean;
 }
 
+function normalizeLeagueSettings(input?: LeagueSettingsType): LeagueSettingsType {
+  const scoringRaw = (input?.scoring ?? {}) as Partial<LeagueSettingsType['scoring']>;
+  const tieBreakersRaw = Array.isArray(input?.tieBreakers) ? input.tieBreakers : [];
+  const includeSourcesRaw = (input?.includeSources ?? {}) as Partial<
+    LeagueSettingsType['includeSources']
+  >;
+
+  const tieBreakers = tieBreakersRaw.filter((value): value is TieBreaker =>
+    VALID_TIE_BREAKERS.includes(value as TieBreaker)
+  );
+
+  return {
+    scoring: {
+      win: Number.isFinite(Number(scoringRaw.win))
+        ? Number(scoringRaw.win)
+        : DEFAULT_SETTINGS.scoring.win,
+      draw: Number.isFinite(Number(scoringRaw.draw))
+        ? Number(scoringRaw.draw)
+        : DEFAULT_SETTINGS.scoring.draw,
+      loss: Number.isFinite(Number(scoringRaw.loss))
+        ? Number(scoringRaw.loss)
+        : DEFAULT_SETTINGS.scoring.loss,
+    },
+    tieBreakers:
+      tieBreakers.length > 0 ? tieBreakers : DEFAULT_SETTINGS.tieBreakers,
+    includeSources: {
+      reservation:
+        typeof includeSourcesRaw.reservation === 'boolean'
+          ? includeSourcesRaw.reservation
+          : DEFAULT_SETTINGS.includeSources.reservation,
+      manual:
+        typeof includeSourcesRaw.manual === 'boolean'
+          ? includeSourcesRaw.manual
+          : DEFAULT_SETTINGS.includeSources.manual,
+    },
+  };
+}
+
 export function LeagueSettingsPanel({
   settings,
   isReadOnly,
   onSave,
   isSaving,
 }: LeagueSettingsProps) {
-  const base = settings ?? DEFAULT_SETTINGS;
+  const base = normalizeLeagueSettings(settings);
 
   const [win, setWin] = useState(base.scoring.win);
   const [draw, setDraw] = useState(base.scoring.draw);
@@ -42,14 +86,14 @@ export function LeagueSettingsPanel({
 
   // Sync when server data changes
   useEffect(() => {
-    if (!settings) return;
+    const next = normalizeLeagueSettings(settings);
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setWin(settings.scoring.win);
-    setDraw(settings.scoring.draw);
-    setLoss(settings.scoring.loss);
-    setTieBreakers(settings.tieBreakers);
-    setReservation(settings.includeSources.reservation);
-    setManual(settings.includeSources.manual);
+    setWin(next.scoring.win);
+    setDraw(next.scoring.draw);
+    setLoss(next.scoring.loss);
+    setTieBreakers(next.tieBreakers);
+    setReservation(next.includeSources.reservation);
+    setManual(next.includeSources.manual);
   }, [settings]);
 
   // Validation

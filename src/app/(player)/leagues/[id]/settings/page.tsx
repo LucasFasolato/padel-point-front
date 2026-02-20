@@ -8,7 +8,7 @@ interface LeagueSettingsRedirectPageProps {
 
 /**
  * Deep-link route:
- * /leagues/[id]/settings -> /leagues/[id]?tab=settings
+ * /leagues/[id]/settings -> /leagues/[id]?tab=ajustes
  *
  * Redirects on the server so direct refresh works without client-only effects.
  */
@@ -37,6 +37,6 @@ export default function LeagueSettingsRedirectPage({
     }
   }
 
-  nextSearchParams.set('tab', 'settings');
+  nextSearchParams.set('tab', 'ajustes');
   redirect(`/leagues/${id}?${nextSearchParams.toString()}`);
 }

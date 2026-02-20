@@ -48,17 +48,15 @@ const ROLE_LABELS: Record<LeagueMemberRole, string> = {
 
 type LeagueDetailTab = 'tabla' | 'partidos' | 'miembros' | 'ajustes';
 
-const TAB_ALIASES: Record<string, LeagueDetailTab> = {
-  tabla: 'tabla',
-  partidos: 'partidos',
-  miembros: 'miembros',
-  ajustes: 'ajustes',
-  settings: 'ajustes',
-};
+function normalizeLeagueTab(rawTab: string | null | undefined): LeagueDetailTab {
+  const tab = (rawTab ?? '').toLowerCase();
 
-function resolveInitialTab(tab: string | null): LeagueDetailTab {
-  if (!tab) return 'tabla';
-  return TAB_ALIASES[tab] ?? 'tabla';
+  if (tab === 'tabla' || tab === 'standings') return 'tabla';
+  if (tab === 'partidos' || tab === 'matches') return 'partidos';
+  if (tab === 'miembros' || tab === 'members') return 'miembros';
+  if (tab === 'ajustes' || tab === 'settings') return 'ajustes';
+
+  return 'tabla';
 }
 
 function isForbiddenOrNotFound(error: unknown): boolean {
@@ -97,7 +95,12 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
   const captureMatchResult = useCaptureLeagueMatchResult(leagueId);
   const { data: reservations, isLoading: reservationsLoading } = useEligibleReservations(leagueId);
   const { data: matches, isLoading: matchesLoading } = useLeagueMatches(leagueId);
-  const { data: settings } = useLeagueSettings(leagueId);
+  const {
+    data: settings,
+    isLoading: settingsLoading,
+    isError: settingsError,
+    refetch: refetchSettings,
+  } = useLeagueSettings(leagueId);
   const updateSettings = useUpdateLeagueSettings(leagueId);
   const updateMemberRole = useUpdateMemberRole(leagueId);
   const [showInvite, setShowInvite] = useState(false);
@@ -111,14 +114,14 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
   const [selectedScheduledMatch, setSelectedScheduledMatch] = useState<LeagueMatch | null>(null);
   const [partidosView, setPartidosView] = useState<'matches' | 'challenges'>('matches');
   const [activeTab, setActiveTab] = useState<LeagueDetailTab>(() =>
-    resolveInitialTab(initialTabParam)
+    normalizeLeagueTab(initialTabParam)
   );
 
   useEffect(() => {
-    setActiveTab(resolveInitialTab(initialTabParam));
+    setActiveTab(normalizeLeagueTab(initialTabParam));
   }, [initialTabParam]);
 
-  const handleTabChange = (value: string) => setActiveTab(resolveInitialTab(value));
+  const handleTabChange = (value: string) => setActiveTab(normalizeLeagueTab(value));
 
   if (isLoading) {
     return (
@@ -415,12 +418,18 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
 
           {/* Ajustes tab */}
           <TabsContent value="ajustes">
-            <LeagueSettingsPanel
-              settings={settings}
-              isReadOnly={isReadOnly}
-              onSave={(s) => updateSettings.mutate(s)}
-              isSaving={updateSettings.isPending}
-            />
+            {settingsLoading ? (
+              <SettingsTabSkeleton />
+            ) : settingsError ? (
+              <SettingsTabError onRetry={() => void refetchSettings()} />
+            ) : (
+              <LeagueSettingsPanel
+                settings={settings}
+                isReadOnly={isReadOnly}
+                onSave={(s) => updateSettings.mutate(s)}
+                isSaving={updateSettings.isPending}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>
@@ -554,6 +563,28 @@ function DetailSkeleton() {
       <Skeleton className="h-5 w-32 rounded" />
       <Skeleton className="h-24 w-full rounded-xl" />
       <Skeleton className="h-16 w-full rounded-lg" />
+    </div>
+  );
+}
+
+function SettingsTabSkeleton() {
+  return (
+    <div className="space-y-3">
+      <Skeleton className="h-28 w-full rounded-xl" />
+      <Skeleton className="h-36 w-full rounded-xl" />
+      <Skeleton className="h-24 w-full rounded-xl" />
+      <Skeleton className="h-12 w-full rounded-xl" />
+    </div>
+  );
+}
+
+function SettingsTabError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-center">
+      <p className="text-sm text-rose-700">No se pudieron cargar los ajustes de la liga.</p>
+      <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
+        Reintentar
+      </Button>
     </div>
   );
 }
