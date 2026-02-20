@@ -155,6 +155,15 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
   const isActive = league.status === 'active';
   const isFinished = league.status === 'finished';
   const isUpcoming = league.status === 'upcoming';
+  const canRecordMatchesRaw = (league as { canRecordMatches?: boolean }).canRecordMatches;
+  const recordMatchesReasonRaw = (league as { reason?: string }).reason;
+  const hasCanRecordMatchesFlag = typeof canRecordMatchesRaw === 'boolean';
+  const canRecordMatches = hasCanRecordMatchesFlag ? canRecordMatchesRaw : !isUpcoming;
+  const showRecordMatchesBlockedBanner = hasCanRecordMatchesFlag ? !canRecordMatches : isUpcoming;
+  const recordMatchesBlockedMessage =
+    typeof recordMatchesReasonRaw === 'string' && recordMatchesReasonRaw.trim().length > 0
+      ? recordMatchesReasonRaw.trim()
+      : 'Invita al menos 1 jugador más.';
   const matchList = Array.isArray(matches) ? matches : [];
   const standingsRows = standingsData?.rows ?? league.standings ?? [];
   const showStandingsLoading = standingsLoading && standingsRows.length === 0;
@@ -215,11 +224,11 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
           </Button>
         )}
 
-        {isUpcoming && (
+        {showRecordMatchesBlockedBanner && (
           <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
             <Info size={16} className="mt-0.5 shrink-0 text-blue-500" />
             <p className="text-sm text-blue-800">
-              La liga aún no está activa. Activala para empezar a cargar partidos.
+              {recordMatchesBlockedMessage}
             </p>
           </div>
         )}
@@ -287,7 +296,7 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
                   size="lg"
                   className="gap-2"
                   onClick={() => setShowMatchModeSheet(true)}
-                  disabled={isReadOnly || isFinished}
+                  disabled={isReadOnly || isFinished || !canRecordMatches}
                 >
                   <Plus size={18} />
                   Cargar partido
@@ -297,6 +306,21 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
                   <p className="text-center text-xs text-slate-500">
                     Solo administradores pueden cargar partidos.
                   </p>
+                )}
+                {!isReadOnly && !isFinished && !canRecordMatches && (
+                  <div className="text-center">
+                    <p className="text-xs text-slate-500">
+                      Aún no podés cargar partidos en esta liga.
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-1"
+                      onClick={() => setActiveTab('miembros')}
+                    >
+                      Ir a miembros
+                    </Button>
+                  </div>
                 )}
 
                 {matchesLoading ? (
