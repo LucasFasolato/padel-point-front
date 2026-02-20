@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Users, UserPlus, Calendar, Trophy, Info } from 'lucide-react';
+import { Users, UserPlus, Calendar, Trophy, Info, Plus } from 'lucide-react';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
@@ -18,6 +18,9 @@ import {
   LeagueChallengesSection,
   LeagueMatchCard,
   LeagueSettingsPanel,
+  LeagueMatchModeSheet,
+  LeagueMatchCreateModal,
+  LeagueMatchResultModal,
 } from '@/app/components/leagues';
 import {
   useLeagueDetail,
@@ -30,11 +33,13 @@ import {
   useLeagueSettings,
   useUpdateLeagueSettings,
   useUpdateMemberRole,
+  useCreateLeagueMatch,
+  useCaptureLeagueMatchResult,
 } from '@/hooks/use-leagues';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDateRange, getModeLabel } from '@/lib/league-utils';
 import { getSingleParam, isUuid } from '@/lib/id-utils';
-import type { LeagueMemberRole } from '@/types/leagues';
+import type { LeagueMatch, LeagueMatchCreateMode, LeagueMemberRole } from '@/types/leagues';
 
 const ROLE_LABELS: Record<LeagueMemberRole, string> = {
   member: 'Miembro',
@@ -88,8 +93,10 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
   const inviteMutation = useCreateInvites(leagueId);
   const reportFromReservation = useReportFromReservation(leagueId);
   const reportManual = useReportManual(leagueId);
+  const createLeagueMatch = useCreateLeagueMatch(leagueId);
+  const captureMatchResult = useCaptureLeagueMatchResult(leagueId);
   const { data: reservations, isLoading: reservationsLoading } = useEligibleReservations(leagueId);
-  const { data: matches } = useLeagueMatches(leagueId);
+  const { data: matches, isLoading: matchesLoading } = useLeagueMatches(leagueId);
   const { data: settings } = useLeagueSettings(leagueId);
   const updateSettings = useUpdateLeagueSettings(leagueId);
   const updateMemberRole = useUpdateMemberRole(leagueId);
@@ -97,6 +104,11 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
   const [showReportMethodSheet, setShowReportMethodSheet] = useState(false);
   const [showReservationReport, setShowReservationReport] = useState(false);
   const [showManualReport, setShowManualReport] = useState(false);
+  const [showMatchModeSheet, setShowMatchModeSheet] = useState(false);
+  const [showCreateMatchModal, setShowCreateMatchModal] = useState(false);
+  const [createMatchMode, setCreateMatchMode] = useState<LeagueMatchCreateMode>('played');
+  const [showMatchResultModal, setShowMatchResultModal] = useState(false);
+  const [selectedScheduledMatch, setSelectedScheduledMatch] = useState<LeagueMatch | null>(null);
   const [partidosView, setPartidosView] = useState<'matches' | 'challenges'>('matches');
   const [activeTab, setActiveTab] = useState<LeagueDetailTab>(() =>
     resolveInitialTab(initialTabParam)
@@ -266,37 +278,59 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
             </div>
 
             {partidosView === 'matches' ? (
-              matchList.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
-                  <p className="text-sm font-semibold text-slate-900">
-                    Todavía no hay partidos
+              <div className="space-y-3">
+                <Button
+                  fullWidth
+                  size="lg"
+                  className="gap-2"
+                  onClick={() => setShowMatchModeSheet(true)}
+                  disabled={isReadOnly || isFinished}
+                >
+                  <Plus size={18} />
+                  Cargar partido
+                </Button>
+
+                {isReadOnly && (
+                  <p className="text-center text-xs text-slate-500">
+                    Solo administradores pueden cargar partidos.
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Podés cargar partidos desde reserva o manualmente.
-                  </p>
-                  {isActive && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-3 gap-2"
-                      onClick={() => setShowReportMethodSheet(true)}
-                    >
-                      <Trophy size={14} />
-                      Cargar primer resultado
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {matchList.map((m) => (
-                    <LeagueMatchCard
-                      key={m.id}
-                      match={m}
-                      onClick={() => router.push(`/matches/${m.id}`)}
-                    />
-                  ))}
-                </div>
-              )
+                )}
+
+                {matchesLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-24 w-full rounded-xl" />
+                    <Skeleton className="h-24 w-full rounded-xl" />
+                    <Skeleton className="h-24 w-full rounded-xl" />
+                  </div>
+                ) : matchList.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
+                    <p className="text-sm font-semibold text-slate-900">
+                      Todavía no hay partidos
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Cargá un partido jugado o programá uno para jugar más tarde.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {matchList.map((m) => (
+                      <LeagueMatchCard
+                        key={m.id}
+                        match={m}
+                        onClick={() => router.push(`/matches/${m.id}`)}
+                        onLoadResult={
+                          m.status === 'scheduled'
+                            ? (match) => {
+                                setSelectedScheduledMatch(match);
+                                setShowMatchResultModal(true);
+                              }
+                            : undefined
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : (
               <LeagueChallengesSection
                 leagueId={leagueId}
@@ -402,6 +436,62 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
         isPending={inviteMutation.isPending}
       />
 
+      <LeagueMatchModeSheet
+        isOpen={showMatchModeSheet}
+        onClose={() => setShowMatchModeSheet(false)}
+        onPlayed={() => {
+          setShowMatchModeSheet(false);
+          setCreateMatchMode('played');
+          setShowCreateMatchModal(true);
+        }}
+        onScheduled={() => {
+          setShowMatchModeSheet(false);
+          setCreateMatchMode('scheduled');
+          setShowCreateMatchModal(true);
+        }}
+      />
+
+      <LeagueMatchCreateModal
+        isOpen={showCreateMatchModal}
+        mode={createMatchMode}
+        members={league.members ?? []}
+        isPending={createLeagueMatch.isPending}
+        onClose={() => {
+          if (createLeagueMatch.isPending) return;
+          setShowCreateMatchModal(false);
+        }}
+        onSubmit={(payload) => {
+          createLeagueMatch.mutate(payload, {
+            onSuccess: () => {
+              setShowCreateMatchModal(false);
+            },
+          });
+        }}
+      />
+
+      <LeagueMatchResultModal
+        isOpen={showMatchResultModal}
+        match={selectedScheduledMatch}
+        isPending={captureMatchResult.isPending}
+        onClose={() => {
+          if (captureMatchResult.isPending) return;
+          setShowMatchResultModal(false);
+          setSelectedScheduledMatch(null);
+        }}
+        onSubmit={(payload) => {
+          if (!selectedScheduledMatch) return;
+          captureMatchResult.mutate(
+            { matchId: selectedScheduledMatch.id, payload },
+            {
+              onSuccess: () => {
+                setShowMatchResultModal(false);
+                setSelectedScheduledMatch(null);
+              },
+            }
+          );
+        }}
+      />
+
       <ReportMethodSheet
         isOpen={showReportMethodSheet}
         onClose={() => setShowReportMethodSheet(false)}
@@ -491,3 +581,4 @@ function LeagueNotFoundState() {
     </>
   );
 }
+

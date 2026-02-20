@@ -52,6 +52,7 @@ export interface LeagueSettings {
 }
 
 export type LeagueMatchStatus =
+  | 'scheduled'
   | 'pending_confirm'
   | 'confirmed'
   | 'disputed'
@@ -60,12 +61,36 @@ export type LeagueMatchSource = 'RESERVATION' | 'MANUAL';
 
 export interface LeagueMatch {
   id: string;
-  playedAt: string;
-  score: string;
+  playedAt?: string;
+  scheduledAt?: string | null;
+  score?: string | null;
   status: LeagueMatchStatus;
   source?: LeagueMatchSource;
-  teamA: { displayName: string }[];
-  teamB: { displayName: string }[];
+  teamA: { userId?: string; displayName: string }[];
+  teamB: { userId?: string; displayName: string }[];
+}
+
+export type LeagueMatchCreateMode = 'played' | 'scheduled';
+
+export interface LeagueMatchSet {
+  a: number;
+  b: number;
+}
+
+export interface CreateLeagueMatchPayload {
+  mode: LeagueMatchCreateMode;
+  teamA1Id: string;
+  teamB1Id: string;
+  teamA2Id?: string;
+  teamB2Id?: string;
+  sets?: LeagueMatchSet[];
+  playedAt?: string;
+  scheduledAt?: string;
+}
+
+export interface CaptureLeagueMatchResultPayload {
+  sets: LeagueMatchSet[];
+  playedAt?: string;
 }
 
 export type LeagueChallengeScope = 'active' | 'history';

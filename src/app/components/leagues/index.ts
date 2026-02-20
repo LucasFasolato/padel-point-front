@@ -9,3 +9,6 @@ export { LeagueChallengesSection } from './league-challenges-section';
 export { LeagueChallengeCreateModal } from './league-challenge-create-modal';
 export { LeagueMatchCard } from './league-match-card';
 export { LeagueSettingsPanel } from './league-settings';
+export { LeagueMatchModeSheet } from './league-match-mode-sheet';
+export { LeagueMatchCreateModal } from './league-match-create-modal';
+export { LeagueMatchResultModal } from './league-match-result-modal';

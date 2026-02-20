@@ -92,6 +92,7 @@ export function getModeLabel(mode?: LeagueMode): string {
 // Match status labels and colors
 // ---------------------------------------------------------------------------
 const MATCH_STATUS_LABELS: Record<LeagueMatchStatus, string> = {
+  scheduled: 'Programado',
   pending_confirm: 'Pendiente',
   confirmed: 'Confirmado',
   disputed: 'Disputado',
@@ -99,6 +100,7 @@ const MATCH_STATUS_LABELS: Record<LeagueMatchStatus, string> = {
 };
 
 const MATCH_STATUS_COLORS: Record<LeagueMatchStatus, { bg: string; text: string }> = {
+  scheduled: { bg: 'bg-blue-100', text: 'text-blue-800' },
   pending_confirm: { bg: 'bg-amber-100', text: 'text-amber-800' },
   confirmed: { bg: 'bg-emerald-100', text: 'text-emerald-800' },
   disputed: { bg: 'bg-rose-100', text: 'text-rose-800' },

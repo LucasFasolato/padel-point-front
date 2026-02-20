@@ -12,6 +12,8 @@ import type {
   ReportFromReservationResponse,
   EligibleReservation,
   LeagueMatch,
+  CreateLeagueMatchPayload,
+  CaptureLeagueMatchResultPayload,
   LeagueSettings,
   LeagueMemberRole,
   LeagueStandingsResponse,
@@ -146,6 +148,44 @@ function normalizeCreateMiniLeagueResponse(raw: unknown): CreateMiniLeagueRespon
   };
 }
 
+function normalizeLeagueMatch(raw: unknown): LeagueMatch {
+  const data = (raw ?? {}) as Record<string, unknown>;
+  const statusRaw = typeof data.status === 'string' ? data.status.toLowerCase() : 'pending_confirm';
+  const statusNormalized = statusRaw === 'programmed' ? 'scheduled' : statusRaw;
+  const status: LeagueMatch['status'] =
+    statusNormalized === 'scheduled' ||
+    statusNormalized === 'pending_confirm' ||
+    statusNormalized === 'confirmed' ||
+    statusNormalized === 'disputed' ||
+    statusNormalized === 'resolved'
+      ? statusNormalized
+      : 'pending_confirm';
+  const sourceRaw = typeof data.source === 'string' ? data.source.toUpperCase() : '';
+  const source = sourceRaw === 'RESERVATION' || sourceRaw === 'MANUAL' ? sourceRaw : undefined;
+
+  const mapTeam = (input: unknown): LeagueMatch['teamA'] => {
+    if (!Array.isArray(input)) return [];
+    return input.map((item) => {
+      const player = (item ?? {}) as Record<string, unknown>;
+      return {
+        userId: typeof player.userId === 'string' ? player.userId : undefined,
+        displayName: String(player.displayName ?? player.name ?? 'Jugador'),
+      };
+    });
+  };
+
+  return {
+    id: String(data.id ?? ''),
+    playedAt: typeof data.playedAt === 'string' ? data.playedAt : undefined,
+    scheduledAt: typeof data.scheduledAt === 'string' ? data.scheduledAt : null,
+    score: typeof data.score === 'string' ? data.score : null,
+    status,
+    source,
+    teamA: mapTeam(data.teamA),
+    teamB: mapTeam(data.teamB),
+  };
+}
+
 function assertValidLeagueId(leagueId: string): string {
   if (!isUuid(leagueId)) {
     throw new Error('Invalid leagueId');
@@ -206,7 +246,23 @@ export const leagueService = {
   async getMatches(leagueId: string): Promise<LeagueMatch[]> {
     const validLeagueId = assertValidLeagueId(leagueId);
     const { data } = await api.get(`/leagues/${validLeagueId}/matches`);
-    return Array.isArray(data) ? data : [];
+    return Array.isArray(data) ? data.map(normalizeLeagueMatch) : [];
+  },
+
+  /** Create a match (played or scheduled). */
+  async createMatch(leagueId: string, payload: CreateLeagueMatchPayload): Promise<void> {
+    const validLeagueId = assertValidLeagueId(leagueId);
+    await api.post(`/leagues/${validLeagueId}/matches`, payload);
+  },
+
+  /** Capture result for an already scheduled match. */
+  async captureMatchResult(
+    leagueId: string,
+    matchId: string,
+    payload: CaptureLeagueMatchResultPayload
+  ): Promise<void> {
+    const validLeagueId = assertValidLeagueId(leagueId);
+    await api.post(`/leagues/${validLeagueId}/matches/${matchId}/result`, payload);
   },
 
   /** Fetch confirmed, past reservations eligible for league match reporting. */

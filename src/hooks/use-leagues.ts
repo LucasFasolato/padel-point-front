@@ -5,6 +5,8 @@ import { isUuid } from '@/lib/id-utils';
 import type {
   CreateMiniLeaguePayload,
   CreateMiniLeagueResponse,
+  CreateLeagueMatchPayload,
+  CaptureLeagueMatchResultPayload,
   ReportFromReservationPayload,
   ReportManualPayload,
   LeagueSettings,
@@ -138,6 +140,46 @@ export function useLeagueMatches(leagueId: string) {
   });
 }
 
+/** Create a league match (played/scheduled). */
+export function useCreateLeagueMatch(leagueId: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: CreateLeagueMatchPayload) => leagueService.createMatch(leagueId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
+      qc.invalidateQueries({ queryKey: KEYS.standings(leagueId) });
+      toast.success(LEAGUE_MATCH_CREATE_SUCCESS_MESSAGE);
+    },
+    onError: () => {
+      toast.error('No se pudo cargar el partido. Intenta de nuevo.');
+    },
+  });
+}
+
+/** Capture a result for a scheduled league match. */
+export function useCaptureLeagueMatchResult(leagueId: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      matchId,
+      payload,
+    }: {
+      matchId: string;
+      payload: CaptureLeagueMatchResultPayload;
+    }) => leagueService.captureMatchResult(leagueId, matchId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
+      qc.invalidateQueries({ queryKey: KEYS.standings(leagueId) });
+      toast.success(LEAGUE_MATCH_RESULT_SUCCESS_MESSAGE);
+    },
+    onError: () => {
+      toast.error('No se pudo cargar el resultado. Intenta de nuevo.');
+    },
+  });
+}
+
 /** Create a mini league with optional email invites. */
 export function useCreateMiniLeague() {
   const qc = useQueryClient();
@@ -181,6 +223,8 @@ const REPORT_ERROR_MESSAGES: Record<string, string> = {
 const LEAGUE_SETTINGS_FORBIDDEN_MESSAGE = 'No ten\u00E9s permisos para editar esta liga.';
 const LEAGUE_REPORT_SUCCESS_MESSAGE = 'Resultado cargado. Falta confirmaci\u00F3n del rival.';
 const LEAGUE_CHALLENGE_FORBIDDEN_MESSAGE = 'No ten\u00E9s permisos para desafiar en esta liga.';
+const LEAGUE_MATCH_CREATE_SUCCESS_MESSAGE = 'Partido cargado.';
+const LEAGUE_MATCH_RESULT_SUCCESS_MESSAGE = 'Resultado cargado.';
 const INVITE_NOTIFICATION_MESSAGE = 'Invitación enviada. Le llegó una notificación.';
 const INVITE_EMAIL_FALLBACK_MESSAGE =
   'Invitación enviada por email. La notificación aparecerá cuando el usuario cree su cuenta.';
@@ -380,5 +424,3 @@ export function useUpdateMemberRole(leagueId: string) {
 }
 
 export const LEAGUE_QUERY_KEYS = KEYS;
-
-
