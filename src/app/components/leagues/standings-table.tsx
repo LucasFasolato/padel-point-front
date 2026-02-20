@@ -23,18 +23,55 @@ function formatComputedAt(value?: string): string {
   });
 }
 
-function getDeltaUi(delta: number | undefined): {
+function getDeltaUi(delta: number | undefined, isNew: boolean): {
   symbol: string;
   value: string;
   className: string;
 } {
+  if (isNew) {
+    return { symbol: '✨', value: '', className: 'text-amber-500' };
+  }
   if (!delta) {
     return { symbol: '•', value: '', className: 'text-slate-400' };
   }
   if (delta < 0) {
-    return { symbol: '▲', value: `${delta}`, className: 'text-emerald-600' };
+    return { symbol: '↑', value: `+${Math.abs(delta)}`, className: 'text-emerald-600' };
   }
-  return { symbol: '▼', value: `+${delta}`, className: 'text-rose-500' };
+  return { symbol: '↓', value: `-${delta}`, className: 'text-rose-500' };
+}
+
+interface Mover {
+  displayName: string;
+  delta: number;
+}
+
+function getTopMovers(
+  standings: StandingEntry[],
+  movement?: StandingsMovementMap,
+): { up: Mover[]; down: Mover[] } | null {
+  if (!movement || Object.keys(movement).length === 0) return null;
+
+  const movers: Mover[] = [];
+  for (const entry of standings) {
+    const d = movement[entry.userId];
+    if (d != null && d !== 0) {
+      movers.push({ displayName: entry.displayName || 'Jugador', delta: d });
+    }
+  }
+  if (movers.length === 0) return null;
+
+  // delta < 0 means position decreased → moved UP
+  const up = movers
+    .filter((m) => m.delta < 0)
+    .sort((a, b) => a.delta - b.delta)
+    .slice(0, 3);
+  const down = movers
+    .filter((m) => m.delta > 0)
+    .sort((a, b) => b.delta - a.delta)
+    .slice(0, 3);
+
+  if (up.length === 0 && down.length === 0) return null;
+  return { up, down };
 }
 
 function formatDiff(value?: number): string {
@@ -81,9 +118,36 @@ export function StandingsTable({
 
   const hasSetDiff = standings.some((s) => s.setDiff != null);
   const hasGameDiff = standings.some((s) => s.gameDiff != null);
+  const hasMovement = !!movement && Object.keys(movement).length > 0;
+  const topMovers = getTopMovers(standings, movement);
 
   return (
-    <div className={cn('overflow-hidden rounded-xl border border-slate-200 bg-white', className)}>
+    <div className={cn('space-y-2', className)}>
+      {topMovers && (
+        <div className="flex flex-wrap gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs">
+          {topMovers.up.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium text-emerald-600">↑</span>
+              {topMovers.up.map((m) => (
+                <span key={m.displayName} className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
+                  {m.displayName} <span className="font-semibold">+{Math.abs(m.delta)}</span>
+                </span>
+              ))}
+            </div>
+          )}
+          {topMovers.down.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium text-rose-500">↓</span>
+              {topMovers.down.map((m) => (
+                <span key={m.displayName} className="inline-flex items-center gap-0.5 rounded-full bg-rose-50 px-2 py-0.5 text-rose-600">
+                  {m.displayName} <span className="font-semibold">-{m.delta}</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 text-xs text-slate-500">
         <span>Última actualización: {formatComputedAt(computedAt)}</span>
         <span className="text-slate-400" title="Desempate: Victorias → Dif. sets → Dif. games → Victorias recientes">
@@ -109,7 +173,8 @@ export function StandingsTable({
         <tbody className="divide-y divide-slate-100">
           {standings.map((entry) => {
             const isMe = entry.userId === currentUserId;
-            const delta = getDeltaUi(movement?.[entry.userId]);
+            const isNew = hasMovement && movement[entry.userId] == null;
+            const delta = getDeltaUi(movement?.[entry.userId], isNew);
 
             return (
               <tr
@@ -142,6 +207,7 @@ export function StandingsTable({
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
