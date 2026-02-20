@@ -37,6 +37,16 @@ function getDeltaUi(delta: number | undefined): {
   return { symbol: '▼', value: `+${delta}`, className: 'text-rose-500' };
 }
 
+function formatDiff(value?: number): string {
+  if (value == null) return '-';
+  return value > 0 ? `+${value}` : `${value}`;
+}
+
+function diffColor(value?: number): string {
+  if (value == null || value === 0) return '';
+  return value > 0 ? 'text-emerald-600' : 'text-rose-500';
+}
+
 export function StandingsTable({
   standings,
   movement,
@@ -69,10 +79,16 @@ export function StandingsTable({
     );
   }
 
+  const hasSetDiff = standings.some((s) => s.setDiff != null);
+  const hasGameDiff = standings.some((s) => s.gameDiff != null);
+
   return (
     <div className={cn('overflow-hidden rounded-xl border border-slate-200 bg-white', className)}>
-      <div className="border-b border-slate-100 px-3 py-2 text-xs text-slate-500">
-        Última actualización: {formatComputedAt(computedAt)}
+      <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 text-xs text-slate-500">
+        <span>Última actualización: {formatComputedAt(computedAt)}</span>
+        <span className="text-slate-400" title="Desempate: Victorias → Dif. sets → Dif. games → Victorias recientes">
+          Desempate: V → ±Sets → ±Games → V rec.
+        </span>
       </div>
       <table className="w-full text-sm">
         <thead className="bg-slate-50">
@@ -80,6 +96,13 @@ export function StandingsTable({
             <th className="w-10 px-3 py-2.5 text-left text-xs font-semibold text-slate-600">#</th>
             <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-600">Jugador</th>
             <th className="w-14 px-3 py-2.5 text-center text-xs font-semibold text-slate-600">Pts</th>
+            <th className="w-14 px-3 py-2.5 text-center text-xs font-semibold text-slate-600">V/D</th>
+            {hasSetDiff && (
+              <th className="w-14 px-3 py-2.5 text-center text-xs font-semibold text-slate-600">±S</th>
+            )}
+            {hasGameDiff && (
+              <th className="w-14 px-3 py-2.5 text-center text-xs font-semibold text-slate-600">±G</th>
+            )}
             <th className="w-16 px-3 py-2.5 text-center text-xs font-semibold text-slate-600">Mov</th>
           </tr>
         </thead>
@@ -99,6 +122,17 @@ export function StandingsTable({
                   {isMe && <span className="ml-1.5 text-xs text-blue-600">(Vos)</span>}
                 </td>
                 <td className="px-3 py-3 text-center font-bold text-slate-900">{entry.points}</td>
+                <td className="px-3 py-3 text-center text-slate-700">{entry.wins}/{entry.losses}</td>
+                {hasSetDiff && (
+                  <td className={cn('px-3 py-3 text-center text-slate-700', diffColor(entry.setDiff))}>
+                    {formatDiff(entry.setDiff)}
+                  </td>
+                )}
+                {hasGameDiff && (
+                  <td className={cn('px-3 py-3 text-center text-slate-700', diffColor(entry.gameDiff))}>
+                    {formatDiff(entry.gameDiff)}
+                  </td>
+                )}
                 <td className={cn('px-3 py-3 text-center text-xs font-semibold', delta.className)}>
                   <span>{delta.symbol}</span>
                   {delta.value && <span className="ml-1">{delta.value}</span>}

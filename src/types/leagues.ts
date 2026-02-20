@@ -17,6 +17,8 @@ export interface StandingEntry {
   wins: number;
   losses: number;
   draws: number;
+  setDiff?: number;
+  gameDiff?: number;
 }
 
 export type StandingsMovementMap = Record<string, number>;
