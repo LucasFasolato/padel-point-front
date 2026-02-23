@@ -189,3 +189,20 @@ export interface EligibleReservation {
   startAt: string;
   endAt: string;
 }
+
+/** A single activity event in a league feed. */
+export interface ActivityEventView {
+  id: string;
+  leagueId: string;
+  type: string;
+  actorId: string | null;
+  actorName: string | null;
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+
+/** Paginated response from GET /leagues/:id/activity */
+export interface ActivityResponse {
+  items: ActivityEventView[];
+  nextCursor: string | null;
+}

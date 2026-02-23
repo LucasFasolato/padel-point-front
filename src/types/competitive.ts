@@ -36,7 +36,7 @@ export interface CompetitiveProfile {
   elo: number;
   winStreakCurrent?: number;
   winStreakBest?: number;
-  last10?: ('W' | 'L')[];
+  last10?: ('W' | 'L' | 'D')[];
   eloDelta30d?: number;
   peakElo?: number;
   category: Category; // derivado de ELO en backend

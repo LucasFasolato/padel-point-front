@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import type { InfiniteData } from '@tanstack/react-query';
 import { leagueService } from '@/services/league-service';
 import { toast } from 'sonner';
 import { isUuid } from '@/lib/id-utils';
@@ -14,6 +15,7 @@ import type {
   CreateLeagueChallengePayload,
   LeagueChallengeScope,
   LeagueInviteDispatchResult,
+  ActivityResponse,
 } from '@/types/leagues';
 import axios from 'axios';
 
@@ -28,7 +30,31 @@ const KEYS = {
   eligibleReservations: (id: string) => ['leagues', 'eligible-reservations', id] as const,
   matches: (id: string) => ['leagues', 'matches', id] as const,
   settings: (id: string) => ['leagues', 'settings', id] as const,
+  /** activity key includes limit so different page sizes never collide */
+  activity: (id: string, limit: number) => ['leagues', 'activity', id, limit] as const,
+  /** prefix-only key for setQueriesData predicates (matches any limit) */
+  activityPrefix: (id: string) => ['leagues', 'activity', id] as const,
 };
+
+export const ACTIVITY_DEFAULT_LIMIT = 50;
+
+/** De-duplicate an array of objects by id (keeps first occurrence). */
+function dedupeById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function useSafeQueryClient() {
+  try {
+    return useQueryClient();
+  } catch {
+    return null;
+  }
+}
 
 /** List all leagues the current user belongs to. */
 export function useLeaguesList() {
@@ -142,13 +168,13 @@ export function useLeagueMatches(leagueId: string) {
 
 /** Create a league match (played/scheduled). */
 export function useCreateLeagueMatch(leagueId: string) {
-  const qc = useQueryClient();
+  const qc = useSafeQueryClient();
 
   return useMutation({
     mutationFn: (payload: CreateLeagueMatchPayload) => leagueService.createMatch(leagueId, payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
-      qc.invalidateQueries({ queryKey: KEYS.standings(leagueId) });
+      qc?.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
+      qc?.invalidateQueries({ queryKey: KEYS.standings(leagueId) });
       toast.success(LEAGUE_MATCH_CREATE_SUCCESS_MESSAGE);
     },
     onError: () => {
@@ -159,7 +185,7 @@ export function useCreateLeagueMatch(leagueId: string) {
 
 /** Capture a result for a scheduled league match. */
 export function useCaptureLeagueMatchResult(leagueId: string) {
-  const qc = useQueryClient();
+  const qc = useSafeQueryClient();
 
   return useMutation({
     mutationFn: ({
@@ -170,8 +196,8 @@ export function useCaptureLeagueMatchResult(leagueId: string) {
       payload: CaptureLeagueMatchResultPayload;
     }) => leagueService.captureMatchResult(leagueId, matchId, payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
-      qc.invalidateQueries({ queryKey: KEYS.standings(leagueId) });
+      qc?.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
+      qc?.invalidateQueries({ queryKey: KEYS.standings(leagueId) });
       toast.success(LEAGUE_MATCH_RESULT_SUCCESS_MESSAGE);
     },
     onError: () => {
@@ -420,6 +446,28 @@ export function useUpdateMemberRole(leagueId: string) {
         toast.error('No se pudo actualizar el rol.');
       }
     },
+  });
+}
+
+/** Paginated activity feed for a league. Uses cursor-based infinite query. */
+export function useLeagueActivity(leagueId: string, limit = ACTIVITY_DEFAULT_LIMIT) {
+  const enabled = isUuid(leagueId);
+  return useInfiniteQuery({
+    queryKey: KEYS.activity(leagueId, limit),
+    queryFn: ({ pageParam }) =>
+      leagueService.getActivity(leagueId, {
+        limit,
+        cursor: pageParam as string | undefined,
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    enabled,
+    staleTime: 1000 * 30,
+    select: (data: InfiniteData<ActivityResponse>) => ({
+      pages: data.pages,
+      pageParams: data.pageParams,
+      items: dedupeById(data.pages.flatMap((p) => p.items)),
+    }),
   });
 }
 

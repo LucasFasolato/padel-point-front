@@ -23,6 +23,8 @@ import type {
   LeagueChallengeScope,
   LeagueChallengeParticipant,
   LeagueInviteDispatchResult,
+  ActivityEventView,
+  ActivityResponse,
 } from '@/types/leagues';
 
 /** Normalise status + provide displayName fallbacks for members/standings. */
@@ -183,6 +185,36 @@ function normalizeLeagueMatch(raw: unknown): LeagueMatch {
     source,
     teamA: mapTeam(data.teamA),
     teamB: mapTeam(data.teamB),
+  };
+}
+
+function normalizeActivityEvent(raw: unknown): ActivityEventView {
+  const data = (raw ?? {}) as Record<string, unknown>;
+  return {
+    id: String(data.id ?? ''),
+    leagueId: String(data.leagueId ?? ''),
+    type: String(data.type ?? ''),
+    actorId: typeof data.actorId === 'string' ? data.actorId : null,
+    actorName:
+      typeof data.actorName === 'string' && data.actorName.length > 0 ? data.actorName : null,
+    payload:
+      data.payload && typeof data.payload === 'object'
+        ? (data.payload as Record<string, unknown>)
+        : {},
+    createdAt: typeof data.createdAt === 'string' ? data.createdAt : new Date().toISOString(),
+  };
+}
+
+function normalizeActivityResponse(raw: unknown): ActivityResponse {
+  const data = (raw ?? {}) as Record<string, unknown>;
+  const rawItems = Array.isArray(data.items)
+    ? data.items
+    : Array.isArray(data.data)
+      ? data.data
+      : [];
+  return {
+    items: rawItems.map(normalizeActivityEvent),
+    nextCursor: typeof data.nextCursor === 'string' ? data.nextCursor : null,
   };
 }
 
@@ -376,5 +408,20 @@ export const leagueService = {
   async linkChallengeMatch(challengeId: string, matchId: string): Promise<LeagueChallenge> {
     const { data } = await api.post(`/challenges/${challengeId}/link-match`, { matchId });
     return normalizeLeagueChallenge(data);
+  },
+
+  /** Fetch activity feed for a league with cursor-based pagination. */
+  async getActivity(
+    leagueId: string,
+    params: { limit?: number; cursor?: string } = {}
+  ): Promise<ActivityResponse> {
+    const validLeagueId = assertValidLeagueId(leagueId);
+    const queryParams: Record<string, string | number> = {};
+    if (params.limit !== undefined) queryParams.limit = params.limit;
+    if (params.cursor) queryParams.cursor = params.cursor;
+    const { data } = await api.get(`/leagues/${validLeagueId}/activity`, {
+      params: queryParams,
+    });
+    return normalizeActivityResponse(data);
   },
 };

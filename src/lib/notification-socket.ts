@@ -1,8 +1,9 @@
-import type { QueryClient } from '@tanstack/react-query';
+import type { QueryClient, InfiniteData } from '@tanstack/react-query';
 import type { AppNotification } from '@/types/notifications';
 import { TOAST_WORTHY_TYPES, normalizeNotificationType } from '@/types/notifications';
 import { NOTIFICATION_QUERY_KEYS } from '@/hooks/use-notifications';
 import { toastManager } from '@/lib/toast';
+import type { ActivityEventView, ActivityResponse } from '@/types/leagues';
 
 const WS_RECONNECT_BASE_MS = 2000;
 const WS_RECONNECT_MAX_MS = 30000;
@@ -12,11 +13,14 @@ export interface NotificationSocketOptions {
   token: string;
   queryClient: QueryClient;
   onStatusChange?: (connected: boolean) => void;
+  /** Called for every "league:activity" event received over WS. */
+  onLeagueActivity?: (event: ActivityEventView) => void;
 }
 
 /**
  * Manages a WebSocket connection for realtime notifications.
  * On "notification:new", updates the React Query cache and optionally shows a toast.
+ * On "league:activity", prepends the event into the activity feed cache.
  * Reconnects with exponential backoff on disconnect.
  */
 export class NotificationSocket {
@@ -25,6 +29,8 @@ export class NotificationSocket {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
   private options: NotificationSocketOptions;
+  /** Set of leagueIds the client has subscribed to (best-effort, re-sent on reconnect). */
+  private subscribedLeagues = new Set<string>();
 
   constructor(options: NotificationSocketOptions) {
     this.options = options;
@@ -47,6 +53,10 @@ export class NotificationSocket {
     this.ws.onopen = () => {
       this.reconnectAttempt = 0;
       this.options.onStatusChange?.(true);
+      // Re-subscribe to all leagues after reconnect (best-effort).
+      for (const leagueId of this.subscribedLeagues) {
+        this.sendJson({ event: 'league:subscribe', leagueId });
+      }
     };
 
     this.ws.onmessage = (event) => {
@@ -65,12 +75,30 @@ export class NotificationSocket {
     };
   }
 
+  /** Subscribe to league-specific realtime events for the given leagueId. */
+  subscribeLeague(leagueId: string): void {
+    this.subscribedLeagues.add(leagueId);
+    this.sendJson({ event: 'league:subscribe', leagueId });
+  }
+
+  /** Unsubscribe from league-specific realtime events. */
+  unsubscribeLeague(leagueId: string): void {
+    this.subscribedLeagues.delete(leagueId);
+    this.sendJson({ event: 'league:unsubscribe', leagueId });
+  }
+
   dispose(): void {
     this.disposed = true;
     this.cleanup();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
+    }
+  }
+
+  private sendJson(payload: object): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(payload));
     }
   }
 
@@ -109,6 +137,12 @@ export class NotificationSocket {
       const notification = parsed.data as AppNotification;
       this.onNewNotification(notification);
     }
+
+    if (parsed.event === 'league:activity' && parsed.data) {
+      const event = parsed.data as ActivityEventView;
+      handleLeagueActivity(this.options.queryClient, event);
+      this.options.onLeagueActivity?.(event);
+    }
   }
 
   private onNewNotification(notification: AppNotification): void {
@@ -146,9 +180,13 @@ export class NotificationSocket {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Standalone handlers — exported for testing
+// ---------------------------------------------------------------------------
+
 /**
- * Standalone handler for testing: processes a raw "notification:new" payload
- * against a QueryClient. Returns true if the notification was handled.
+ * Processes a raw "notification:new" payload against a QueryClient.
+ * Returns true if the notification was handled.
  */
 export function handleNewNotification(
   queryClient: QueryClient,
@@ -171,4 +209,30 @@ export function handleNewNotification(
   }
 
   return true;
+}
+
+/**
+ * Prepend a league activity event into all cached activity queries for that leagueId.
+ * Uses a prefix predicate so it works regardless of the `limit` param in the query key.
+ * Deduplicates by id to prevent double entries when REST and WS race.
+ */
+export function handleLeagueActivity(
+  queryClient: QueryClient,
+  event: ActivityEventView
+): void {
+  queryClient.setQueriesData<InfiniteData<ActivityResponse>>(
+    { queryKey: ['leagues', 'activity', event.leagueId], exact: false },
+    (old) => {
+      if (!old?.pages?.length) return old;
+      const alreadyPresent = old.pages.some((p) => p.items.some((i) => i.id === event.id));
+      if (alreadyPresent) return old;
+      return {
+        ...old,
+        pages: [
+          { ...old.pages[0], items: [event, ...old.pages[0].items] },
+          ...old.pages.slice(1),
+        ],
+      };
+    }
+  );
 }

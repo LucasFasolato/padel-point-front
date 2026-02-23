@@ -34,6 +34,8 @@ const useLeagueMatchesMock = vi.fn(() => mockLeagueMatches());
 const useLeagueSettingsMock = vi.fn(() => ({ data: undefined }));
 const useUpdateLeagueSettingsMock = vi.fn(() => ({ mutate: mockUpdateSettings, isPending: false }));
 const useUpdateMemberRoleMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
+const useCreateLeagueMatchMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
+const useCaptureLeagueMatchResultMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
 
 vi.mock('@/hooks/use-leagues', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/use-leagues')>();
@@ -49,6 +51,8 @@ vi.mock('@/hooks/use-leagues', async (importOriginal) => {
     useLeagueSettings: (id: string) => useLeagueSettingsMock(id),
     useUpdateLeagueSettings: (id: string) => useUpdateLeagueSettingsMock(id),
     useUpdateMemberRole: (id: string) => useUpdateMemberRoleMock(id),
+    useCreateLeagueMatch: (id: string) => useCreateLeagueMatchMock(id),
+    useCaptureLeagueMatchResult: (id: string) => useCaptureLeagueMatchResultMock(id),
   };
 });
 
@@ -73,8 +77,13 @@ vi.mock('@/app/components/leagues', async (importOriginal) => {
       </button>
     ),
     LeagueSettingsPanel: () => <div data-testid="settings-panel" />,
+    LeagueActivityFeed: () => <div data-testid="activity-feed" />,
   };
 });
+
+vi.mock('@/hooks/use-notification-socket', () => ({
+  useLeagueActivitySocket: vi.fn(),
+}));
 
 vi.mock('@/app/components/public/public-topbar', () => ({
   PublicTopBar: ({ title }: { title: string }) => <div data-testid="topbar">{title}</div>,
@@ -191,6 +200,16 @@ describe('LeagueDetailPage', () => {
     expect(screen.getByText(/La liga aún no está activa/)).toBeInTheDocument();
   });
 
+  it('shows server reason in blocked banner when canRecordMatches is false with reason', () => {
+    mockLeagueDetail.mockReturnValue({
+      data: { ...BASE_LEAGUE, status: 'active', canRecordMatches: false, reason: 'Necesitás al menos 2 jugadores.' },
+      isLoading: false,
+      error: null,
+    });
+    render(<LeagueDetailPage />);
+    expect(screen.getByText('Necesitás al menos 2 jugadores.')).toBeInTheDocument();
+  });
+
   it('hides CTA and shows finalized message when league is FINISHED', () => {
     mockLeagueDetail.mockReturnValue({
       data: { ...BASE_LEAGUE, status: 'finished' },
@@ -211,11 +230,10 @@ describe('LeagueDetailPage', () => {
     mockLeagueMatches.mockReturnValue({ data: [] });
     render(<LeagueDetailPage />);
     expect(screen.getByText('Todavía no hay partidos')).toBeInTheDocument();
-    expect(screen.getByText(/cargar partidos desde reserva o manualmente/i)).toBeInTheDocument();
-    expect(screen.getByText('Cargar primer resultado')).toBeInTheDocument();
+    expect(screen.getByText(/Cargá un partido jugado/i)).toBeInTheDocument();
   });
 
-  it('hides "Cargar primer resultado" in empty state when finished', () => {
+  it('shows empty state and "Cargar partido" button when finished', () => {
     mockLeagueDetail.mockReturnValue({
       data: { ...BASE_LEAGUE, status: 'finished' },
       isLoading: false,
@@ -224,7 +242,8 @@ describe('LeagueDetailPage', () => {
     mockLeagueMatches.mockReturnValue({ data: [] });
     render(<LeagueDetailPage />);
     expect(screen.getByText('Todavía no hay partidos')).toBeInTheDocument();
-    expect(screen.queryByText('Cargar primer resultado')).not.toBeInTheDocument();
+    // "Cargar partido" button should be visible but disabled for finished leagues
+    expect(screen.getByRole('button', { name: /Cargar partido/i })).toBeDisabled();
   });
 
   it('renders match cards when matches exist', () => {

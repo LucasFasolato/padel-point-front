@@ -15,7 +15,6 @@ export default function CompetitivePage() {
   const {
     data: onboarding,
     isLoading: loadingOnboarding,
-    isError: onboardingError,
   } = useOnboardingState();
   const {
     data: profile,
@@ -33,7 +32,7 @@ export default function CompetitivePage() {
     );
   }
 
-  if (onboardingError || profileError) {
+  if (profileError) {
     return (
       <>
         <PublicTopBar title="Competitivo" backHref="/" />
@@ -76,6 +75,7 @@ export default function CompetitivePage() {
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
+              <p className="text-sm font-semibold text-slate-900">{profile.displayName}</p>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Current ELO
               </p>
@@ -122,7 +122,9 @@ export default function CompetitivePage() {
                   className={
                     result === 'W'
                       ? 'inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md bg-emerald-100 px-3 text-sm font-semibold text-emerald-800'
-                      : 'inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md bg-rose-100 px-3 text-sm font-semibold text-rose-800'
+                      : result === 'D'
+                        ? 'inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md bg-amber-100 px-3 text-sm font-semibold text-amber-800'
+                        : 'inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md bg-rose-100 px-3 text-sm font-semibold text-rose-800'
                   }
                 >
                   {result}
@@ -148,7 +150,7 @@ export default function CompetitivePage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push('/competitive/competitive-matches')}
+                onClick={() => router.push('/competitive-matches')}
               >
                 Ver todos
               </Button>
@@ -179,7 +181,7 @@ export default function CompetitivePage() {
                 <MatchCard
                   key={match.id}
                   match={match}
-                  onClick={() => router.push(`/competitive/competitive-matches/${match.id}`)}
+                  onClick={() => router.push(`/matches/${match.id}`)}
                 />
               ))}
             </div>
@@ -275,7 +277,7 @@ function CompetitiveEmptyState() {
         <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-blue-100">
           <span className="text-4xl">T</span>
         </div>
-        <h1 className="mb-4 text-2xl font-bold text-slate-900">Activa tu perfil competitivo</h1>
+        <h1 className="mb-4 text-2xl font-bold text-slate-900">Activá tu perfil competitivo</h1>
         <p className="text-slate-600">Segui tu progreso, desafia amigos y mejora tu juego</p>
       </div>
 

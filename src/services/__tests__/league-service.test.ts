@@ -84,4 +84,64 @@ describe('leagueService', () => {
     await leagueService.declineInvite('tok-123');
     expect(mockedApi.post).toHaveBeenCalledWith('/leagues/invites/tok-123/decline');
   });
+
+  describe('getActivity', () => {
+    const makeEvent = (overrides = {}) => ({
+      id: 'ev-1',
+      leagueId: LEAGUE_ID,
+      type: 'member_joined',
+      actorId: 'u-1',
+      actorName: 'Juan',
+      payload: {},
+      createdAt: '2026-01-01T00:00:00Z',
+      ...overrides,
+    });
+
+    it('calls GET /leagues/:id/activity with no params', async () => {
+      mockedApi.get.mockResolvedValue({ data: { items: [], nextCursor: null } });
+      const result = await leagueService.getActivity(LEAGUE_ID);
+      expect(mockedApi.get).toHaveBeenCalledWith(`/leagues/${LEAGUE_ID}/activity`, { params: {} });
+      expect(result).toEqual({ items: [], nextCursor: null });
+    });
+
+    it('passes limit and cursor as query params', async () => {
+      mockedApi.get.mockResolvedValue({ data: { items: [], nextCursor: 'c-next' } });
+      await leagueService.getActivity(LEAGUE_ID, { limit: 20, cursor: 'c-abc' });
+      expect(mockedApi.get).toHaveBeenCalledWith(`/leagues/${LEAGUE_ID}/activity`, {
+        params: { limit: 20, cursor: 'c-abc' },
+      });
+    });
+
+    it('normalises items in response', async () => {
+      mockedApi.get.mockResolvedValue({ data: { items: [makeEvent()], nextCursor: 'c-next' } });
+      const result = await leagueService.getActivity(LEAGUE_ID);
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]).toMatchObject({
+        id: 'ev-1',
+        leagueId: LEAGUE_ID,
+        type: 'member_joined',
+        actorName: 'Juan',
+      });
+      expect(result.nextCursor).toBe('c-next');
+    });
+
+    it('unwraps data.data fallback when items key is absent', async () => {
+      mockedApi.get.mockResolvedValue({ data: { data: [makeEvent()], nextCursor: null } });
+      const result = await leagueService.getActivity(LEAGUE_ID);
+      expect(result.items).toHaveLength(1);
+    });
+
+    it('normalises null actorName when actorName is empty string', async () => {
+      mockedApi.get.mockResolvedValue({
+        data: { items: [makeEvent({ actorName: '' })], nextCursor: null },
+      });
+      const result = await leagueService.getActivity(LEAGUE_ID);
+      expect(result.items[0].actorName).toBeNull();
+    });
+
+    it('throws before API call when leagueId is invalid', async () => {
+      await expect(leagueService.getActivity('not-a-uuid')).rejects.toThrow('Invalid leagueId');
+      expect(mockedApi.get).not.toHaveBeenCalled();
+    });
+  });
 });

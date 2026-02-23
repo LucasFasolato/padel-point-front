@@ -21,6 +21,7 @@ import {
   LeagueMatchModeSheet,
   LeagueMatchCreateModal,
   LeagueMatchResultModal,
+  LeagueActivityFeed,
 } from '@/app/components/leagues';
 import {
   useLeagueDetail,
@@ -36,6 +37,7 @@ import {
   useCreateLeagueMatch,
   useCaptureLeagueMatchResult,
 } from '@/hooks/use-leagues';
+import { useLeagueActivitySocket } from '@/hooks/use-notification-socket';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDateRange, getModeLabel } from '@/lib/league-utils';
 import { getSingleParam, isUuid } from '@/lib/id-utils';
@@ -46,13 +48,14 @@ const ROLE_LABELS: Record<LeagueMemberRole, string> = {
   owner: 'Owner',
 };
 
-type LeagueDetailTab = 'tabla' | 'partidos' | 'miembros' | 'ajustes';
+type LeagueDetailTab = 'tabla' | 'partidos' | 'actividad' | 'miembros' | 'ajustes';
 
 function normalizeLeagueTab(rawTab: string | null | undefined): LeagueDetailTab {
   const tab = (rawTab ?? '').toLowerCase();
 
   if (tab === 'tabla' || tab === 'standings') return 'tabla';
   if (tab === 'partidos' || tab === 'matches') return 'partidos';
+  if (tab === 'actividad' || tab === 'activity') return 'actividad';
   if (tab === 'miembros' || tab === 'members') return 'miembros';
   if (tab === 'ajustes' || tab === 'settings') return 'ajustes';
 
@@ -117,6 +120,9 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
     normalizeLeagueTab(initialTabParam)
   );
 
+  // Subscribe to league realtime activity events while on this page
+  useLeagueActivitySocket(leagueId);
+
   useEffect(() => {
     setActiveTab(normalizeLeagueTab(initialTabParam));
   }, [initialTabParam]);
@@ -163,7 +169,9 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
   const recordMatchesBlockedMessage =
     typeof recordMatchesReasonRaw === 'string' && recordMatchesReasonRaw.trim().length > 0
       ? recordMatchesReasonRaw.trim()
-      : 'Invita al menos 1 jugador más.';
+      : isUpcoming
+        ? 'La liga aún no está activa.'
+        : 'Invita al menos 1 jugador más.';
   const matchList = Array.isArray(matches) ? matches : [];
   const standingsRows = standingsData?.rows ?? league.standings ?? [];
   const showStandingsLoading = standingsLoading && standingsRows.length === 0;
@@ -244,11 +252,12 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="w-full grid grid-cols-4">
-            <TabsTrigger value="tabla">Tabla</TabsTrigger>
-            <TabsTrigger value="partidos">Partidos</TabsTrigger>
-            <TabsTrigger value="miembros">Miembros</TabsTrigger>
-            <TabsTrigger value="ajustes">Ajustes</TabsTrigger>
+          <TabsList className="no-scrollbar grid w-full grid-cols-5 overflow-x-auto">
+            <TabsTrigger value="tabla" className="text-xs">Tabla</TabsTrigger>
+            <TabsTrigger value="partidos" className="text-xs">Partidos</TabsTrigger>
+            <TabsTrigger value="actividad" className="text-xs">Actividad</TabsTrigger>
+            <TabsTrigger value="miembros" className="text-xs">Miembros</TabsTrigger>
+            <TabsTrigger value="ajustes" className="text-xs">Ajustes</TabsTrigger>
           </TabsList>
 
           {/* Tabla tab */}
@@ -365,6 +374,14 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
                 currentUserId={user?.userId}
               />
             )}
+          </TabsContent>
+
+          {/* Actividad tab */}
+          <TabsContent value="actividad">
+            <LeagueActivityFeed
+              leagueId={leagueId}
+              onLoadResult={isActive ? () => setShowReportMethodSheet(true) : undefined}
+            />
           </TabsContent>
 
           {/* Miembros tab */}
