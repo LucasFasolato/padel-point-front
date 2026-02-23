@@ -124,6 +124,20 @@ describe('handleNewNotification', () => {
     expect(arg.predicate({ queryKey: ['competitive', 'elo-history', { limit: 20 }] })).toBe(true);
     expect(arg.predicate({ queryKey: ['competitive', 'onboarding'] })).toBe(false);
   });
+
+  it('invalidates challenge inbox queries on CHALLENGE_RECEIVED using a prefix predicate', () => {
+    const qc = makeMockQueryClient();
+    const notification = makeNotif({ type: 'CHALLENGE_RECEIVED' });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handleNewNotification(qc as any, notification);
+
+    expect(qc.invalidateQueries).toHaveBeenCalledTimes(1);
+    const [arg] = vi.mocked(qc.invalidateQueries).mock.calls[0];
+    expect(arg).toHaveProperty('predicate');
+    expect(arg.predicate({ queryKey: ['challenges', 'inbox', { limit: 3 }] })).toBe(true);
+    expect(arg.predicate({ queryKey: ['challenges', 'outbox'] })).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------

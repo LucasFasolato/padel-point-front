@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useCompetitiveProfile, useEloHistory, useOnboardingState } from '@/hooks/use-competitive-profile';
+import { useChallengeActions, useChallengesInbox } from '@/hooks/use-challenges';
 import { useMyMatches } from '@/hooks/use-matches';
 import { CategoryBadge } from '@/app/components/competitive/category-badge';
 import { EloChart } from '@/app/components/competitive/elo-chart';
@@ -14,11 +15,19 @@ import { COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT } from '@/lib/competitive-constan
 import { formatEloChange, getEloHistoryReasonLabel } from '@/lib/competitive-utils';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 import type { EloHistoryPoint } from '@/types/competitive';
+import type { Challenge } from '@/types/competitive';
+
+const COMPETITIVE_PENDING_CHALLENGES_LIMIT = 3;
 
 export default function CompetitivePage() {
   const router = useRouter();
   const [isProgressChartOpen, setIsProgressChartOpen] = useState(true);
+  const [hiddenChallengeIds, setHiddenChallengeIds] = useState<string[]>([]);
+  const [challengeActionError, setChallengeActionError] = useState<string | null>(null);
+  const [actingChallengeId, setActingChallengeId] = useState<string | null>(null);
   const {
     data: onboarding,
     isLoading: loadingOnboarding,
@@ -29,6 +38,8 @@ export default function CompetitivePage() {
     isError: profileError,
   } = useCompetitiveProfile();
   const eloHistoryQuery = useEloHistory(COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT);
+  const inboxQuery = useChallengesInbox(COMPETITIVE_PENDING_CHALLENGES_LIMIT);
+  const { acceptDirect, rejectDirect } = useChallengeActions();
   const { data: matches, isLoading: loadingMatches, error: matchesError } = useMyMatches();
 
   if (loadingOnboarding || loadingProfile) {
@@ -69,6 +80,10 @@ export default function CompetitivePage() {
   }
 
   const confirmedMatches = matches?.filter((m) => m.status === 'confirmed').slice(0, 5) || [];
+  const pendingChallenges = (inboxQuery.data ?? []).filter(
+    (challenge) =>
+      challenge.status === 'pending' && !hiddenChallengeIds.includes(challenge.id)
+  );
   const eloHistory = eloHistoryQuery.data?.items ?? [];
   const latestEloPoint = getLatestEloPoint(eloHistory);
   const streakCurrent = profile.winStreakCurrent ?? 0;
@@ -76,6 +91,25 @@ export default function CompetitivePage() {
   const last10 = Array.isArray(profile.last10) ? profile.last10.slice(0, 10) : [];
   const eloDelta30d = profile.eloDelta30d ?? 0;
   const peakElo = profile.peakElo ?? profile.elo;
+
+  const handleChallengeAction = async (action: 'accept' | 'reject', challengeId: string) => {
+    setChallengeActionError(null);
+    setActingChallengeId(challengeId);
+    setHiddenChallengeIds((prev) => (prev.includes(challengeId) ? prev : [...prev, challengeId]));
+
+    try {
+      if (action === 'accept') {
+        await acceptDirect.mutateAsync(challengeId);
+      } else {
+        await rejectDirect.mutateAsync(challengeId);
+      }
+    } catch {
+      setHiddenChallengeIds((prev) => prev.filter((id) => id !== challengeId));
+      setChallengeActionError('No pudimos actualizar el desafío. Reintentá.');
+    } finally {
+      setActingChallengeId(null);
+    }
+  };
 
   return (
     <>
@@ -228,6 +262,41 @@ export default function CompetitivePage() {
         </div>
 
         <div>
+          {(inboxQuery.isLoading || pendingChallenges.length > 0) && (
+            <section className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="mb-4 text-lg font-semibold text-slate-900">Desafíos pendientes</h2>
+
+              {challengeActionError && (
+                <p
+                  role="alert"
+                  className="mb-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                >
+                  {challengeActionError}
+                </p>
+              )}
+
+              {inboxQuery.isLoading ? (
+                <div className="space-y-3">
+                  {[1, 2].map((i) => (
+                    <Skeleton key={i} className="h-28 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingChallenges.map((challenge) => (
+                    <PendingChallengeInboxCard
+                      key={challenge.id}
+                      challenge={challenge}
+                      isLoading={actingChallengeId === challenge.id}
+                      onAccept={() => handleChallengeAction('accept', challenge.id)}
+                      onReject={() => handleChallengeAction('reject', challenge.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">Ultimos partidos</h2>
             {confirmedMatches.length > 0 && (
@@ -296,6 +365,60 @@ export default function CompetitivePage() {
         </div>
       </div>
     </>
+  );
+}
+
+function PendingChallengeInboxCard({
+  challenge,
+  isLoading,
+  onAccept,
+  onReject,
+}: {
+  challenge: Challenge;
+  isLoading?: boolean;
+  onAccept: () => void;
+  onReject: () => void;
+}) {
+  const challengerName = challenge.teamA?.p1?.displayName || 'Un jugador';
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">{challengerName}</p>
+          <p className="text-sm text-slate-600">Te desafió a un partido</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {formatDistanceToNow(new Date(challenge.createdAt), {
+              addSuffix: true,
+              locale: es,
+            })}
+          </p>
+        </div>
+
+        <div className="flex min-w-[176px] shrink-0 gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="min-h-[44px] flex-1"
+            disabled={isLoading}
+            onClick={onReject}
+          >
+            Rechazar
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="primary"
+            className="min-h-[44px] flex-1"
+            disabled={isLoading}
+            onClick={onAccept}
+          >
+            Aceptar
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 

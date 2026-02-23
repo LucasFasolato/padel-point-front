@@ -20,6 +20,12 @@ const COMPETITIVE_RANKING_EVENT_NAMES = new Set([
   'competitive:ranking-moved',
 ]);
 
+const CHALLENGE_UPDATE_EVENT_NAMES = new Set([
+  'challenge:updated',
+  'challenge:new',
+  'challenge:received',
+]);
+
 export interface NotificationSocketOptions {
   url: string;
   token: string;
@@ -159,6 +165,10 @@ export class NotificationSocket {
     if (parsed.event && COMPETITIVE_RANKING_EVENT_NAMES.has(parsed.event)) {
       invalidateCompetitiveRatingQueries(this.options.queryClient);
     }
+
+    if (parsed.event && CHALLENGE_UPDATE_EVENT_NAMES.has(parsed.event)) {
+      invalidateChallengeInboxQueries(this.options.queryClient);
+    }
   }
 
   private onNewNotification(notification: AppNotification): void {
@@ -190,6 +200,9 @@ export class NotificationSocket {
     const type = normalizeNotificationType(notification.type);
     if (type && shouldInvalidateCompetitiveRanking(type)) {
       invalidateCompetitiveRatingQueries(queryClient);
+    }
+    if (type && shouldInvalidateChallengesInbox(type)) {
+      invalidateChallengeInboxQueries(queryClient);
     }
     if (type && TOAST_WORTHY_TYPES.includes(type)) {
       toastManager.info(notification.title, {
@@ -233,6 +246,10 @@ export function handleNewNotification(
     invalidateCompetitiveRatingQueries(queryClient);
   }
 
+  if (normalizedType && shouldInvalidateChallengesInbox(normalizedType)) {
+    invalidateChallengeInboxQueries(queryClient);
+  }
+
   return true;
 }
 
@@ -250,6 +267,19 @@ export function invalidateCompetitiveRatingQueries(queryClient: QueryClient): vo
       (query.queryKey[1] === 'ranking' ||
         query.queryKey[1] === 'profile' ||
         query.queryKey[1] === 'elo-history'),
+  });
+}
+
+export function shouldInvalidateChallengesInbox(type: string): boolean {
+  return type === NOTIFICATION_TYPES.CHALLENGE_RECEIVED;
+}
+
+export function invalidateChallengeInboxQueries(queryClient: QueryClient): void {
+  queryClient.invalidateQueries({
+    predicate: (query) =>
+      Array.isArray(query.queryKey) &&
+      query.queryKey[0] === 'challenges' &&
+      query.queryKey[1] === 'inbox',
   });
 }
 
