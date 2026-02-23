@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { League, LeagueMatch } from '@/types/leagues';
@@ -7,17 +7,18 @@ import type { League, LeagueMatch } from '@/types/leagues';
 const pushMock = vi.fn();
 const VALID_UUID = '11111111-1111-4111-8111-111111111111';
 let paramsId: string | undefined = VALID_UUID;
+let searchParamsRaw = '';
 
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: paramsId }),
   useRouter: () => ({ push: pushMock }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(searchParamsRaw),
 }));
 
 // Mock auth store
+let authState = { user: { userId: 'u-me' }, token: 'token-1' };
 vi.mock('@/store/auth-store', () => ({
-  useAuthStore: (selector: (s: { user: { userId: string } }) => unknown) =>
-    selector({ user: { userId: 'u-me' } }),
+  useAuthStore: (selector: (s: typeof authState) => unknown) => selector(authState),
 }));
 
 // Mock hooks
@@ -36,6 +37,9 @@ const useUpdateLeagueSettingsMock = vi.fn(() => ({ mutate: mockUpdateSettings, i
 const useUpdateMemberRoleMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
 const useCreateLeagueMatchMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
 const useCaptureLeagueMatchResultMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
+const useEnableLeagueShareMock = vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false }));
+const usePublicLeagueStandingsMock = vi.fn(() => ({ data: undefined, isLoading: false, error: null, refetch: vi.fn() }));
+const enableShareMutateAsyncMock = vi.fn();
 
 vi.mock('@/hooks/use-leagues', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/use-leagues')>();
@@ -53,6 +57,8 @@ vi.mock('@/hooks/use-leagues', async (importOriginal) => {
     useUpdateMemberRole: (id: string) => useUpdateMemberRoleMock(id),
     useCreateLeagueMatch: (id: string) => useCreateLeagueMatchMock(id),
     useCaptureLeagueMatchResult: (id: string) => useCaptureLeagueMatchResultMock(id),
+    useEnableLeagueShare: (id: string) => useEnableLeagueShareMock(id),
+    usePublicLeagueStandings: (id: string, token: string) => usePublicLeagueStandingsMock(id, token),
   };
 });
 
@@ -65,6 +71,7 @@ vi.mock('@/app/components/leagues', async (importOriginal) => {
       <span data-testid="status-badge">{status}</span>
     ),
     StandingsTable: () => <div data-testid="standings-table" />,
+    LeagueShareCard: () => <div data-testid="league-share-card" />,
     InviteModal: () => null,
     ReportMethodSheet: () => null,
     ReportFromReservationModal: () => null,
@@ -120,7 +127,22 @@ const BASE_LEAGUE: League = {
 beforeEach(() => {
   vi.clearAllMocks();
   paramsId = VALID_UUID;
+  searchParamsRaw = '';
+  authState = { user: { userId: 'u-me' }, token: 'token-1' };
   mockLeagueMatches.mockReturnValue({ data: [] });
+  useEnableLeagueShareMock.mockReturnValue({
+    mutateAsync: enableShareMutateAsyncMock.mockResolvedValue({
+      shareToken: 'share-123',
+      shareUrlPath: `/leagues/${VALID_UUID}?share=1&token=share-123`,
+    }),
+    isPending: false,
+  });
+  usePublicLeagueStandingsMock.mockReturnValue({
+    data: undefined,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  });
 });
 
 describe('LeagueDetailPage', () => {
@@ -135,6 +157,35 @@ describe('LeagueDetailPage', () => {
     expect(screen.getByTestId('tab-partidos')).toBeInTheDocument();
     expect(screen.getByTestId('tab-miembros')).toBeInTheDocument();
     expect(screen.getByTestId('tab-ajustes')).toBeInTheDocument();
+  });
+
+  it('clicking share enables share link and copies to clipboard when native share is unavailable', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    Object.defineProperty(navigator, 'share', {
+      value: undefined,
+      configurable: true,
+    });
+
+    mockLeagueDetail.mockReturnValue({
+      data: { ...BASE_LEAGUE, mode: 'open' },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<LeagueDetailPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Compartir/i }));
+
+    await waitFor(() => {
+      expect(enableShareMutateAsyncMock).toHaveBeenCalled();
+    });
+    expect(writeText).toHaveBeenCalledWith(
+      expect.stringContaining(`/leagues/${VALID_UUID}?share=1&token=share-123`)
+    );
   });
 
   it('renders OPEN league with "Liga abierta" and helper text', () => {
@@ -295,5 +346,45 @@ describe('LeagueDetailPage', () => {
     expect(useCreateInvitesMock).not.toHaveBeenCalled();
     expect(useReportFromReservationMock).not.toHaveBeenCalled();
     expect(useReportManualMock).not.toHaveBeenCalled();
+  });
+
+  it('uses public share standings endpoint and renders share view when share token is present without auth', () => {
+    searchParamsRaw = 'share=1&token=token-public';
+    authState = { user: { userId: 'u-me' }, token: '' };
+    usePublicLeagueStandingsMock.mockReturnValue({
+      data: {
+        leagueName: 'Liga Compartida',
+        rows: [{ userId: 'u-1', displayName: 'Juan', position: 1, points: 10, wins: 3, losses: 0, draws: 1 }],
+        movement: {},
+        computedAt: '2026-02-23T10:00:00.000Z',
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<LeagueDetailPage />);
+
+    expect(usePublicLeagueStandingsMock).toHaveBeenCalledWith(VALID_UUID, 'token-public');
+    expect(screen.getByText('Liga Compartida')).toBeInTheDocument();
+    expect(screen.getByTestId('league-share-card')).toBeInTheDocument();
+    expect(screen.getByTestId('standings-table')).toBeInTheDocument();
+    expect(useLeagueDetailMock).not.toHaveBeenCalled();
+  });
+
+  it('shows error state when public share token is invalid', () => {
+    searchParamsRaw = 'share=1&token=bad-token';
+    authState = { user: { userId: 'u-me' }, token: '' };
+    usePublicLeagueStandingsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error('Forbidden'),
+      refetch: vi.fn(),
+    });
+
+    render(<LeagueDetailPage />);
+
+    expect(screen.getByText('No pudimos abrir esta tabla compartida.')).toBeInTheDocument();
+    expect(screen.getByText('El enlace puede estar vencido o ser inválido.')).toBeInTheDocument();
   });
 });

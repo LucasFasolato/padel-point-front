@@ -30,6 +30,7 @@ const KEYS = {
   eligibleReservations: (id: string) => ['leagues', 'eligible-reservations', id] as const,
   matches: (id: string) => ['leagues', 'matches', id] as const,
   settings: (id: string) => ['leagues', 'settings', id] as const,
+  shareStandings: (id: string, token: string) => ['leagues', 'standings-share', id, token] as const,
   /** activity key includes limit so different page sizes never collide */
   activity: (id: string, limit: number) => ['leagues', 'activity', id, limit] as const,
   /** prefix-only key for setQueriesData predicates (matches any limit) */
@@ -85,6 +86,17 @@ export function useLeagueStandings(id: string) {
   });
 }
 
+/** Fetch read-only public standings using a share token (works without auth). */
+export function usePublicLeagueStandings(leagueId: string, token: string) {
+  const enabled = isUuid(leagueId) && token.trim().length > 0;
+  return useQuery({
+    queryKey: KEYS.shareStandings(leagueId, token),
+    queryFn: () => leagueService.getPublicStandingsByShareToken(leagueId, token),
+    enabled,
+    retry: false,
+  });
+}
+
 /** Create a new league. */
 export function useCreateLeague() {
   const qc = useQueryClient();
@@ -98,6 +110,20 @@ export function useCreateLeague() {
     onError: () => {
       toast.error('No se pudo crear la liga. Intentá de nuevo.');
     },
+  });
+}
+
+/** Enables tokenized standings sharing for a league. */
+export function useEnableLeagueShare(leagueId: string) {
+  return useMutation({
+    mutationFn: () => leagueService.enableLeagueShare(leagueId),
+  });
+}
+
+/** Disables tokenized standings sharing for a league. */
+export function useDisableLeagueShare(leagueId: string) {
+  return useMutation({
+    mutationFn: () => leagueService.disableLeagueShare(leagueId),
   });
 }
 

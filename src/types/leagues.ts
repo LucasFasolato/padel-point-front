@@ -29,6 +29,19 @@ export interface LeagueStandingsResponse {
   computedAt?: string;
 }
 
+export interface PublicLeagueStandingsShareResponse extends LeagueStandingsResponse {
+  leagueName: string;
+}
+
+export interface LeagueShareEnableResponse {
+  shareToken: string;
+  shareUrlPath: string;
+}
+
+export interface LeagueShareDisableResponse {
+  ok: boolean;
+}
+
 export interface League {
   id: string;
   name: string;

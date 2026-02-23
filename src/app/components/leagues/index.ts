@@ -1,6 +1,7 @@
 export { LeagueCard } from './league-card';
 export { LeagueStatusBadge } from './league-status-badge';
 export { StandingsTable } from './standings-table';
+export { LeagueShareCard } from './league-share-card';
 export { InviteModal } from './invite-modal';
 export { ReportFromReservationModal } from './report-from-reservation-modal';
 export { ReportManualModal } from './report-manual-modal';

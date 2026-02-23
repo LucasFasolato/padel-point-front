@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Users, UserPlus, Calendar, Trophy, Info, Plus } from 'lucide-react';
+import { Users, UserPlus, Calendar, Trophy, Info, Plus, Share2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
@@ -11,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/app/components/ui/ta
 import {
   LeagueStatusBadge,
   StandingsTable,
+  LeagueShareCard,
   InviteModal,
   ReportFromReservationModal,
   ReportManualModal,
@@ -36,6 +38,8 @@ import {
   useUpdateMemberRole,
   useCreateLeagueMatch,
   useCaptureLeagueMatchResult,
+  useEnableLeagueShare,
+  usePublicLeagueStandings,
 } from '@/hooks/use-leagues';
 import { useLeagueActivitySocket } from '@/hooks/use-notification-socket';
 import { useAuthStore } from '@/store/auth-store';
@@ -71,12 +75,24 @@ function isForbiddenOrNotFound(error: unknown): boolean {
 export default function LeagueDetailPage() {
   const params = useParams<{ id?: string | string[] }>();
   const searchParams = useSearchParams();
+  const authToken = useAuthStore((s) => s.token);
   const rawId = getSingleParam(params?.id);
   if (!isUuid(rawId)) {
     return <LeagueNotFoundState />;
   }
 
   const tabParam = searchParams.get('tab');
+  const isShareMode = searchParams.get('share') === '1';
+  const shareToken = searchParams.get('token');
+
+  if (isShareMode && !authToken) {
+    return (
+      <LeaguePublicShareView
+        leagueId={rawId}
+        token={shareToken ?? ''}
+      />
+    );
+  }
 
   return <LeagueDetailContent leagueId={rawId} initialTabParam={tabParam} />;
 }
@@ -89,6 +105,7 @@ interface LeagueDetailContentProps {
 function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentProps) {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const enableLeagueShare = useEnableLeagueShare(leagueId);
   const { data: league, isLoading, error } = useLeagueDetail(leagueId);
   const { data: standingsData, isLoading: standingsLoading } = useLeagueStandings(leagueId);
   const inviteMutation = useCreateInvites(leagueId);
@@ -116,6 +133,7 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
   const [showMatchResultModal, setShowMatchResultModal] = useState(false);
   const [selectedScheduledMatch, setSelectedScheduledMatch] = useState<LeagueMatch | null>(null);
   const [partidosView, setPartidosView] = useState<'matches' | 'challenges'>('matches');
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<LeagueDetailTab>(() =>
     normalizeLeagueTab(initialTabParam)
   );
@@ -180,6 +198,44 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
   const currentMember = league.members?.find((m) => m.userId === user?.userId);
   const userRole = (currentMember?.role ?? 'member').toLowerCase() as LeagueMemberRole;
   const isReadOnly = userRole === 'member';
+
+  const handleShareStandings = async () => {
+    try {
+      const resolvedUrl = await getOrCreateLeagueShareUrl({
+        leagueId,
+        leagueName: league.name,
+        cachedUrl: shareUrl,
+        enable: () => enableLeagueShare.mutateAsync(),
+        onCache: setShareUrl,
+      });
+
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        try {
+          await navigator.share({
+            title: `Tabla de ${league.name}`,
+            text: `Mirá la tabla de ${league.name} en PadelPoint`,
+            url: resolvedUrl,
+          });
+          return;
+        } catch (err) {
+          if (err instanceof DOMException && err.name === 'AbortError') {
+            return;
+          }
+        }
+      }
+
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(resolvedUrl);
+        toast.success('Enlace copiado');
+        return;
+      }
+
+      toast.error('No pudimos compartir la tabla.');
+    } catch {
+      toast.error('No pudimos generar el enlace para compartir.');
+    }
+  };
+
   return (
     <>
       <PublicTopBar title={league.name} backHref="/leagues" />
@@ -189,10 +245,23 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
         <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 text-white shadow-lg">
           <div className="flex items-start justify-between mb-3">
             <h1 className="text-xl font-bold pr-2">{league.name}</h1>
-            <LeagueStatusBadge
-              status={league.status}
-              className="bg-white/20 text-white shrink-0"
-            />
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="min-h-[40px] border-white/30 bg-white/10 px-3 text-white hover:bg-white/20 hover:text-white"
+                onClick={() => void handleShareStandings()}
+                disabled={enableLeagueShare.isPending}
+              >
+                <Share2 size={16} />
+                Compartir
+              </Button>
+              <LeagueStatusBadge
+                status={league.status}
+                className="bg-white/20 text-white shrink-0"
+              />
+            </div>
           </div>
 
           {/* Mode label */}
@@ -262,13 +331,21 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
 
           {/* Tabla tab */}
           <TabsContent value="tabla">
-            <StandingsTable
-              standings={standingsRows}
-              movement={standingsData?.movement}
-              computedAt={standingsData?.computedAt}
-              isLoading={showStandingsLoading}
-              currentUserId={user?.userId}
-            />
+            <div className="space-y-3">
+              <LeagueShareCard
+                leagueName={league.name}
+                standings={standingsRows}
+                movement={standingsData?.movement}
+                computedAt={standingsData?.computedAt}
+              />
+              <StandingsTable
+                standings={standingsRows}
+                movement={standingsData?.movement}
+                computedAt={standingsData?.computedAt}
+                isLoading={showStandingsLoading}
+                currentUserId={user?.userId}
+              />
+            </div>
           </TabsContent>
 
           {/* Partidos tab */}
@@ -594,6 +671,110 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
   );
 }
 
+async function getOrCreateLeagueShareUrl(params: {
+  leagueId: string;
+  leagueName: string;
+  cachedUrl: string | null;
+  enable: () => Promise<{ shareToken: string; shareUrlPath: string }>;
+  onCache: (url: string) => void;
+}): Promise<string> {
+  if (params.cachedUrl) return params.cachedUrl;
+
+  const response = await params.enable();
+  const resolved = resolveShareUrl(response.shareUrlPath, params.leagueId, response.shareToken);
+  params.onCache(resolved);
+  return resolved;
+}
+
+function resolveShareUrl(shareUrlPath: string, leagueId: string, shareToken: string): string {
+  const fallbackPath = `/leagues/${leagueId}?share=1&token=${encodeURIComponent(shareToken)}`;
+  const rawPath = shareUrlPath || fallbackPath;
+  if (typeof window === 'undefined') return rawPath;
+  return new URL(rawPath, window.location.origin).toString();
+}
+
+function LeaguePublicShareView({ leagueId, token }: { leagueId: string; token: string }) {
+  const router = useRouter();
+  const isTokenMissing = !token || token.trim().length === 0;
+  const { data, isLoading, error, refetch } = usePublicLeagueStandings(leagueId, token);
+
+  if (isTokenMissing) {
+    return (
+      <>
+        <PublicTopBar title="Tabla compartida" backHref="/leagues" />
+        <div className="px-4 py-12">
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-center">
+            <p className="text-sm font-medium text-rose-800">Enlace compartido inválido.</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => router.push('/leagues')}>
+              Volver
+            </Button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <>
+        <PublicTopBar title="Tabla compartida" backHref="/leagues" />
+        <div className="px-4 py-6 space-y-4">
+          <Skeleton className="h-36 w-full rounded-xl" />
+          <Skeleton className="h-56 w-full rounded-xl" />
+        </div>
+      </>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <>
+        <PublicTopBar title="Tabla compartida" backHref="/leagues" />
+        <div className="px-4 py-12">
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-center">
+            <p className="text-sm font-medium text-rose-800">
+              No pudimos abrir esta tabla compartida.
+            </p>
+            <p className="mt-1 text-xs text-rose-700">El enlace puede estar vencido o ser inválido.</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => void refetch()}>
+              Reintentar
+            </Button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <PublicTopBar title="Tabla compartida" backHref="/leagues" />
+      <div className="relative px-4 py-6 space-y-4">
+        <div className="pointer-events-none absolute right-4 top-4 text-xs font-bold uppercase tracking-[0.25em] text-slate-200">
+          PADELPOINT
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">PadelPoint</p>
+          <h1 className="mt-1 text-xl font-bold text-slate-900">{data.leagueName}</h1>
+          <p className="mt-1 text-sm text-slate-600">Vista compartida de la tabla de posiciones</p>
+        </div>
+
+        <LeagueShareCard
+          leagueName={data.leagueName}
+          standings={data.rows}
+          movement={data.movement}
+          computedAt={data.computedAt}
+        />
+
+        <StandingsTable
+          standings={data.rows}
+          movement={data.movement}
+          computedAt={data.computedAt}
+        />
+      </div>
+    </>
+  );
+}
+
 function DetailSkeleton() {
   return (
     <div className="px-4 py-6 space-y-6">
@@ -653,4 +834,3 @@ function LeagueNotFoundState() {
     </>
   );
 }
-

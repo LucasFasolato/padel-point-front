@@ -17,6 +17,7 @@ import type {
   LeagueSettings,
   LeagueMemberRole,
   LeagueStandingsResponse,
+  PublicLeagueStandingsShareResponse,
   StandingsMovementMap,
   CreateLeagueChallengePayload,
   LeagueChallenge,
@@ -25,6 +26,8 @@ import type {
   LeagueInviteDispatchResult,
   ActivityEventView,
   ActivityResponse,
+  LeagueShareEnableResponse,
+  LeagueShareDisableResponse,
 } from '@/types/leagues';
 
 /** Normalise status + provide displayName fallbacks for members/standings. */
@@ -218,6 +221,42 @@ function normalizeActivityResponse(raw: unknown): ActivityResponse {
   };
 }
 
+function normalizeLeagueStandingsResponse(raw: unknown): LeagueStandingsResponse {
+  const data = (raw ?? {}) as Record<string, unknown>;
+
+  const rowsRaw = (data.rows ?? data.standings ?? []) as League['standings'];
+  const rows = Array.isArray(rowsRaw)
+    ? rowsRaw.map((s) => ({
+        ...s,
+        displayName: s.displayName || 'Jugador',
+      }))
+    : [];
+
+  const movement = normalizeStandingsMovement(data.movement ?? data.movementMap);
+  const computedAt = typeof data.computedAt === 'string' ? data.computedAt : undefined;
+
+  return { rows, movement, computedAt };
+}
+
+function normalizePublicLeagueStandingsShareResponse(raw: unknown): PublicLeagueStandingsShareResponse {
+  const data = (raw ?? {}) as Record<string, unknown>;
+  const standings = normalizeLeagueStandingsResponse(raw);
+
+  const leagueName =
+    typeof data.leagueName === 'string'
+      ? data.leagueName
+      : typeof data.name === 'string'
+        ? data.name
+        : typeof data.league === 'object' && data.league && typeof (data.league as Record<string, unknown>).name === 'string'
+          ? String((data.league as Record<string, unknown>).name)
+          : 'Liga';
+
+  return {
+    leagueName,
+    ...standings,
+  };
+}
+
 function assertValidLeagueId(leagueId: string): string {
   if (!isUuid(leagueId)) {
     throw new Error('Invalid leagueId');
@@ -315,19 +354,38 @@ export const leagueService = {
   async getStandings(leagueId: string): Promise<LeagueStandingsResponse> {
     const validLeagueId = assertValidLeagueId(leagueId);
     const { data } = await api.get(`/leagues/${validLeagueId}/standings`);
+    return normalizeLeagueStandingsResponse(data);
+  },
 
-    const rowsRaw = (data?.rows ?? data?.standings ?? []) as League['standings'];
-    const rows = Array.isArray(rowsRaw)
-      ? rowsRaw.map((s) => ({
-          ...s,
-          displayName: s.displayName || 'Jugador',
-        }))
-      : [];
+  /** Enable public sharing of league standings. */
+  async enableLeagueShare(leagueId: string): Promise<LeagueShareEnableResponse> {
+    const validLeagueId = assertValidLeagueId(leagueId);
+    const { data } = await api.post(`/leagues/${validLeagueId}/share/enable`);
+    const shareToken = typeof data?.shareToken === 'string' ? data.shareToken : '';
+    const shareUrlPath =
+      typeof data?.shareUrlPath === 'string'
+        ? data.shareUrlPath
+        : `/leagues/${validLeagueId}?share=1&token=${encodeURIComponent(shareToken)}`;
+    return { shareToken, shareUrlPath };
+  },
 
-    const movement = normalizeStandingsMovement(data?.movement ?? data?.movementMap);
-    const computedAt = typeof data?.computedAt === 'string' ? data.computedAt : undefined;
+  /** Disable public sharing of league standings. */
+  async disableLeagueShare(leagueId: string): Promise<LeagueShareDisableResponse> {
+    const validLeagueId = assertValidLeagueId(leagueId);
+    const { data } = await api.post(`/leagues/${validLeagueId}/share/disable`);
+    return { ok: data?.ok !== false };
+  },
 
-    return { rows, movement, computedAt };
+  /** Public read-only standings by share token (no auth required). */
+  async getPublicStandingsByShareToken(
+    leagueId: string,
+    token: string
+  ): Promise<PublicLeagueStandingsShareResponse> {
+    const validLeagueId = assertValidLeagueId(leagueId);
+    const { data } = await api.get(`/public/leagues/${validLeagueId}/standings`, {
+      params: { token },
+    });
+    return normalizePublicLeagueStandingsShareResponse(data);
   },
 
   /** Update league settings. */
