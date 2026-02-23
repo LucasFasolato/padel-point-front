@@ -73,6 +73,35 @@ describe('leagueService', () => {
     expect(result).toEqual([{ inviteId: 'inv-2', email: 'known@b.com', invitedUserId: 'u-1' }]);
   });
 
+  it('captureMatchResult calls PATCH with canonical score.sets payload', async () => {
+    mockedApi.patch.mockResolvedValue({ data: {} });
+
+    await leagueService.captureMatchResult(LEAGUE_ID, 'match-1', {
+      playedAt: '2026-02-23T15:30:00',
+      sets: [
+        { a: 6, b: 4 },
+        { a: 7, b: 5 },
+      ],
+    });
+
+    expect(mockedApi.patch).toHaveBeenCalledTimes(1);
+    expect(mockedApi.patch).toHaveBeenCalledWith(
+      `/leagues/${LEAGUE_ID}/matches/match-1/result`,
+      expect.objectContaining({
+        playedAt: new Date('2026-02-23T15:30:00').toISOString(),
+        score: {
+          sets: [
+            { a: 6, b: 4 },
+            { a: 7, b: 5 },
+          ],
+        },
+      })
+    );
+
+    const body = mockedApi.patch.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(body).not.toHaveProperty('sets');
+  });
+
   it('acceptInvite calls POST /leagues/invites/:token/accept', async () => {
     mockedApi.post.mockResolvedValue({});
     await leagueService.acceptInvite('tok-123');

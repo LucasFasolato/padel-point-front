@@ -103,7 +103,7 @@ export interface CreateLeagueMatchPayload {
 
 export interface CaptureLeagueMatchResultPayload {
   sets: LeagueMatchSet[];
-  playedAt?: string;
+  playedAt?: string | Date;
 }
 
 export type LeagueChallengeScope = 'active' | 'history';

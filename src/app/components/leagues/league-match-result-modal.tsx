@@ -65,27 +65,20 @@ export function LeagueMatchResultModal({
     setSets((prev) => prev.slice(0, -1));
   };
 
-  const toIsoOrUndefined = (value: string) => {
-    if (!value) return undefined;
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return undefined;
-    return parsed.toISOString();
-  };
-
   const handleSubmit = () => {
     const filledSets = sets
       .filter((set) => set.a !== '' && set.b !== '')
       .map((set) => ({ a: Number(set.a), b: Number(set.b) }));
 
-    if (filledSets.length === 0) {
-      setError('Ingresá al menos un set.');
+    if (filledSets.length < 2) {
+      setError('Ingresá 2 o 3 sets.');
       return;
     }
 
     setError('');
     onSubmit({
       sets: filledSets,
-      playedAt: toIsoOrUndefined(playedAt),
+      playedAt: playedAt || undefined,
     });
   };
 

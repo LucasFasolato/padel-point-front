@@ -3,6 +3,7 @@ import type { InfiniteData } from '@tanstack/react-query';
 import { leagueService } from '@/services/league-service';
 import { toast } from 'sonner';
 import { isUuid } from '@/lib/id-utils';
+import { LeagueMatchResultPayloadError } from '@/lib/matches/build-league-match-result-payload';
 import type {
   CreateMiniLeaguePayload,
   CreateMiniLeagueResponse,
@@ -226,8 +227,8 @@ export function useCaptureLeagueMatchResult(leagueId: string) {
       qc?.invalidateQueries({ queryKey: KEYS.standings(leagueId) });
       toast.success(LEAGUE_MATCH_RESULT_SUCCESS_MESSAGE);
     },
-    onError: () => {
-      toast.error('No se pudo cargar el resultado. Intenta de nuevo.');
+    onError: (err) => {
+      toast.error(getLeagueMatchResultErrorMessage(err));
     },
   });
 }
@@ -277,6 +278,8 @@ const LEAGUE_REPORT_SUCCESS_MESSAGE = 'Resultado cargado. Falta confirmaci\u00F3
 const LEAGUE_CHALLENGE_FORBIDDEN_MESSAGE = 'No ten\u00E9s permisos para desafiar en esta liga.';
 const LEAGUE_MATCH_CREATE_SUCCESS_MESSAGE = 'Partido cargado.';
 const LEAGUE_MATCH_RESULT_SUCCESS_MESSAGE = 'Resultado cargado.';
+const LEAGUE_MATCH_RESULT_INVALID_PAYLOAD_MESSAGE =
+  'Formato de resultado inválido. Volvé a cargar los sets.';
 const INVITE_NOTIFICATION_MESSAGE = 'Invitación enviada. Le llegó una notificación.';
 const INVITE_EMAIL_FALLBACK_MESSAGE =
   'Invitación enviada por email. La notificación aparecerá cuando el usuario cree su cuenta.';
@@ -296,6 +299,19 @@ function getInviteSuccessMessage(results: LeagueInviteDispatchResult[]): string 
   if (hasKnownUser && hasUnknownUser) return INVITE_MIXED_MESSAGE;
   if (hasKnownUser) return INVITE_NOTIFICATION_MESSAGE;
   return INVITE_EMAIL_FALLBACK_MESSAGE;
+}
+
+function getLeagueMatchResultErrorMessage(err: unknown): string {
+  if (err instanceof LeagueMatchResultPayloadError) {
+    return LEAGUE_MATCH_RESULT_INVALID_PAYLOAD_MESSAGE;
+  }
+  if (axios.isAxiosError(err)) {
+    const code = err.response?.data?.code as string | undefined;
+    if (code === 'MATCH_RESULT_PAYLOAD_INVALID') {
+      return LEAGUE_MATCH_RESULT_INVALID_PAYLOAD_MESSAGE;
+    }
+  }
+  return 'No se pudo cargar el resultado. Intenta de nuevo.';
 }
 
 /** Report a league match from a reservation. */

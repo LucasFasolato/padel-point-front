@@ -1,5 +1,6 @@
 import api from '@/lib/api';
 import { isUuid } from '@/lib/id-utils';
+import { buildLeagueMatchResultPayload } from '@/lib/matches/build-league-match-result-payload';
 import { normalizeLeagueStatus } from '@/lib/league-utils';
 import type {
   League,
@@ -333,7 +334,11 @@ export const leagueService = {
     payload: CaptureLeagueMatchResultPayload
   ): Promise<void> {
     const validLeagueId = assertValidLeagueId(leagueId);
-    await api.post(`/leagues/${validLeagueId}/matches/${matchId}/result`, payload);
+    const body = buildLeagueMatchResultPayload({
+      playedAt: payload.playedAt ?? new Date(),
+      sets: payload.sets,
+    });
+    await api.patch(`/leagues/${validLeagueId}/matches/${matchId}/result`, body);
   },
 
   /** Fetch confirmed, past reservations eligible for league match reporting. */
