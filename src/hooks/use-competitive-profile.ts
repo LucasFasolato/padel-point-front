@@ -1,7 +1,16 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { COMPETITIVE_RANKING_DEFAULT_LIMIT } from '@/lib/competitive-constants';
+import {
+  COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT,
+  COMPETITIVE_RANKING_DEFAULT_LIMIT,
+} from '@/lib/competitive-constants';
 import { competitiveService } from '@/services/competitive-service';
-import type { Category, RankingEntry, RankingResponse } from '@/types/competitive';
+import type {
+  Category,
+  EloHistoryPoint,
+  EloHistoryResponse,
+  RankingEntry,
+  RankingResponse,
+} from '@/types/competitive';
 
 function dedupeRankingEntries(items: RankingEntry[]): RankingEntry[] {
   const seen = new Set<string>();
@@ -16,6 +25,19 @@ function dedupeRankingEntries(items: RankingEntry[]): RankingEntry[] {
   return merged;
 }
 
+function dedupeEloHistoryEntries(items: EloHistoryPoint[]): EloHistoryPoint[] {
+  const seen = new Set<string>();
+  const merged: EloHistoryPoint[] = [];
+
+  for (const item of items) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    merged.push(item);
+  }
+
+  return merged;
+}
+
 export function useCompetitiveProfile() {
   return useQuery({
     queryKey: ['competitive', 'profile'],
@@ -24,11 +46,22 @@ export function useCompetitiveProfile() {
   });
 }
 
-export function useEloHistory(limit: number = 30) {
-  return useQuery({
-    queryKey: ['competitive', 'elo-history', limit],
-    queryFn: () => competitiveService.getEloHistory(limit),
+export function useEloHistory(limit: number = COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT) {
+  return useInfiniteQuery({
+    queryKey: ['competitive', 'elo-history', { limit }],
+    queryFn: ({ pageParam }) =>
+      competitiveService.getEloHistory({
+        limit,
+        cursor: pageParam as string | undefined,
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: 1000 * 60 * 5,
+    select: (data) => ({
+      pages: data.pages,
+      pageParams: data.pageParams,
+      items: dedupeEloHistoryEntries(data.pages.flatMap((page: EloHistoryResponse) => page.items)),
+    }),
   });
 }
 

@@ -55,9 +55,24 @@ export interface EloHistoryPoint {
   eloBefore: number;
   eloAfter: number;
   delta: number;
-  reason: 'init_category' | 'match_result';
+  reason:
+    | 'init_category'
+    | 'match_result'
+    | 'admin_adjustment'
+    | 'import'
+    | (string & {});
   refId: string | null; // matchResultId
   createdAt: string;
+}
+
+export interface EloHistoryResponse {
+  items: EloHistoryPoint[];
+  nextCursor: string | null;
+}
+
+export interface EloHistoryQueryParams {
+  limit?: number;
+  cursor?: string;
 }
 
 export interface UserBasic {

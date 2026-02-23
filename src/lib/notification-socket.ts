@@ -157,7 +157,7 @@ export class NotificationSocket {
     }
 
     if (parsed.event && COMPETITIVE_RANKING_EVENT_NAMES.has(parsed.event)) {
-      invalidateCompetitiveRankingQueries(this.options.queryClient);
+      invalidateCompetitiveRatingQueries(this.options.queryClient);
     }
   }
 
@@ -189,7 +189,7 @@ export class NotificationSocket {
     // Show toast only for high-priority types
     const type = normalizeNotificationType(notification.type);
     if (type && shouldInvalidateCompetitiveRanking(type)) {
-      invalidateCompetitiveRankingQueries(queryClient);
+      invalidateCompetitiveRatingQueries(queryClient);
     }
     if (type && TOAST_WORTHY_TYPES.includes(type)) {
       toastManager.info(notification.title, {
@@ -230,7 +230,7 @@ export function handleNewNotification(
   }
 
   if (normalizedType && shouldInvalidateCompetitiveRanking(normalizedType)) {
-    invalidateCompetitiveRankingQueries(queryClient);
+    invalidateCompetitiveRatingQueries(queryClient);
   }
 
   return true;
@@ -242,12 +242,14 @@ export function shouldInvalidateCompetitiveRanking(type: string): boolean {
   );
 }
 
-export function invalidateCompetitiveRankingQueries(queryClient: QueryClient): void {
+export function invalidateCompetitiveRatingQueries(queryClient: QueryClient): void {
   queryClient.invalidateQueries({
     predicate: (query) =>
       Array.isArray(query.queryKey) &&
       query.queryKey[0] === 'competitive' &&
-      query.queryKey[1] === 'ranking',
+      (query.queryKey[1] === 'ranking' ||
+        query.queryKey[1] === 'profile' ||
+        query.queryKey[1] === 'elo-history'),
   });
 }
 

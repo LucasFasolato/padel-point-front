@@ -59,3 +59,16 @@ export function getWinRate(wins: number, losses: number): number {
   if (total === 0) return 0;
   return Math.round((wins / total) * 100);
 }
+
+const ELO_HISTORY_REASON_LABELS: Record<string, string> = {
+  match_result: 'Resultado de partido',
+  init_category: 'Asignación de categoría',
+  admin_adjustment: 'Ajuste manual',
+  import: 'Importación',
+  unknown: 'Actualización',
+};
+
+export function getEloHistoryReasonLabel(reason: string | null | undefined): string {
+  if (!reason) return ELO_HISTORY_REASON_LABELS.unknown;
+  return ELO_HISTORY_REASON_LABELS[reason] ?? ELO_HISTORY_REASON_LABELS.unknown;
+}

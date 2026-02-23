@@ -1,9 +1,11 @@
 'use client';
 
+import '@/lib/chart-config';
 import { Line } from 'react-chartjs-2';
 import type { EloHistoryPoint } from '@/types/competitive';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatEloChange, getEloHistoryReasonLabel } from '@/lib/competitive-utils';
 
 interface EloChartProps {
   history: EloHistoryPoint[];
@@ -15,7 +17,7 @@ export function EloChart({ history, className }: EloChartProps) {
     return (
       <div className={className}>
         <div className="flex h-64 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-600">
-          No hay suficiente historial para mostrar
+          Jugá tu primer partido para ver tu evolución
         </div>
       </div>
     );
@@ -63,11 +65,20 @@ export function EloChart({ history, className }: EloChartProps) {
         displayColors: false,
         callbacks: {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          title: (items: any[]) => {
+            const point = sorted[items[0]?.dataIndex ?? 0];
+            return [
+              format(new Date(point.createdAt), 'dd MMM yyyy', { locale: es }),
+              `Hace ${formatDistanceToNow(new Date(point.createdAt), { locale: es })}`,
+            ];
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           label: (context: any) => {
             const point = sorted[context.dataIndex];
             return [
               `ELO: ${point.eloAfter}`,
-              `Cambio: ${point.delta > 0 ? '+' : ''}${point.delta}`,
+              `Cambio: ${formatEloChange(point.delta)}`,
+              `Motivo: ${getEloHistoryReasonLabel(point.reason)}`,
             ];
           },
         },
@@ -96,7 +107,7 @@ export function EloChart({ history, className }: EloChartProps) {
 
   return (
     <div className={className}>
-      <div className="h-64">
+      <div className="h-64 w-full" data-testid="elo-chart">
         <Line data={data} options={options} />
       </div>
     </div>

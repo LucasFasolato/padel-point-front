@@ -1,5 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { COMPETITIVE_RANKING_DEFAULT_LIMIT } from '@/lib/competitive-constants';
+import {
+  COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT,
+  COMPETITIVE_RANKING_DEFAULT_LIMIT,
+} from '@/lib/competitive-constants';
 import { competitiveService } from '../competitive-service';
 
 vi.mock('@/lib/api', () => ({
@@ -57,6 +60,32 @@ describe('competitiveService onboarding', () => {
 
     expect(mockedApi.post).not.toHaveBeenCalled();
     expect(mockedApi.put).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('competitiveService elo history', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('passes limit and cursor as query params', async () => {
+    mockedApi.get.mockResolvedValue({ data: { items: [], nextCursor: null } });
+
+    await competitiveService.getEloHistory({ limit: 20, cursor: 'h-next' });
+
+    expect(mockedApi.get).toHaveBeenCalledWith('/competitive/profile/me/history', {
+      params: { limit: 20, cursor: 'h-next' },
+    });
+  });
+
+  it('uses central default limit when omitted', async () => {
+    mockedApi.get.mockResolvedValue({ data: [] });
+
+    await competitiveService.getEloHistory();
+
+    expect(mockedApi.get).toHaveBeenCalledWith('/competitive/profile/me/history', {
+      params: { limit: COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT },
+    });
   });
 });
 

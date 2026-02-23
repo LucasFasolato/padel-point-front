@@ -1,17 +1,24 @@
 'use client';
 
-import { useCompetitiveProfile, useOnboardingState } from '@/hooks/use-competitive-profile';
+import { useState } from 'react';
+import { useCompetitiveProfile, useEloHistory, useOnboardingState } from '@/hooks/use-competitive-profile';
 import { useMyMatches } from '@/hooks/use-matches';
 import { CategoryBadge } from '@/app/components/competitive/category-badge';
+import { EloChart } from '@/app/components/competitive/elo-chart';
 import { StatsSummary } from '@/app/components/competitive/stats-summary';
 import { MatchCard } from '@/app/components/competitive/match-card';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
+import { COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT } from '@/lib/competitive-constants';
+import { formatEloChange, getEloHistoryReasonLabel } from '@/lib/competitive-utils';
+import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import type { EloHistoryPoint } from '@/types/competitive';
 
 export default function CompetitivePage() {
   const router = useRouter();
+  const [isProgressChartOpen, setIsProgressChartOpen] = useState(true);
   const {
     data: onboarding,
     isLoading: loadingOnboarding,
@@ -21,6 +28,7 @@ export default function CompetitivePage() {
     isLoading: loadingProfile,
     isError: profileError,
   } = useCompetitiveProfile();
+  const eloHistoryQuery = useEloHistory(COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT);
   const { data: matches, isLoading: loadingMatches, error: matchesError } = useMyMatches();
 
   if (loadingOnboarding || loadingProfile) {
@@ -61,6 +69,8 @@ export default function CompetitivePage() {
   }
 
   const confirmedMatches = matches?.filter((m) => m.status === 'confirmed').slice(0, 5) || [];
+  const eloHistory = eloHistoryQuery.data?.items ?? [];
+  const latestEloPoint = getLatestEloPoint(eloHistory);
   const streakCurrent = profile.winStreakCurrent ?? 0;
   const streakBest = profile.winStreakBest ?? 0;
   const last10 = Array.isArray(profile.last10) ? profile.last10.slice(0, 10) : [];
@@ -102,6 +112,80 @@ export default function CompetitivePage() {
               <span className="text-sm font-semibold text-amber-950">{peakElo}</span>
             </div>
           </div>
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Tu progreso</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Seguí la evolución de tu ELO y tus últimos cambios.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="md:hidden"
+              onClick={() => setIsProgressChartOpen((prev) => !prev)}
+            >
+              {isProgressChartOpen ? 'Ocultar gráfico' : 'Ver gráfico'}
+            </Button>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">ELO actual</p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">{profile.elo}</p>
+            </div>
+            <CategoryBadge category={profile.category} size="md" />
+          </div>
+
+          {latestEloPoint ? (
+            <p className="mt-3 text-sm text-slate-600">
+              Último cambio: <span className={getInlineDeltaClassName(latestEloPoint.delta)}>{formatEloChange(latestEloPoint.delta)}</span>{' '}
+              · {getEloHistoryReasonLabel(latestEloPoint.reason)}
+            </p>
+          ) : (
+            <p className="mt-3 text-sm text-slate-600">
+              Todavía no tenés movimientos de ELO registrados.
+            </p>
+          )}
+
+          <div className={cn('mt-4', !isProgressChartOpen && 'hidden md:block')}>
+            {eloHistoryQuery.isLoading ? (
+              <Skeleton className="h-64 w-full rounded-lg" />
+            ) : eloHistoryQuery.isError ? (
+              <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-5">
+                <p className="text-sm text-rose-700">No pudimos cargar tu historial de ELO.</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => eloHistoryQuery.refetch()}
+                >
+                  Reintentar
+                </Button>
+              </div>
+            ) : (
+              <EloChart history={eloHistory} />
+            )}
+          </div>
+
+          {isProgressChartOpen && eloHistoryQuery.hasNextPage && (
+            <div className="mt-4 flex justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => eloHistoryQuery.fetchNextPage()}
+                disabled={eloHistoryQuery.isFetchingNextPage}
+              >
+                {eloHistoryQuery.isFetchingNextPage ? 'Cargando...' : 'Cargar más historial'}
+              </Button>
+            </div>
+          )}
         </section>
 
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -239,9 +323,26 @@ function StreakStat({ label, value }: { label: string; value: number }) {
   );
 }
 
+function getLatestEloPoint(history: EloHistoryPoint[]): EloHistoryPoint | null {
+  if (!history.length) return null;
+
+  return history.reduce((latest, current) => {
+    if (!latest) return current;
+    return new Date(current.createdAt).getTime() > new Date(latest.createdAt).getTime()
+      ? current
+      : latest;
+  }, history[0] ?? null);
+}
+
 function formatDeltaLabel(delta: number) {
   if (delta > 0) return `+${delta}`;
   return `${delta}`;
+}
+
+function getInlineDeltaClassName(delta: number) {
+  if (delta > 0) return 'font-semibold text-emerald-700';
+  if (delta < 0) return 'font-semibold text-rose-700';
+  return 'font-semibold text-slate-700';
 }
 
 function getDeltaBadgeClassName(delta: number) {

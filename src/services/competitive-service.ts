@@ -1,12 +1,37 @@
 import  api  from '@/lib/api';
-import { COMPETITIVE_RANKING_DEFAULT_LIMIT } from '@/lib/competitive-constants';
+import {
+  COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT,
+  COMPETITIVE_RANKING_DEFAULT_LIMIT,
+} from '@/lib/competitive-constants';
 import type {
   CompetitiveProfile,
-  EloHistoryPoint,
+  EloHistoryQueryParams,
+  EloHistoryResponse,
   OnboardingData,
   RankingQueryParams,
   RankingResponse,
 } from '@/types/competitive';
+
+function normalizeEloHistoryResponse(raw: unknown): EloHistoryResponse {
+  if (Array.isArray(raw)) {
+    return {
+      items: raw,
+      nextCursor: null,
+    };
+  }
+
+  const data = (raw ?? {}) as Record<string, unknown>;
+  const items = Array.isArray(data.items)
+    ? data.items
+    : Array.isArray(data.data)
+      ? data.data
+      : [];
+
+  return {
+    items: items as EloHistoryResponse['items'],
+    nextCursor: typeof data.nextCursor === 'string' ? data.nextCursor : null,
+  };
+}
 
 function normalizeRankingResponse(raw: unknown): RankingResponse {
   if (Array.isArray(raw)) {
@@ -49,11 +74,19 @@ export const competitiveService = {
   /**
    * Obtiene historial de cambios de ELO
    */
-  async getEloHistory(limit: number = 50): Promise<EloHistoryPoint[]> {
+  async getEloHistory(params: EloHistoryQueryParams = {}): Promise<EloHistoryResponse> {
+    const queryParams: Record<string, string | number> = {
+      limit: params.limit ?? COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT,
+    };
+
+    if (params.cursor) {
+      queryParams.cursor = params.cursor;
+    }
+
     const { data } = await api.get('/competitive/profile/me/history', {
-      params: { limit },
+      params: queryParams,
     });
-    return data;
+    return normalizeEloHistoryResponse(data);
   },
 
   /**

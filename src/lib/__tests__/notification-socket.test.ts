@@ -109,9 +109,9 @@ describe('handleNewNotification', () => {
     expect(() => handleNewNotification(qc as any, makeNotif())).not.toThrow();
   });
 
-  it('invalidates competitive ranking queries on LEAGUE_RANKING_MOVED notifications using a prefix predicate', () => {
+  it('invalidates competitive rating queries (ranking/profile/elo-history) on ELO_UPDATED using a prefix predicate', () => {
     const qc = makeMockQueryClient();
-    const notification = makeNotif({ type: 'LEAGUE_RANKING_MOVED' });
+    const notification = makeNotif({ type: 'ELO_UPDATED' });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     handleNewNotification(qc as any, notification);
@@ -120,7 +120,9 @@ describe('handleNewNotification', () => {
     const [arg] = vi.mocked(qc.invalidateQueries).mock.calls[0];
     expect(arg).toHaveProperty('predicate');
     expect(arg.predicate({ queryKey: ['competitive', 'ranking', { category: null, limit: 20 }] })).toBe(true);
-    expect(arg.predicate({ queryKey: ['competitive', 'profile'] })).toBe(false);
+    expect(arg.predicate({ queryKey: ['competitive', 'profile'] })).toBe(true);
+    expect(arg.predicate({ queryKey: ['competitive', 'elo-history', { limit: 20 }] })).toBe(true);
+    expect(arg.predicate({ queryKey: ['competitive', 'onboarding'] })).toBe(false);
   });
 });
 
