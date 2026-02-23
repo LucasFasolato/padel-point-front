@@ -184,7 +184,7 @@ describe('LeagueDetailPage', () => {
       expect(enableShareMutateAsyncMock).toHaveBeenCalled();
     });
     expect(writeText).toHaveBeenCalledWith(
-      expect.stringContaining(`/leagues/${VALID_UUID}?share=1&token=share-123`)
+      expect.stringContaining(`/public/leagues/${VALID_UUID}/share?token=share-123`)
     );
   });
 

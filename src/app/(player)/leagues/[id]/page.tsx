@@ -687,10 +687,33 @@ async function getOrCreateLeagueShareUrl(params: {
 }
 
 function resolveShareUrl(shareUrlPath: string, leagueId: string, shareToken: string): string {
-  const fallbackPath = `/leagues/${leagueId}?share=1&token=${encodeURIComponent(shareToken)}`;
-  const rawPath = shareUrlPath || fallbackPath;
+  const fallbackPath = `/public/leagues/${leagueId}/share?token=${encodeURIComponent(shareToken)}`;
+  const rawPath = normalizeLeagueSharePath(shareUrlPath, leagueId, shareToken) || fallbackPath;
   if (typeof window === 'undefined') return rawPath;
   return new URL(rawPath, window.location.origin).toString();
+}
+
+function normalizeLeagueSharePath(
+  rawPath: string,
+  leagueId: string,
+  shareToken: string
+): string {
+  if (!rawPath) return '';
+
+  try {
+    const parsed = new URL(rawPath, 'https://padelpoint.local');
+    const token = parsed.searchParams.get('token') || shareToken;
+    const isLegacyLeagueShare =
+      parsed.pathname === `/leagues/${leagueId}` && parsed.searchParams.get('share') === '1';
+
+    if (isLegacyLeagueShare) {
+      return `/public/leagues/${leagueId}/share?token=${encodeURIComponent(token)}`;
+    }
+
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return `/public/leagues/${leagueId}/share?token=${encodeURIComponent(shareToken)}`;
+  }
 }
 
 function LeaguePublicShareView({ leagueId, token }: { leagueId: string; token: string }) {
