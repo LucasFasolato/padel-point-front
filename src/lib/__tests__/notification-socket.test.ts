@@ -108,6 +108,20 @@ describe('handleNewNotification', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(() => handleNewNotification(qc as any, makeNotif())).not.toThrow();
   });
+
+  it('invalidates competitive ranking queries on LEAGUE_RANKING_MOVED notifications using a prefix predicate', () => {
+    const qc = makeMockQueryClient();
+    const notification = makeNotif({ type: 'LEAGUE_RANKING_MOVED' });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handleNewNotification(qc as any, notification);
+
+    expect(qc.invalidateQueries).toHaveBeenCalledTimes(1);
+    const [arg] = vi.mocked(qc.invalidateQueries).mock.calls[0];
+    expect(arg).toHaveProperty('predicate');
+    expect(arg.predicate({ queryKey: ['competitive', 'ranking', { category: null, limit: 20 }] })).toBe(true);
+    expect(arg.predicate({ queryKey: ['competitive', 'profile'] })).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------

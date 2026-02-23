@@ -1,0 +1,3 @@
+export const COMPETITIVE_RANKING_DEFAULT_LIMIT = 50;
+
+export const COMPETITIVE_RANKING_CATEGORIES = [1, 2, 3, 4, 5, 6, 7, 8] as const;

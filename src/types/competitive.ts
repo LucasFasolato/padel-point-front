@@ -156,6 +156,8 @@ export interface RankingEntry {
   userId: string;
   email: string;
   displayName: string;
+  position?: number;
+  positionDelta?: number | null;
   elo: number;
   category: Category;
   matchesPlayed: number;
@@ -163,4 +165,15 @@ export interface RankingEntry {
   losses: number;
   draws: number;
   updatedAt: string;
+}
+
+export interface RankingResponse {
+  items: RankingEntry[];
+  nextCursor: string | null;
+}
+
+export interface RankingQueryParams {
+  category?: Category;
+  limit?: number;
+  cursor?: string;
 }

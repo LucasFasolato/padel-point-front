@@ -1,5 +1,33 @@
 import  api  from '@/lib/api';
-import type { CompetitiveProfile, EloHistoryPoint, OnboardingData, RankingEntry } from '@/types/competitive';
+import { COMPETITIVE_RANKING_DEFAULT_LIMIT } from '@/lib/competitive-constants';
+import type {
+  CompetitiveProfile,
+  EloHistoryPoint,
+  OnboardingData,
+  RankingQueryParams,
+  RankingResponse,
+} from '@/types/competitive';
+
+function normalizeRankingResponse(raw: unknown): RankingResponse {
+  if (Array.isArray(raw)) {
+    return {
+      items: raw,
+      nextCursor: null,
+    };
+  }
+
+  const data = (raw ?? {}) as Record<string, unknown>;
+  const items = Array.isArray(data.items)
+    ? data.items
+    : Array.isArray(data.data)
+      ? data.data
+      : [];
+
+  return {
+    items: items as RankingResponse['items'],
+    nextCursor: typeof data.nextCursor === 'string' ? data.nextCursor : null,
+  };
+}
 
 export const competitiveService = {
   /**
@@ -52,10 +80,22 @@ export const competitiveService = {
   /**
    * Obtiene ranking global (TODO: filtrar por club)
    */
-  async getRanking(limit: number = 50): Promise<RankingEntry[]> {
+  async getRanking(params: RankingQueryParams = {}): Promise<RankingResponse> {
+    const queryParams: Record<string, string | number> = {
+      limit: params.limit ?? COMPETITIVE_RANKING_DEFAULT_LIMIT,
+    };
+
+    if (typeof params.category === 'number') {
+      queryParams.category = params.category;
+    }
+
+    if (params.cursor) {
+      queryParams.cursor = params.cursor;
+    }
+
     const { data } = await api.get('/competitive/ranking', {
-      params: { limit },
+      params: queryParams,
     });
-    return data;
+    return normalizeRankingResponse(data);
   },
 };

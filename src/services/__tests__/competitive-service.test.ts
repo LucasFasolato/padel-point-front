@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { COMPETITIVE_RANKING_DEFAULT_LIMIT } from '@/lib/competitive-constants';
 import { competitiveService } from '../competitive-service';
 
 vi.mock('@/lib/api', () => ({
@@ -56,5 +57,31 @@ describe('competitiveService onboarding', () => {
 
     expect(mockedApi.post).not.toHaveBeenCalled();
     expect(mockedApi.put).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('competitiveService ranking', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('passes category, limit, and cursor as query params', async () => {
+    mockedApi.get.mockResolvedValue({ data: { items: [], nextCursor: null } });
+
+    await competitiveService.getRanking({ category: 3, limit: 20, cursor: 'next-123' });
+
+    expect(mockedApi.get).toHaveBeenCalledWith('/competitive/ranking', {
+      params: { category: 3, limit: 20, cursor: 'next-123' },
+    });
+  });
+
+  it('uses central default limit when omitted', async () => {
+    mockedApi.get.mockResolvedValue({ data: [] });
+
+    await competitiveService.getRanking();
+
+    expect(mockedApi.get).toHaveBeenCalledWith('/competitive/ranking', {
+      params: { limit: COMPETITIVE_RANKING_DEFAULT_LIMIT },
+    });
   });
 });

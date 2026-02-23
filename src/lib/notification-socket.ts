@@ -1,12 +1,24 @@
 import type { QueryClient, InfiniteData } from '@tanstack/react-query';
 import type { AppNotification } from '@/types/notifications';
-import { TOAST_WORTHY_TYPES, normalizeNotificationType } from '@/types/notifications';
+import {
+  NOTIFICATION_TYPES,
+  TOAST_WORTHY_TYPES,
+  normalizeNotificationType,
+} from '@/types/notifications';
 import { NOTIFICATION_QUERY_KEYS } from '@/hooks/use-notifications';
 import { toastManager } from '@/lib/toast';
 import type { ActivityEventView, ActivityResponse } from '@/types/leagues';
 
 const WS_RECONNECT_BASE_MS = 2000;
 const WS_RECONNECT_MAX_MS = 30000;
+
+const COMPETITIVE_RANKING_EVENT_NAMES = new Set([
+  'ranking:moved',
+  'league:ranking_moved',
+  'league:ranking-moved',
+  'competitive:ranking_moved',
+  'competitive:ranking-moved',
+]);
 
 export interface NotificationSocketOptions {
   url: string;
@@ -143,6 +155,10 @@ export class NotificationSocket {
       handleLeagueActivity(this.options.queryClient, event);
       this.options.onLeagueActivity?.(event);
     }
+
+    if (parsed.event && COMPETITIVE_RANKING_EVENT_NAMES.has(parsed.event)) {
+      invalidateCompetitiveRankingQueries(this.options.queryClient);
+    }
   }
 
   private onNewNotification(notification: AppNotification): void {
@@ -172,6 +188,9 @@ export class NotificationSocket {
 
     // Show toast only for high-priority types
     const type = normalizeNotificationType(notification.type);
+    if (type && shouldInvalidateCompetitiveRanking(type)) {
+      invalidateCompetitiveRankingQueries(queryClient);
+    }
     if (type && TOAST_WORTHY_TYPES.includes(type)) {
       toastManager.info(notification.title, {
         idempotencyKey: `notif-${notification.id}`,
@@ -192,6 +211,8 @@ export function handleNewNotification(
   queryClient: QueryClient,
   notification: AppNotification
 ): boolean {
+  const normalizedType = normalizeNotificationType(notification.type);
+
   const currentCount = queryClient.getQueryData<number>(NOTIFICATION_QUERY_KEYS.unread);
   if (typeof currentCount === 'number') {
     queryClient.setQueryData<number>(NOTIFICATION_QUERY_KEYS.unread, currentCount + 1);
@@ -208,7 +229,26 @@ export function handleNewNotification(
     );
   }
 
+  if (normalizedType && shouldInvalidateCompetitiveRanking(normalizedType)) {
+    invalidateCompetitiveRankingQueries(queryClient);
+  }
+
   return true;
+}
+
+export function shouldInvalidateCompetitiveRanking(type: string): boolean {
+  return (
+    type === NOTIFICATION_TYPES.ELO_UPDATED || type === NOTIFICATION_TYPES.LEAGUE_RANKING_MOVED
+  );
+}
+
+export function invalidateCompetitiveRankingQueries(queryClient: QueryClient): void {
+  queryClient.invalidateQueries({
+    predicate: (query) =>
+      Array.isArray(query.queryKey) &&
+      query.queryKey[0] === 'competitive' &&
+      query.queryKey[1] === 'ranking',
+  });
 }
 
 /**
