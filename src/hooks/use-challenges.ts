@@ -143,3 +143,20 @@ export function useChallengeActions() {
     acceptOpen,
   };
 }
+
+type CreateDirectChallengePayload = Parameters<typeof challengesService.createDirect>[0];
+
+export function useCreateDirectChallenge() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: CreateDirectChallengePayload) => challengesService.createDirect(payload),
+    onSuccess: () => {
+      toast.success('Desafío enviado');
+      queryClient.invalidateQueries({ queryKey: ['challenges'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'No se pudo enviar el desafío');
+    },
+  });
+}

@@ -115,6 +115,55 @@ describe('competitiveService skill radar', () => {
   });
 });
 
+describe('competitiveService matchmaking rivals', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('calls GET /competitive/matchmaking/rivals with query params', async () => {
+    mockedApi.get.mockResolvedValue({ data: { items: [], nextCursor: null } });
+
+    await competitiveService.getRivalSuggestions({
+      limit: 20,
+      cursor: 'r-next',
+      range: 100,
+      sameCategory: true,
+      city: 'Cordoba',
+      province: 'Cordoba',
+      country: 'Argentina',
+    });
+
+    expect(mockedApi.get).toHaveBeenCalledWith('/competitive/matchmaking/rivals', {
+      params: {
+        limit: 20,
+        cursor: 'r-next',
+        range: 100,
+        sameCategory: true,
+        city: 'Cordoba',
+        province: 'Cordoba',
+        country: 'Argentina',
+      },
+    });
+  });
+
+  it('omits undefined query params', async () => {
+    mockedApi.get.mockResolvedValue({ data: { items: [], nextCursor: null } });
+
+    await competitiveService.getRivalSuggestions({
+      limit: 20,
+      sameCategory: true,
+      city: undefined,
+    });
+
+    expect(mockedApi.get).toHaveBeenCalledWith('/competitive/matchmaking/rivals', {
+      params: {
+        limit: 20,
+        sameCategory: true,
+      },
+    });
+  });
+});
+
 describe('competitiveService ranking', () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -17,6 +17,11 @@ type CompetitiveProfileHistoryResponse =
   paths['/competitive/profile/me/history']['get']['responses'][200]['content']['application/json'];
 export type CompetitiveSkillRadarResponse =
   paths['/competitive/profile/me/radar']['get']['responses'][200]['content']['application/json'];
+export type RivalsResponse =
+  paths['/competitive/matchmaking/rivals']['get']['responses'][200]['content']['application/json'];
+export type RivalsQuery =
+  NonNullable<paths['/competitive/matchmaking/rivals']['get']['parameters']['query']>;
+export type RivalItem = RivalsResponse['items'][number];
 
 function normalizeEloHistoryResponse(raw: CompetitiveProfileHistoryResponse | unknown): EloHistoryResponse {
   if (Array.isArray(raw)) {
@@ -103,6 +108,20 @@ export const competitiveService = {
    */
   async getSkillRadar(): Promise<CompetitiveSkillRadarResponse> {
     const { data } = await api.get<CompetitiveSkillRadarResponse>('/competitive/profile/me/radar');
+    return data;
+  },
+
+  /**
+   * Obtiene sugerencias de rivales para matchmaking competitivo.
+   */
+  async getRivalSuggestions(params: Partial<RivalsQuery> = {}): Promise<RivalsResponse> {
+    const queryParams = Object.fromEntries(
+      Object.entries(params).filter(([, value]) => value !== undefined)
+    ) as Partial<RivalsQuery>;
+
+    const { data } = await api.get<RivalsResponse>('/competitive/matchmaking/rivals', {
+      params: queryParams,
+    });
     return data;
   },
 

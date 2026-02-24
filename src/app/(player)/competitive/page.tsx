@@ -394,6 +394,12 @@ export default function CompetitivePage() {
           <Button size="lg" variant="secondary" onClick={() => router.push('/competitive/challenges')}>
             Mis desafios
           </Button>
+          <Button size="lg" variant="outline" onClick={() => router.push('/competitive/find')}>
+            Buscar rival
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Button size="lg" variant="outline" onClick={() => router.push('/ranking')}>
             Ver ranking
           </Button>
