@@ -1752,6 +1752,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/me/favorites/ids": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List my favorite player ids (most recent first) */
+        get: operations["PlayersFavoritesController_listFavoriteIds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/me/favorites/{targetUserId}": {
         parameters: {
             query?: never;
@@ -2367,6 +2384,9 @@ export interface components {
             nextCursor: string | null;
         };
         MockPaymentWebhookDto: Record<string, never>;
+        PlayerFavoriteIdsResponseDto: {
+            ids: string[];
+        };
         PlayerFavoriteItemResponseDto: {
             avatarUrl: string | null;
             category: number;
@@ -4992,6 +5012,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlayerFavoritesListResponseDto"];
+                };
+            };
+        };
+    };
+    PlayersFavoritesController_listFavoriteIds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerFavoriteIdsResponseDto"];
                 };
             };
         };

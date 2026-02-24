@@ -9,6 +9,37 @@ type FavoritesPage =
   paths['/players/me/favorites']['get']['responses'][200]['content']['application/json'];
 type FavoriteItem = FavoritesPage['items'][number];
 type FavoritesInfiniteData = InfiniteData<FavoritesPage>;
+type FavoriteIdsResponse =
+  paths['/players/me/favorites/ids']['get']['responses'][200]['content']['application/json'];
+
+function isFavoritesIdsQueryKey(queryKey: readonly unknown[]): boolean {
+  return queryKey[0] === 'favorites' && queryKey[1] === 'ids';
+}
+
+function isFavoritesListQueryKey(queryKey: readonly unknown[]): boolean {
+  return queryKey[0] === 'favorites' && queryKey[1] !== 'ids';
+}
+
+function updateFavoriteIdsCache(
+  data: FavoriteIdsResponse | undefined,
+  variables: { targetUserId: string; isFavorited: boolean },
+): FavoriteIdsResponse | undefined {
+  if (!data) return data;
+
+  if (variables.isFavorited) {
+    return {
+      ...data,
+      ids: data.ids.filter((id) => id !== variables.targetUserId),
+    };
+  }
+
+  if (data.ids.includes(variables.targetUserId)) return data;
+
+  return {
+    ...data,
+    ids: [variables.targetUserId, ...data.ids],
+  };
+}
 
 function upsertFavoriteInCache(
   data: FavoritesInfiniteData | undefined,
@@ -98,21 +129,28 @@ export function useToggleFavorite() {
       return PlayerService.addFavorite(variables.targetUserId);
     },
     onMutate: async (variables) => {
-      await queryClient.cancelQueries({ queryKey: ['favorites'], exact: false });
-
-      const snapshots = queryClient.getQueriesData<
-        FavoritesInfiniteData
-      >({
-        queryKey: ['favorites'],
-        exact: false,
+      await queryClient.cancelQueries({ queryKey: ['favorites', 'ids'], exact: true });
+      await queryClient.cancelQueries({
+        predicate: (query) => isFavoritesListQueryKey(query.queryKey),
       });
 
+      const listSnapshots = queryClient.getQueriesData<
+        FavoritesInfiniteData
+      >({
+        predicate: (query) => isFavoritesListQueryKey(query.queryKey),
+      });
+      const favoriteIdsSnapshot = queryClient.getQueryData<FavoriteIdsResponse>(['favorites', 'ids']);
+
+      queryClient.setQueryData<FavoriteIdsResponse>(['favorites', 'ids'], (old) =>
+        updateFavoriteIdsCache(old, variables),
+      );
+
       queryClient.setQueriesData<FavoritesInfiniteData>(
-        { queryKey: ['favorites'], exact: false },
+        { predicate: (query) => isFavoritesListQueryKey(query.queryKey) },
         (old) => upsertFavoriteInCache(old, variables),
       );
 
-      return { snapshots };
+      return { listSnapshots, favoriteIdsSnapshot };
     },
     onSuccess: (_data, variables) => {
       if (variables.isFavorited) {
@@ -122,13 +160,17 @@ export function useToggleFavorite() {
       }
     },
     onError: (error: Error, _variables, context) => {
-      for (const [key, value] of context?.snapshots ?? []) {
+      for (const [key, value] of context?.listSnapshots ?? []) {
         queryClient.setQueryData(key, value);
       }
+      queryClient.setQueryData(['favorites', 'ids'], context?.favoriteIdsSnapshot);
       toast.error(error.message || 'No se pudo actualizar favoritos');
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['favorites'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['favorites', 'ids'], exact: true });
+      queryClient.invalidateQueries({
+        predicate: (query) => isFavoritesListQueryKey(query.queryKey),
+      });
     },
   });
 }

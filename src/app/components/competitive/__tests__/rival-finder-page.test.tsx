@@ -7,7 +7,7 @@ const mockPush = vi.fn();
 const mockUseRivalSuggestions = vi.fn();
 const mockUsePartnerSuggestions = vi.fn();
 const mockUseCreateDirectChallenge = vi.fn();
-const mockUseFavorites = vi.fn();
+const mockUseFavoriteIds = vi.fn();
 const mockUseToggleFavorite = vi.fn();
 const mockUseSearchParams = vi.fn();
 
@@ -28,8 +28,11 @@ vi.mock('@/hooks/use-challenges', () => ({
   useCreateDirectChallenge: () => mockUseCreateDirectChallenge(),
 }));
 
+vi.mock('@/hooks/use-favorite-ids', () => ({
+  useFavoriteIds: () => mockUseFavoriteIds(),
+}));
+
 vi.mock('@/hooks/use-favorites', () => ({
-  useFavorites: (...args: unknown[]) => mockUseFavorites(...args),
   useToggleFavorite: () => mockUseToggleFavorite(),
 }));
 
@@ -97,14 +100,11 @@ describe('RivalFinderPage', () => {
       isPending: false,
       variables: undefined,
     });
-    mockUseFavorites.mockReturnValue({
-      data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+    mockUseFavoriteIds.mockReturnValue({
+      data: { ids: [] },
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
-      hasNextPage: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
     });
 
     mockUseRivalSuggestions.mockReturnValue({
@@ -191,33 +191,14 @@ describe('RivalFinderPage', () => {
     );
   });
 
-  it('renders favorite star as pressed when rival is already favorited', () => {
-    mockUseFavorites.mockReturnValue({
+  it('renders favorite star as pressed when favorite ids includes rival userId', () => {
+    mockUseFavoriteIds.mockReturnValue({
       data: {
-        pages: [
-          {
-            items: [
-              {
-                userId: '11111111-1111-4111-8111-111111111111',
-                displayName: 'Rival Uno',
-                avatarUrl: null,
-                category: 5,
-                elo: 1208,
-                createdAt: '2026-02-24T12:00:00Z',
-                location: { city: 'Rosario', province: 'Santa Fe', country: 'Argentina' },
-              },
-            ],
-            nextCursor: null,
-          },
-        ],
-        pageParams: [undefined],
+        ids: ['11111111-1111-4111-8111-111111111111'],
       },
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
-      hasNextPage: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
     });
 
     render(<RivalFinderPage />);

@@ -149,4 +149,13 @@ export const PlayerService = {
     });
     return data;
   },
+
+  getFavoriteIds: async (): Promise<
+    paths['/players/me/favorites/ids']['get']['responses'][200]['content']['application/json']
+  > => {
+    const { data } = await api.get<
+      paths['/players/me/favorites/ids']['get']['responses'][200]['content']['application/json']
+    >('/players/me/favorites/ids');
+    return data;
+  },
 };

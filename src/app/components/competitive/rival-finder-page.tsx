@@ -9,7 +9,8 @@ import { RivalCard } from '@/app/components/competitive/rival-card';
 import { useRivalSuggestions, type RivalSuggestionFilters } from '@/hooks/use-rival-suggestions';
 import { usePartnerSuggestions } from '@/hooks/use-partner-suggestions';
 import { useCreateDirectChallenge } from '@/hooks/use-challenges';
-import { useFavorites, useToggleFavorite } from '@/hooks/use-favorites';
+import { useToggleFavorite } from '@/hooks/use-favorites';
+import { useFavoriteIds } from '@/hooks/use-favorite-ids';
 import {
   parseRivalFinderParams,
   buildSearchParams,
@@ -86,7 +87,7 @@ export function RivalFinderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const createDirectChallenge = useCreateDirectChallenge();
-  const favoritesQuery = useFavorites({ limit: 100 });
+  const favoriteIdsQuery = useFavoriteIds();
   const toggleFavorite = useToggleFavorite();
 
   const activeTab: ActiveTab =
@@ -128,13 +129,8 @@ export function RivalFinderPage() {
   const partners = partnersQuery.data?.items ?? [];
 
   const favoritedUserIds = useMemo(
-    () =>
-      new Set(
-        (favoritesQuery.data?.pages ?? [])
-          .flatMap((page) => page.items)
-          .map((favorite) => favorite.userId),
-      ),
-    [favoritesQuery.data],
+    () => new Set(favoriteIdsQuery.data?.ids ?? []),
+    [favoriteIdsQuery.data],
   );
 
   const activeFilterCount = useMemo(() => {

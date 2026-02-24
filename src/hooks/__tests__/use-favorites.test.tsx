@@ -22,6 +22,7 @@ vi.mock('@/services/player-service', () => ({
     addFavorite: vi.fn(),
     removeFavorite: vi.fn(),
     listFavorites: vi.fn(),
+    getFavoriteIds: vi.fn(),
   },
 }));
 
@@ -111,6 +112,43 @@ describe('useToggleFavorite', () => {
     await waitFor(() => {
       expect(result.current.isPending).toBe(false);
     });
+  });
+
+  it('invalidates favorite ids and favorites list queries after toggle settles', async () => {
+    const client = makeClient();
+    const wrapper = makeWrapper(client);
+    const existingItem = makeFavorite();
+    const invalidateSpy = vi.spyOn(client, 'invalidateQueries');
+
+    client.setQueryData(['favorites', 'ids'], { ids: [existingItem.userId] });
+    client.setQueryData(['favorites', { limit: 20 }], makeFavoritesData([existingItem]));
+    (PlayerService.removeFavorite as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+    });
+
+    const { result } = renderHook(() => useToggleFavorite(), { wrapper });
+
+    act(() => {
+      result.current.mutate({
+        targetUserId: existingItem.userId,
+        isFavorited: true,
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+    });
+
+    expect(invalidateSpy.mock.calls.some(([filters]) => {
+      return (
+        typeof filters === 'object' &&
+        filters !== null &&
+        'queryKey' in filters &&
+        Array.isArray((filters as { queryKey?: unknown[] }).queryKey) &&
+        (filters as { queryKey?: unknown[] }).queryKey?.[0] === 'favorites' &&
+        (filters as { queryKey?: unknown[] }).queryKey?.[1] === 'ids'
+      );
+    })).toBe(true);
   });
 
   it('rolls back optimistic add when the mutation fails', async () => {

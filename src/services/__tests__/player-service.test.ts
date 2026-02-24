@@ -26,6 +26,8 @@ type UpdatePlayerProfileBody =
   paths['/players/me/profile']['patch']['requestBody']['content']['application/json'];
 type FavoritesListResponse =
   paths['/players/me/favorites']['get']['responses'][200]['content']['application/json'];
+type FavoriteIdsResponse =
+  paths['/players/me/favorites/ids']['get']['responses'][200]['content']['application/json'];
 type FavoriteMutationResponse =
   paths['/players/me/favorites/{targetUserId}']['post']['responses'][200]['content']['application/json'];
 
@@ -115,6 +117,21 @@ describe('PlayerService player profile', () => {
     expect(mockedApi.get).toHaveBeenCalledWith('/players/me/favorites', {
       params: { limit: 20, cursor: 'cursor-1' },
     });
+    expect(result).toEqual(response);
+  });
+
+  it('getFavoriteIds calls GET /players/me/favorites/ids', async () => {
+    const response: FavoriteIdsResponse = {
+      ids: [
+        '11111111-1111-4111-8111-111111111111',
+        '22222222-2222-4222-8222-222222222222',
+      ],
+    };
+    mockedApi.get.mockResolvedValue({ data: response });
+
+    const result = await PlayerService.getFavoriteIds();
+
+    expect(mockedApi.get).toHaveBeenCalledWith('/players/me/favorites/ids');
     expect(result).toEqual(response);
   });
 });
