@@ -5,16 +5,19 @@ import { toast } from 'sonner';
 import type { paths } from '@/api/schema';
 import { PlayerService } from '@/services/player-service';
 
+type FavoritesPage =
+  paths['/players/me/favorites']['get']['responses'][200]['content']['application/json'];
+type FavoriteItem = FavoritesPage['items'][number];
+type FavoritesInfiniteData = InfiniteData<FavoritesPage>;
+
 function upsertFavoriteInCache(
-  data:
-    | InfiniteData<paths['/players/me/favorites']['get']['responses'][200]['content']['application/json']>
-    | undefined,
+  data: FavoritesInfiniteData | undefined,
   variables: {
     targetUserId: string;
     isFavorited: boolean;
-    optimisticItem?: paths['/players/me/favorites']['get']['responses'][200]['content']['application/json']['items'][number];
+    optimisticItem?: FavoriteItem;
   },
-) {
+): FavoritesInfiniteData | undefined {
   if (!data) return data;
 
   if (variables.isFavorited) {
@@ -27,7 +30,8 @@ function upsertFavoriteInCache(
     };
   }
 
-  if (!variables.optimisticItem) return data;
+  const optimisticItem = variables.optimisticItem;
+  if (!optimisticItem) return data;
 
   const alreadyExists = data.pages.some((page) =>
     page.items.some((item) => item.userId === variables.targetUserId),
@@ -40,7 +44,7 @@ function upsertFavoriteInCache(
       ...data,
       pages: [
         {
-          items: [variables.optimisticItem],
+          items: [optimisticItem],
           nextCursor: null,
         },
       ],
@@ -54,7 +58,7 @@ function upsertFavoriteInCache(
       index === 0
         ? {
             ...page,
-            items: [variables.optimisticItem, ...page.items],
+            items: [optimisticItem, ...page.items],
           }
         : page,
     ),
@@ -86,7 +90,7 @@ export function useToggleFavorite() {
     mutationFn: async (variables: {
       targetUserId: string;
       isFavorited: boolean;
-      optimisticItem?: paths['/players/me/favorites']['get']['responses'][200]['content']['application/json']['items'][number];
+      optimisticItem?: FavoriteItem;
     }) => {
       if (variables.isFavorited) {
         return PlayerService.removeFavorite(variables.targetUserId);
@@ -97,15 +101,13 @@ export function useToggleFavorite() {
       await queryClient.cancelQueries({ queryKey: ['favorites'], exact: false });
 
       const snapshots = queryClient.getQueriesData<
-        InfiniteData<paths['/players/me/favorites']['get']['responses'][200]['content']['application/json']>
+        FavoritesInfiniteData
       >({
         queryKey: ['favorites'],
         exact: false,
       });
 
-      queryClient.setQueriesData<
-        InfiniteData<paths['/players/me/favorites']['get']['responses'][200]['content']['application/json']>
-      >(
+      queryClient.setQueriesData<FavoritesInfiniteData>(
         { queryKey: ['favorites'], exact: false },
         (old) => upsertFavoriteInCache(old, variables),
       );
