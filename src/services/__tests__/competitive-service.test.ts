@@ -89,6 +89,32 @@ describe('competitiveService elo history', () => {
   });
 });
 
+describe('competitiveService skill radar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('calls GET /competitive/profile/me/radar', async () => {
+    mockedApi.get.mockResolvedValue({
+      data: {
+        sampleSize: 4,
+        matches30d: 6,
+        axes: [
+          { key: 'consistency', label: 'Consistencia', score: 72, description: 'Sostenes el punto.' },
+          { key: 'defense', label: 'Defensa', score: 68, description: 'Recuperas bolas.' },
+          { key: 'net', label: 'Red', score: 75, description: 'Presionas adelante.' },
+          { key: 'power', label: 'Potencia', score: 61, description: 'Generas velocidad.' },
+          { key: 'strategy', label: 'Tactica', score: 70, description: 'Leés el partido.' },
+        ],
+      },
+    });
+
+    await competitiveService.getSkillRadar();
+
+    expect(mockedApi.get).toHaveBeenCalledWith('/competitive/profile/me/radar');
+  });
+});
+
 describe('competitiveService ranking', () => {
   beforeEach(() => {
     vi.clearAllMocks();

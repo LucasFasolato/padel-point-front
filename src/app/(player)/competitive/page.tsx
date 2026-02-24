@@ -1,11 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { useCompetitiveProfile, useEloHistory, useOnboardingState } from '@/hooks/use-competitive-profile';
+import {
+  useCompetitiveProfile,
+  useEloHistory,
+  useOnboardingState,
+  useSkillRadar,
+} from '@/hooks/use-competitive-profile';
 import { useChallengeActions, useChallengesInbox } from '@/hooks/use-challenges';
 import { useMyMatches } from '@/hooks/use-matches';
 import { CategoryBadge } from '@/app/components/competitive/category-badge';
 import { EloChart } from '@/app/components/competitive/elo-chart';
+import { SkillRadarCard } from '@/app/components/competitive/skill-radar-card';
 import { StatsSummary } from '@/app/components/competitive/stats-summary';
 import { MatchCard } from '@/app/components/competitive/match-card';
 import { Button } from '@/app/components/ui/button';
@@ -38,6 +44,7 @@ export default function CompetitivePage() {
     isError: profileError,
   } = useCompetitiveProfile();
   const eloHistoryQuery = useEloHistory(COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT);
+  const skillRadarQuery = useSkillRadar();
   const inboxQuery = useChallengesInbox(COMPETITIVE_PENDING_CHALLENGES_LIMIT);
   const { acceptDirect, rejectDirect } = useChallengeActions();
   const { data: matches, isLoading: loadingMatches, error: matchesError } = useMyMatches();
@@ -221,6 +228,34 @@ export default function CompetitivePage() {
             </div>
           )}
         </section>
+
+        {skillRadarQuery.isLoading ? (
+          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-slate-900">Radar</h2>
+              <p className="mt-1 text-sm text-slate-600">Cargando métricas de juego...</p>
+            </div>
+            <Skeleton className="h-72 w-full rounded-lg" />
+          </section>
+        ) : skillRadarQuery.isError ? (
+          <section className="rounded-xl border border-rose-200 bg-rose-50 p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-rose-900">Radar</h2>
+            <p className="mt-2 text-sm text-rose-700">
+              No pudimos cargar tu radar de skills.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => skillRadarQuery.refetch()}
+            >
+              Reintentar
+            </Button>
+          </section>
+        ) : (
+          <SkillRadarCard radar={skillRadarQuery.data} />
+        )}
 
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">

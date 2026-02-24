@@ -74,6 +74,15 @@ export function useOnboardingState() {
   });
 }
 
+export function useSkillRadar() {
+  return useQuery({
+    queryKey: ['competitive', 'skill-radar'],
+    queryFn: () => competitiveService.getSkillRadar(),
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
+}
+
 export function useRanking(limit: number = COMPETITIVE_RANKING_DEFAULT_LIMIT) {
   const query = useRankingByCategory(undefined, limit);
   return {

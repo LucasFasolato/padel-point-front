@@ -15,6 +15,8 @@ import type {
 
 type CompetitiveProfileHistoryResponse =
   paths['/competitive/profile/me/history']['get']['responses'][200]['content']['application/json'];
+export type CompetitiveSkillRadarResponse =
+  paths['/competitive/profile/me/radar']['get']['responses'][200]['content']['application/json'];
 
 function normalizeEloHistoryResponse(raw: CompetitiveProfileHistoryResponse | unknown): EloHistoryResponse {
   if (Array.isArray(raw)) {
@@ -94,6 +96,14 @@ export const competitiveService = {
       }
     );
     return normalizeEloHistoryResponse(data);
+  },
+
+  /**
+   * Obtiene el radar de skills (últimos partidos).
+   */
+  async getSkillRadar(): Promise<CompetitiveSkillRadarResponse> {
+    const { data } = await api.get<CompetitiveSkillRadarResponse>('/competitive/profile/me/radar');
+    return data;
   },
 
   /**

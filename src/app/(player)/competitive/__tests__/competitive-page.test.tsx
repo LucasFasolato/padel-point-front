@@ -21,6 +21,7 @@ vi.mock('@/hooks/use-competitive-profile', () => ({
   useCompetitiveProfile: vi.fn(),
   useEloHistory: vi.fn(),
   useOnboardingState: vi.fn(),
+  useSkillRadar: vi.fn(),
 }));
 
 vi.mock('@/hooks/use-matches', () => ({
@@ -49,11 +50,17 @@ vi.mock('@/app/components/competitive/elo-chart', () => ({
 }));
 
 import CompetitivePage from '../page';
-import { useCompetitiveProfile, useEloHistory, useOnboardingState } from '@/hooks/use-competitive-profile';
+import {
+  useCompetitiveProfile,
+  useEloHistory,
+  useOnboardingState,
+  useSkillRadar,
+} from '@/hooks/use-competitive-profile';
 
 const mockedUseOnboardingState = vi.mocked(useOnboardingState);
 const mockedUseCompetitiveProfile = vi.mocked(useCompetitiveProfile);
 const mockedUseEloHistory = vi.mocked(useEloHistory);
+const mockedUseSkillRadar = vi.mocked(useSkillRadar);
 
 function makeInboxChallenge(id = 'c-1') {
   return {
@@ -124,6 +131,16 @@ describe('CompetitivePage onboarding gate', () => {
       fetchNextPage: vi.fn(),
       refetch: vi.fn(),
     } as ReturnType<typeof useEloHistory>);
+    mockedUseSkillRadar.mockReturnValue({
+      data: {
+        sampleSize: 0,
+        matches30d: 0,
+        axes: [],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as ReturnType<typeof useSkillRadar>);
     mockedUseCompetitiveProfile.mockReturnValue({
       data: undefined,
       isLoading: false,

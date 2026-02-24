@@ -145,6 +145,23 @@
           }
         }
       }
+    },
+    "/competitive/profile/me/radar": {
+      "get": {
+        "operationId": "getCompetitiveProfileRadar",
+        "responses": {
+          "200": {
+            "description": "Skill radar metrics for current player",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompetitiveSkillRadarResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -502,6 +519,64 @@
           },
           "nextCursor": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": true
+      },
+      "CompetitiveSkillRadarAxis": {
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "score",
+          "description"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CompetitiveSkillRadarResponse": {
+        "type": "object",
+        "required": [
+          "sampleSize",
+          "matches30d",
+          "axes"
+        ],
+        "properties": {
+          "sampleSize": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "matches30d": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "axes": {
+            "type": "array",
+            "minItems": 5,
+            "maxItems": 5,
+            "items": {
+              "$ref": "#/components/schemas/CompetitiveSkillRadarAxis"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },

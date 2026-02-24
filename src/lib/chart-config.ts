@@ -1,7 +1,9 @@
 import {
   Chart as ChartJS,
+  RadarController,
   CategoryScale,
   LinearScale,
+  RadialLinearScale,
   PointElement,
   LineElement,
   Title,
@@ -16,8 +18,10 @@ import {
 ChartJS.register(
   CategoryScale,
   LinearScale,
+  RadialLinearScale,
   PointElement,
   LineElement,
+  RadarController,
   BarElement,
   ArcElement,
   Title,
