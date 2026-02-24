@@ -20,6 +20,30 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Backend OpenAPI Types
+
+The frontend can generate TypeScript contract types from the backend OpenAPI schema.
+
+Set the backend docs URL (optional, defaults to `http://localhost:3000/docs-json`):
+
+```bash
+BACKEND_OPENAPI_URL=http://localhost:3000/docs-json
+```
+
+Update the local OpenAPI snapshot and generated types:
+
+```bash
+npm run api:update
+```
+
+Run the drift check in CI/local verification to ensure `src/api/schema.ts` is up to date with `src/api/openapi.json`:
+
+```bash
+npm run api:check
+```
+
+Use `npm run api:generate` when `src/api/openapi.json` was already updated and you only need to regenerate `src/api/schema.ts`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

@@ -1,4 +1,5 @@
 import api from '@/lib/api';
+import type { paths } from '@/api/schema';
 import { isUuid } from '@/lib/id-utils';
 import { buildLeagueMatchResultPayload } from '@/lib/matches/build-league-match-result-payload';
 import { normalizeLeagueStatus } from '@/lib/league-utils';
@@ -30,6 +31,9 @@ import type {
   LeagueShareEnableResponse,
   LeagueShareDisableResponse,
 } from '@/types/leagues';
+
+type CaptureLeagueMatchResultBody =
+  paths['/leagues/{leagueId}/matches/{matchId}/result']['patch']['requestBody']['content']['application/json'];
 
 /** Normalise status + provide displayName fallbacks for members/standings. */
 function normalizeLeague(raw: League): League {
@@ -334,7 +338,7 @@ export const leagueService = {
     payload: CaptureLeagueMatchResultPayload
   ): Promise<void> {
     const validLeagueId = assertValidLeagueId(leagueId);
-    const body = buildLeagueMatchResultPayload({
+    const body: CaptureLeagueMatchResultBody = buildLeagueMatchResultPayload({
       playedAt: payload.playedAt ?? new Date(),
       sets: payload.sets,
     });

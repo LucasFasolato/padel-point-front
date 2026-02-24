@@ -1,3 +1,4 @@
+import type { paths } from '@/api/schema';
 import type { LeagueMatchSet } from '@/types/leagues';
 
 export type LeagueMatchResultPayloadErrorCode =
@@ -20,10 +21,8 @@ export interface BuildLeagueMatchResultPayloadInput {
   sets: Array<{ a: number; b: number }>;
 }
 
-export interface LeagueMatchResultRequestPayload {
-  playedAt: string;
-  score: { sets: LeagueMatchSet[] };
-}
+export type LeagueMatchResultRequestPayload =
+  paths['/leagues/{leagueId}/matches/{matchId}/result']['patch']['requestBody']['content']['application/json'];
 
 function toIsoString(value: Date | string): string {
   const date = value instanceof Date ? value : new Date(value);
@@ -71,4 +70,3 @@ export function buildLeagueMatchResultPayload(
     },
   };
 }
-

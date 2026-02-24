@@ -1,4 +1,5 @@
 import  api  from '@/lib/api';
+import type { paths } from '@/api/schema';
 import {
   COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT,
   COMPETITIVE_RANKING_DEFAULT_LIMIT,
@@ -12,7 +13,10 @@ import type {
   RankingResponse,
 } from '@/types/competitive';
 
-function normalizeEloHistoryResponse(raw: unknown): EloHistoryResponse {
+type CompetitiveProfileHistoryResponse =
+  paths['/competitive/profile/me/history']['get']['responses'][200]['content']['application/json'];
+
+function normalizeEloHistoryResponse(raw: CompetitiveProfileHistoryResponse | unknown): EloHistoryResponse {
   if (Array.isArray(raw)) {
     return {
       items: raw,
@@ -83,9 +87,12 @@ export const competitiveService = {
       queryParams.cursor = params.cursor;
     }
 
-    const { data } = await api.get('/competitive/profile/me/history', {
+    const { data } = await api.get<CompetitiveProfileHistoryResponse>(
+      '/competitive/profile/me/history',
+      {
       params: queryParams,
-    });
+      }
+    );
     return normalizeEloHistoryResponse(data);
   },
 

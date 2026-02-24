@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import type { paths } from '@/api/schema';
 import {
   LeagueMatchResultPayloadError,
   buildLeagueMatchResultPayload,
 } from '@/lib/matches/build-league-match-result-payload';
+
+type LeagueMatchResultPatchBody =
+  paths['/leagues/{leagueId}/matches/{matchId}/result']['patch']['requestBody']['content']['application/json'];
 
 describe('buildLeagueMatchResultPayload', () => {
   it('returns canonical shape with score.sets', () => {
@@ -13,8 +17,9 @@ describe('buildLeagueMatchResultPayload', () => {
         { a: 6, b: 3 },
       ],
     });
+    const body: LeagueMatchResultPatchBody = result;
 
-    expect(result).toEqual({
+    expect(body).toEqual({
       playedAt: '2026-02-23T12:00:00.000Z',
       score: {
         sets: [
@@ -23,7 +28,7 @@ describe('buildLeagueMatchResultPayload', () => {
         ],
       },
     });
-    expect(result).not.toHaveProperty('sets');
+    expect(body).not.toHaveProperty('sets');
   });
 
   it('rejects invalid sets length', () => {
@@ -73,4 +78,3 @@ describe('buildLeagueMatchResultPayload', () => {
     expect(result.playedAt).toMatch(/Z$/);
   });
 });
-

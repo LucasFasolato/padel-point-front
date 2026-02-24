@@ -1,0 +1,368 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Padel Point Backend API (seed)",
+    "version": "0.0.0-seed"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000"
+    }
+  ],
+  "paths": {
+    "/leagues/{leagueId}/matches/{matchId}/result": {
+      "patch": {
+        "operationId": "patchLeagueMatchResult",
+        "parameters": [
+          {
+            "name": "leagueId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeagueMatchResultPatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/challenges/inbox": {
+      "get": {
+        "operationId": "getChallengesInbox",
+        "responses": {
+          "200": {
+            "description": "Inbox challenge list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Challenge"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/competitive/profile/me/history": {
+      "get": {
+        "operationId": "getCompetitiveProfileHistory",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ELO history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EloHistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "LeagueMatchSet": {
+        "type": "object",
+        "required": [
+          "a",
+          "b"
+        ],
+        "properties": {
+          "a": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 7
+          },
+          "b": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 7
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeagueMatchScore": {
+        "type": "object",
+        "required": [
+          "sets"
+        ],
+        "properties": {
+          "sets": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 3,
+            "items": {
+              "$ref": "#/components/schemas/LeagueMatchSet"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeagueMatchResultPatchRequest": {
+        "type": "object",
+        "required": [
+          "playedAt",
+          "score"
+        ],
+        "properties": {
+          "playedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "score": {
+            "$ref": "#/components/schemas/LeagueMatchScore"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserBasic": {
+        "type": "object",
+        "required": [
+          "userId",
+          "email",
+          "displayName"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "ChallengeTeamA": {
+        "type": "object",
+        "required": [
+          "p1",
+          "p2"
+        ],
+        "properties": {
+          "p1": {
+            "$ref": "#/components/schemas/UserBasic"
+          },
+          "p2": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBasic"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "additionalProperties": true
+      },
+      "ChallengeTeamB": {
+        "type": "object",
+        "required": [
+          "p1",
+          "p2"
+        ],
+        "properties": {
+          "p1": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBasic"
+              }
+            ],
+            "nullable": true
+          },
+          "p2": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBasic"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "additionalProperties": true
+      },
+      "Challenge": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "status",
+          "targetCategory",
+          "reservationId",
+          "message",
+          "createdAt",
+          "updatedAt",
+          "teamA",
+          "teamB",
+          "invitedOpponent",
+          "isReady"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "open"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "ready",
+              "rejected",
+              "cancelled"
+            ]
+          },
+          "targetCategory": {
+            "type": "integer",
+            "nullable": true
+          },
+          "reservationId": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "teamA": {
+            "$ref": "#/components/schemas/ChallengeTeamA"
+          },
+          "teamB": {
+            "$ref": "#/components/schemas/ChallengeTeamB"
+          },
+          "invitedOpponent": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBasic"
+              }
+            ],
+            "nullable": true
+          },
+          "isReady": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": true
+      },
+      "EloHistoryPoint": {
+        "type": "object",
+        "required": [
+          "id",
+          "eloBefore",
+          "eloAfter",
+          "delta",
+          "reason",
+          "refId",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "eloBefore": {
+            "type": "number"
+          },
+          "eloAfter": {
+            "type": "number"
+          },
+          "delta": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "refId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": true
+      },
+      "EloHistoryResponse": {
+        "type": "object",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EloHistoryPoint"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

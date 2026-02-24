@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "api:download": "node scripts/download-openapi.mjs",
+    "api:generate": "openapi-typescript src/api/openapi.json -o src/api/schema.ts",
+    "api:update": "npm run api:download && npm run api:generate",
+    "api:check": "npm run api:generate && git diff --exit-code -- src/api/schema.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -47,6 +51,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.4",
     "jsdom": "^26.1.0",
+    "openapi-typescript": "^7.13.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "typescript": "^5",
