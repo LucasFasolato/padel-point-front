@@ -1,9 +1,5 @@
 import  api  from '@/lib/api';
-import type { paths } from '@/api/schema';
 import type { Challenge } from '@/types/competitive';
-
-type ChallengesInboxResponse =
-  paths['/challenges/inbox']['get']['responses'][200]['content']['application/json'];
 
 export const challengesService = {
   /**
@@ -47,7 +43,7 @@ export const challengesService = {
    * Inbox: desafíos donde me invitaron (DIRECT)
    */
   async getInbox(): Promise<Challenge[]> {
-    const { data } = await api.get<ChallengesInboxResponse>('/challenges/inbox');
+    const { data } = await api.get<Challenge[]>('/challenges/inbox');
     return data as Challenge[];
   },
 

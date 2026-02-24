@@ -40,6 +40,10 @@ vi.mock('@/hooks/use-challenges', () => ({
   }),
 }));
 
+vi.mock('react-chartjs-2', () => ({
+  Radar: () => <div data-testid="radar-chart-mock" />,
+}));
+
 vi.mock('@/app/components/competitive/elo-chart', () => ({
   EloChart: ({ history }: { history: unknown[] }) =>
     history.length === 0 ? (
@@ -133,9 +137,12 @@ describe('CompetitivePage onboarding gate', () => {
     } as ReturnType<typeof useEloHistory>);
     mockedUseSkillRadar.mockReturnValue({
       data: {
-        sampleSize: 0,
-        matches30d: 0,
-        axes: [],
+        activity: 50,
+        momentum: 50,
+        consistency: 50,
+        dominance: 50,
+        resilience: 50,
+        meta: { computedAt: '2026-01-01T00:00:00Z', matches30d: 0, sampleSize: 0 },
       },
       isLoading: false,
       isError: false,

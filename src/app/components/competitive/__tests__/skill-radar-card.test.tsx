@@ -9,16 +9,16 @@ vi.mock('react-chartjs-2', () => ({
 
 function makeRadar(overrides: Partial<CompetitiveSkillRadarResponse> = {}): CompetitiveSkillRadarResponse {
   return {
-    sampleSize: 5,
-    matches30d: 8,
-    axes: [
-      { key: 'consistency', label: 'Consistencia', score: 78, description: 'Mantenes ritmo y errores bajos.' },
-      { key: 'defense', label: 'Defensa', score: 70, description: 'Recuperación y globos bajo presión.' },
-      { key: 'net', label: 'Juego en red', score: 74, description: 'Presión y definición en la red.' },
-      { key: 'power', label: 'Potencia', score: 62, description: 'Velocidad y cierre de puntos.' },
-      { key: 'strategy', label: 'Táctica', score: 81, description: 'Selección de golpes y lectura.' },
-    ],
-    updatedAt: '2026-02-24T20:00:00Z',
+    activity: 72,
+    momentum: 65,
+    consistency: 78,
+    dominance: 68,
+    resilience: 70,
+    meta: {
+      computedAt: '2026-02-24T20:00:00Z',
+      matches30d: 8,
+      sampleSize: 5,
+    },
     ...overrides,
   };
 }
@@ -32,15 +32,23 @@ describe('SkillRadarCard', () => {
     expect(screen.getByTestId('radar-chart-mock')).toBeInTheDocument();
     expect(screen.getByText('Partidos 30d: 8')).toBeInTheDocument();
     expect(screen.getByText('Muestra: 5')).toBeInTheDocument();
+    // Derived axis labels
     expect(screen.getByText('Consistencia')).toBeInTheDocument();
-    expect(screen.getByText('Mantenes ritmo y errores bajos.')).toBeInTheDocument();
+    expect(screen.getByText('Actividad')).toBeInTheDocument();
+    expect(screen.getByText('Momentum')).toBeInTheDocument();
+    expect(screen.getByText('Dominio')).toBeInTheDocument();
+    expect(screen.getByText('Resiliencia')).toBeInTheDocument();
   });
 
-  it('shows insufficient sample helper when sampleSize < 3', () => {
-    render(<SkillRadarCard radar={makeRadar({ sampleSize: 2, matches30d: 2 })} />);
+  it('shows insufficient sample helper when meta.sampleSize < 3', () => {
+    render(
+      <SkillRadarCard
+        radar={makeRadar({ meta: { sampleSize: 2, matches30d: 2, computedAt: '2026-02-24T20:00:00Z' } })}
+      />,
+    );
 
     expect(
-      screen.getByText('Jugá al menos 3 partidos para estadísticas más precisas')
+      screen.getByText('Jugá al menos 3 partidos para estadísticas más precisas'),
     ).toBeInTheDocument();
     expect(screen.getByTestId('radar-chart-mock')).toBeInTheDocument();
   });
@@ -49,10 +57,10 @@ describe('SkillRadarCard', () => {
     render(<SkillRadarCard radar={null} />);
 
     expect(
-      screen.getByText('Todavia no hay datos suficientes para construir tu radar de skills.')
+      screen.getByText('Todavia no hay datos suficientes para construir tu radar de skills.'),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('Jugá al menos 3 partidos para estadísticas más precisas')
+      screen.getByText('Jugá al menos 3 partidos para estadísticas más precisas'),
     ).toBeInTheDocument();
     expect(screen.queryByTestId('radar-chart-mock')).not.toBeInTheDocument();
   });

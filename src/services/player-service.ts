@@ -12,9 +12,9 @@ import type {
 } from '@/types';
 
 export type MyPlayerProfileResponse =
-  paths['/players/me']['get']['responses'][200]['content']['application/json'];
+  paths['/players/me/profile']['get']['responses'][200]['content']['application/json'];
 export type UpdateMyPlayerProfilePayload =
-  paths['/players/me']['patch']['requestBody']['content']['application/json'];
+  paths['/players/me/profile']['patch']['requestBody']['content']['application/json'];
 
 export const PlayerService = {
   listClubs: async (): Promise<Club[]> => {
@@ -102,14 +102,14 @@ export const PlayerService = {
   },
 
   getMyPlayerProfile: async (): Promise<MyPlayerProfileResponse> => {
-    const { data } = await api.get<MyPlayerProfileResponse>('/players/me');
+    const { data } = await api.get<MyPlayerProfileResponse>('/players/me/profile');
     return data;
   },
 
   updateMyPlayerProfile: async (
     payload: UpdateMyPlayerProfilePayload,
   ): Promise<MyPlayerProfileResponse> => {
-    const { data } = await api.patch<MyPlayerProfileResponse>('/players/me', payload);
+    const { data } = await api.patch<MyPlayerProfileResponse>('/players/me/profile', payload);
     return data;
   },
 };

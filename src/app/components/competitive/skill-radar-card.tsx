@@ -9,11 +9,23 @@ interface SkillRadarCardProps {
   className?: string;
 }
 
+type DerivedAxis = { key: string; label: string; value: number };
+
+function deriveAxes(radar: CompetitiveSkillRadarResponse): DerivedAxis[] {
+  return [
+    { key: 'activity', label: 'Actividad', value: radar.activity ?? 50 },
+    { key: 'momentum', label: 'Momentum', value: radar.momentum ?? 50 },
+    { key: 'consistency', label: 'Consistencia', value: radar.consistency ?? 50 },
+    { key: 'dominance', label: 'Dominio', value: radar.dominance ?? 50 },
+    { key: 'resilience', label: 'Resiliencia', value: radar.resilience ?? 50 },
+  ];
+}
+
 export function SkillRadarCard({ radar, className }: SkillRadarCardProps) {
-  const axes = radar?.axes ?? [];
+  const axes: DerivedAxis[] = radar ? deriveAxes(radar) : [];
   const hasAxes = axes.length > 0;
-  const sampleSize = radar?.sampleSize ?? 0;
-  const matches30d = radar?.matches30d ?? 0;
+  const sampleSize = radar?.meta?.sampleSize ?? 0;
+  const matches30d = radar?.meta?.matches30d ?? 0;
   const insufficientSample = sampleSize < 3;
 
   if (!radar || !hasAxes) {
@@ -39,7 +51,7 @@ export function SkillRadarCard({ radar, className }: SkillRadarCardProps) {
     datasets: [
       {
         label: 'Skill score',
-        data: axes.map((axis) => axis.score),
+        data: axes.map((axis) => axis.value),
         borderColor: 'rgb(15, 23, 42)',
         backgroundColor: 'rgba(59, 130, 246, 0.12)',
         pointBackgroundColor: 'rgb(37, 99, 235)',
@@ -74,7 +86,7 @@ export function SkillRadarCard({ radar, className }: SkillRadarCardProps) {
           color: '#334155',
           font: {
             size: 12,
-            weight: '600',
+            weight: 600,
           },
         },
       },
@@ -118,7 +130,10 @@ export function SkillRadarCard({ radar, className }: SkillRadarCardProps) {
         ) : null}
 
         <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-          <div className="h-72 rounded-lg border border-slate-100 bg-slate-50 p-3" data-testid="skill-radar-chart">
+          <div
+            className="h-72 rounded-lg border border-slate-100 bg-slate-50 p-3"
+            data-testid="skill-radar-chart"
+          >
             <Radar data={chartData} options={chartOptions} />
           </div>
 
@@ -130,9 +145,10 @@ export function SkillRadarCard({ radar, className }: SkillRadarCardProps) {
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold text-slate-900">{axis.label}</span>
-                  <span className="text-sm font-semibold text-slate-700">{Math.round(axis.score)}</span>
+                  <span className="text-sm font-semibold text-slate-700">
+                    {Math.round(axis.value)}
+                  </span>
                 </div>
-                <p className="mt-1 text-xs text-slate-600">{axis.description}</p>
               </li>
             ))}
           </ul>

@@ -54,7 +54,7 @@ function toFormState(profile?: MyPlayerProfileResponse): PlayerProfileFormState 
 
 function toPayload(form: PlayerProfileFormState): UpdateMyPlayerProfilePayload {
   return {
-    playStyleTags: Array.from(new Set(form.playStyleTags)).slice(0, MAX_PLAY_STYLE_TAGS),
+    playStyleTags: Array.from(new Set(form.playStyleTags)).slice(0, MAX_PLAY_STYLE_TAGS) as UpdateMyPlayerProfilePayload['playStyleTags'],
     bio: form.bio.trim() ? form.bio.trim() : null,
     lookingFor: {
       rival: form.lookingForRival,

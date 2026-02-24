@@ -13,8 +13,6 @@ import type {
   RankingResponse,
 } from '@/types/competitive';
 
-type CompetitiveProfileHistoryResponse =
-  paths['/competitive/profile/me/history']['get']['responses'][200]['content']['application/json'];
 export type CompetitiveSkillRadarResponse =
   paths['/competitive/profile/me/radar']['get']['responses'][200]['content']['application/json'];
 export type RivalsResponse =
@@ -38,7 +36,7 @@ export type PartnersQuery = {
   country?: string;
 };
 
-function normalizeEloHistoryResponse(raw: CompetitiveProfileHistoryResponse | unknown): EloHistoryResponse {
+function normalizeEloHistoryResponse(raw: unknown): EloHistoryResponse {
   if (Array.isArray(raw)) {
     return {
       items: raw,
@@ -109,7 +107,7 @@ export const competitiveService = {
       queryParams.cursor = params.cursor;
     }
 
-    const { data } = await api.get<CompetitiveProfileHistoryResponse>(
+    const { data } = await api.get<unknown>(
       '/competitive/profile/me/history',
       {
       params: queryParams,

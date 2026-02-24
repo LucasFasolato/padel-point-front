@@ -17,9 +17,9 @@ type ApiMock = {
 };
 
 type PlayerProfileResponse =
-  paths['/players/me']['get']['responses'][200]['content']['application/json'];
+  paths['/players/me/profile']['get']['responses'][200]['content']['application/json'];
 type UpdatePlayerProfileBody =
-  paths['/players/me']['patch']['requestBody']['content']['application/json'];
+  paths['/players/me/profile']['patch']['requestBody']['content']['application/json'];
 
 const mockedApi = api as unknown as ApiMock;
 
@@ -28,7 +28,7 @@ describe('PlayerService player profile', () => {
     vi.clearAllMocks();
   });
 
-  it('getMyPlayerProfile calls GET /players/me', async () => {
+  it('getMyPlayerProfile calls GET /players/me/profile', async () => {
     const response: PlayerProfileResponse = {
       playStyleTags: ['Control', 'Volea'],
       bio: 'Juego de tarde.',
@@ -40,11 +40,11 @@ describe('PlayerService player profile', () => {
 
     const result = await PlayerService.getMyPlayerProfile();
 
-    expect(mockedApi.get).toHaveBeenCalledWith('/players/me');
+    expect(mockedApi.get).toHaveBeenCalledWith('/players/me/profile');
     expect(result).toEqual(response);
   });
 
-  it('updateMyPlayerProfile calls PATCH /players/me with canonical payload', async () => {
+  it('updateMyPlayerProfile calls PATCH /players/me/profile with canonical payload', async () => {
     const payload: UpdatePlayerProfileBody = {
       playStyleTags: ['Control', 'Tactico'],
       bio: 'Prefiero puntos largos.',
@@ -61,7 +61,7 @@ describe('PlayerService player profile', () => {
 
     const result = await PlayerService.updateMyPlayerProfile(payload);
 
-    expect(mockedApi.patch).toHaveBeenCalledWith('/players/me', payload);
+    expect(mockedApi.patch).toHaveBeenCalledWith('/players/me/profile', payload);
     expect(result).toMatchObject(payload);
   });
 });
