@@ -1,4 +1,5 @@
 import api from '@/lib/api';
+import type { paths } from '@/api/schema';
 import type {
   AvailabilitySlot,
   Club,
@@ -9,6 +10,11 @@ import type {
   PublicClubOverview,
   CheckoutReservation,
 } from '@/types';
+
+export type MyPlayerProfileResponse =
+  paths['/players/me']['get']['responses'][200]['content']['application/json'];
+export type UpdateMyPlayerProfilePayload =
+  paths['/players/me']['patch']['requestBody']['content']['application/json'];
 
 export const PlayerService = {
   listClubs: async (): Promise<Club[]> => {
@@ -92,6 +98,18 @@ export const PlayerService = {
         params: { token: receiptToken },
       },
     );
+    return data;
+  },
+
+  getMyPlayerProfile: async (): Promise<MyPlayerProfileResponse> => {
+    const { data } = await api.get<MyPlayerProfileResponse>('/players/me');
+    return data;
+  },
+
+  updateMyPlayerProfile: async (
+    payload: UpdateMyPlayerProfilePayload,
+  ): Promise<MyPlayerProfileResponse> => {
+    const { data } = await api.patch<MyPlayerProfileResponse>('/players/me', payload);
     return data;
   },
 };

@@ -69,6 +69,48 @@
         }
       }
     },
+    "/players/me": {
+      "get": {
+        "operationId": "getMyPlayerProfile",
+        "responses": {
+          "200": {
+            "description": "My player profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerProfile"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateMyPlayerProfile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlayerProfileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated player profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerProfile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/competitive/profile/me/history": {
       "get": {
         "operationId": "getCompetitiveProfileHistory",
@@ -304,6 +346,108 @@
           }
         },
         "additionalProperties": true
+      },
+      "PlayerProfileLookingFor": {
+        "type": "object",
+        "required": [
+          "rival",
+          "partner"
+        ],
+        "properties": {
+          "rival": {
+            "type": "boolean"
+          },
+          "partner": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PlayerProfileLocation": {
+        "type": "object",
+        "required": [
+          "city",
+          "province",
+          "country"
+        ],
+        "properties": {
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "province": {
+            "type": "string",
+            "nullable": true
+          },
+          "country": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PlayerProfile": {
+        "type": "object",
+        "required": [
+          "playStyleTags",
+          "bio",
+          "lookingFor",
+          "location"
+        ],
+        "properties": {
+          "playStyleTags": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "string"
+            }
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "lookingFor": {
+            "$ref": "#/components/schemas/PlayerProfileLookingFor"
+          },
+          "location": {
+            "$ref": "#/components/schemas/PlayerProfileLocation"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": true
+      },
+      "UpdatePlayerProfileRequest": {
+        "type": "object",
+        "required": [
+          "playStyleTags",
+          "bio",
+          "lookingFor",
+          "location"
+        ],
+        "properties": {
+          "playStyleTags": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "string"
+            }
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "lookingFor": {
+            "$ref": "#/components/schemas/PlayerProfileLookingFor"
+          },
+          "location": {
+            "$ref": "#/components/schemas/PlayerProfileLocation"
+          }
+        },
+        "additionalProperties": false
       },
       "EloHistoryPoint": {
         "type": "object",

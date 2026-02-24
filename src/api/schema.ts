@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getMyPlayerProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateMyPlayerProfile"];
+        trace?: never;
+    };
     "/competitive/profile/me/history": {
         parameters: {
             query?: never;
@@ -107,6 +123,31 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        PlayerProfileLookingFor: {
+            rival: boolean;
+            partner: boolean;
+        };
+        PlayerProfileLocation: {
+            city: string | null;
+            province: string | null;
+            country: string | null;
+        };
+        PlayerProfile: {
+            playStyleTags: string[];
+            bio: string | null;
+            lookingFor: components["schemas"]["PlayerProfileLookingFor"];
+            location: components["schemas"]["PlayerProfileLocation"];
+            /** Format: date-time */
+            updatedAt?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        UpdatePlayerProfileRequest: {
+            playStyleTags: string[];
+            bio: string | null;
+            lookingFor: components["schemas"]["PlayerProfileLookingFor"];
+            location: components["schemas"]["PlayerProfileLocation"];
+        };
         EloHistoryPoint: {
             id: string;
             eloBefore: number;
@@ -175,6 +216,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Challenge"][];
+                };
+            };
+        };
+    };
+    getMyPlayerProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description My player profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerProfile"];
+                };
+            };
+        };
+    };
+    updateMyPlayerProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlayerProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated player profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerProfile"];
                 };
             };
         };
