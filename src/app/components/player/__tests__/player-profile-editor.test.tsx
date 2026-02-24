@@ -3,13 +3,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MyPlayerProfileResponse } from '@/services/player-service';
 
 const mockBack = vi.fn();
+const mockPush = vi.fn();
 const mockUseMyPlayerProfile = vi.fn();
 const mockUseUpdateMyPlayerProfile = vi.fn();
 const mockToastSuccess = vi.fn();
 const mockToastError = vi.fn();
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ back: mockBack }),
+  useRouter: () => ({ back: mockBack, push: mockPush }),
+  usePathname: () => '/players/me',
+}));
+
+vi.mock('@/hooks/use-notifications', () => ({
+  useUnreadCount: () => ({ data: 0 }),
 }));
 
 vi.mock('sonner', () => ({

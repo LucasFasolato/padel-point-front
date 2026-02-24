@@ -26,6 +26,7 @@ vi.mock('@/hooks/use-competitive-profile', () => ({
 
 vi.mock('@/hooks/use-matches', () => ({
   useMyMatches: vi.fn(() => ({ data: [], isLoading: false })),
+  usePendingConfirmations: vi.fn(() => ({ data: [], isLoading: false })),
 }));
 
 const mockUseChallengesInbox = vi.fn();

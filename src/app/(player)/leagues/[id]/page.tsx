@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Users, UserPlus, Calendar, Trophy, Info, Plus, Share2 } from 'lucide-react';
+import { Users, UserPlus, Calendar, Trophy, Info, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { Button } from '@/app/components/ui/button';
@@ -381,11 +381,11 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
                   fullWidth
                   size="lg"
                   className="gap-2"
-                  onClick={() => setShowMatchModeSheet(true)}
+                  onClick={() => setShowReportMethodSheet(true)}
                   disabled={isReadOnly || isFinished || !canRecordMatches}
                 >
-                  <Plus size={18} />
-                  Cargar partido
+                  <Trophy size={18} />
+                  Cargar resultado
                 </Button>
 
                 {isReadOnly && (

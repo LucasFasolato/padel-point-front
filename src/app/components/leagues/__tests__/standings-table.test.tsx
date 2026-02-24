@@ -17,7 +17,7 @@ const makeEntry = (overrides?: Partial<StandingEntry>): StandingEntry => ({
 describe('StandingsTable', () => {
   it('renders empty state when no standings', () => {
     render(<StandingsTable standings={[]} />);
-    expect(screen.getByText('Aún no hay partidos registrados.')).toBeInTheDocument();
+    expect(screen.getByText('Todavía no hay resultados cargados.')).toBeInTheDocument();
   });
 
   it('renders rows with position, name, and points', () => {
@@ -37,7 +37,7 @@ describe('StandingsTable', () => {
     const standings = [makeEntry({ userId: 'u-1', displayName: 'Yo' })];
     render(<StandingsTable standings={standings} currentUserId="u-1" />);
 
-    expect(screen.getByText('(Vos)')).toBeInTheDocument();
+    expect(screen.getByText('Vos')).toBeInTheDocument();
   });
 
   it('does not show (Vos) for other users', () => {
@@ -57,11 +57,10 @@ describe('StandingsTable', () => {
     expect(screen.getByText('•')).toBeInTheDocument();
   });
 
-  it('renders "Jugador" fallback when displayName is empty', () => {
-    const standings = [makeEntry({ displayName: '', userId: 'u-3' })];
+  it('renders position-based fallback when displayName is empty', () => {
+    const standings = [makeEntry({ displayName: '', userId: 'u-3', position: 1 })];
     render(<StandingsTable standings={standings} />);
-    // "Jugador" appears in header and as fallback value
-    const matches = screen.getAllByText('Jugador');
-    expect(matches.length).toBeGreaterThanOrEqual(2);
+    // fallback is "Jugador {position}"
+    expect(screen.getByText('Jugador 1')).toBeInTheDocument();
   });
 });

@@ -58,6 +58,14 @@ export const matchesService = {
   },
 
   /**
+   * Obtener partidos pendientes de confirmación por el usuario actual
+   */
+  async getPendingConfirmations(): Promise<MatchResult[]> {
+    const { data } = await api.get('/matches/me/pending-confirmations');
+    return Array.isArray(data) ? data : [];
+  },
+
+  /**
    * Obtener match por challenge
    */
   async getByChallenge(challengeId: string): Promise<MatchResult | null> {

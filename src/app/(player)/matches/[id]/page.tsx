@@ -96,10 +96,12 @@ export default function MatchDetailPage() {
   });
 
   const isParticipant = !!user?.userId && participantIds.has(user.userId);
+  const isReporter = !!user?.userId && match.reportedByUserId === user.userId;
   const isPendingConfirm = match.status === MatchResultStatus.PENDING_CONFIRM;
   const isDisputed = match.status === MatchResultStatus.DISPUTED;
 
-  const canConfirm = isParticipant && isPendingConfirm;
+  // Reporter cannot confirm their own result — only the opponent can
+  const canConfirm = isParticipant && isPendingConfirm && !isReporter;
   const canDispute = isParticipant && (isPendingConfirm || match.status === MatchResultStatus.CONFIRMED);
 
   const isLeagueOwnerOrAdmin =
@@ -149,6 +151,21 @@ export default function MatchDetailPage() {
             })}
           </span>
         </div>
+
+        {/* Pending confirmation banner — for the reporter */}
+        {isReporter && isPendingConfirm && (
+          <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4">
+            <AlertTriangle size={18} className="mt-0.5 shrink-0 text-blue-500" />
+            <div>
+              <p className="text-sm font-semibold text-blue-900">
+                Pendiente de confirmación
+              </p>
+              <p className="mt-0.5 text-xs text-blue-700">
+                El resultado fue reportado. Esperando que el rival confirme.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Disputed banner */}
         {isDisputed && (
@@ -221,7 +238,7 @@ export default function MatchDetailPage() {
             onClick={() => confirmMatch.mutate(match.id)}
             loading={confirmMatch.isPending}
           >
-            Confirmar
+            Confirmar resultado
           </Button>
         )}
 

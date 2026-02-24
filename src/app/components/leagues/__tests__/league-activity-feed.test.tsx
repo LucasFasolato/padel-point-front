@@ -16,12 +16,16 @@ const defaultHookReturn = {
   hasNextPage: false,
 };
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 vi.mock('@/hooks/use-leagues', () => ({
   useLeagueActivity: vi.fn(() => defaultHookReturn),
 }));
 
 vi.mock('@/lib/notification-utils', () => ({
-  formatRelativeTime: (_date: string) => 'hace un momento',
+  formatRelativeTime: () => 'hace un momento',
 }));
 
 import { useLeagueActivity } from '@/hooks/use-leagues';
@@ -72,20 +76,20 @@ describe('LeagueActivityFeed', () => {
     expect(screen.getByText('Sin actividad todavía')).toBeInTheDocument();
   });
 
-  it('renders "Cargar partido" button in empty state when onLoadResult is provided', () => {
+  it('renders "Cargar resultado" button in empty state when onLoadResult is provided', () => {
     const onLoadResult = vi.fn();
     setHookReturn({ data: { pages: [], pageParams: [], items: [] } });
     render(<LeagueActivityFeed leagueId={LEAGUE_ID} onLoadResult={onLoadResult} />);
-    const btn = screen.getByRole('button', { name: /Cargar partido/i });
+    const btn = screen.getByRole('button', { name: /Cargar resultado/i });
     expect(btn).toBeInTheDocument();
     fireEvent.click(btn);
     expect(onLoadResult).toHaveBeenCalledTimes(1);
   });
 
-  it('does not render "Cargar partido" button when onLoadResult is not provided', () => {
+  it('does not render "Cargar resultado" button when onLoadResult is not provided', () => {
     setHookReturn({ data: { pages: [], pageParams: [], items: [] } });
     render(<LeagueActivityFeed leagueId={LEAGUE_ID} />);
-    expect(screen.queryByRole('button', { name: /Cargar partido/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Cargar resultado/i })).not.toBeInTheDocument();
   });
 
   describe('event copy', () => {
@@ -106,17 +110,17 @@ describe('LeagueActivityFeed', () => {
 
     it('renders ranking_moved copy for positive delta (went down)', () => {
       renderWithEvent(makeEvent({ type: 'ranking_moved', actorName: 'Pedro', payload: { delta: 1 } }));
-      expect(screen.getByText('Pedro bajó en la tabla')).toBeInTheDocument();
+      expect(screen.getByText('Pedro bajó 1 posición en la tabla')).toBeInTheDocument();
     });
 
     it('renders ranking_moved copy for negative delta (went up)', () => {
       renderWithEvent(makeEvent({ type: 'ranking_moved', actorName: 'Pedro', payload: { delta: -1 } }));
-      expect(screen.getByText('Pedro subió en la tabla')).toBeInTheDocument();
+      expect(screen.getByText('Pedro subió 1 posición en la tabla')).toBeInTheDocument();
     });
 
     it('renders ranking_moved fallback when delta is not a number', () => {
       renderWithEvent(makeEvent({ type: 'ranking_moved', actorName: 'Pedro', payload: {} }));
-      expect(screen.getByText('Se actualizó la tabla')).toBeInTheDocument();
+      expect(screen.getByText('Se actualizó la tabla de posiciones')).toBeInTheDocument();
     });
 
     it('renders challenge_issued copy', () => {
@@ -124,9 +128,9 @@ describe('LeagueActivityFeed', () => {
       expect(screen.getByText('Lucía envió un desafío')).toBeInTheDocument();
     });
 
-    it('renders "Nueva actividad" for unknown event type', () => {
+    it('renders "Actividad en la liga" for unknown event type', () => {
       renderWithEvent(makeEvent({ type: 'unknown_future_event', actorName: 'Alguien' }));
-      expect(screen.getByText('Nueva actividad')).toBeInTheDocument();
+      expect(screen.getByText('Actividad en la liga')).toBeInTheDocument();
     });
 
     it('falls back to "Alguien" when actorName is null', () => {

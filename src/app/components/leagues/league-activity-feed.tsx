@@ -1,9 +1,11 @@
 'use client';
 
 import { memo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { useLeagueActivity } from '@/hooks/use-leagues';
 import { formatRelativeTime } from '@/lib/notification-utils';
+import { cn } from '@/lib/utils';
 import type { ActivityEventView } from '@/types/leagues';
 
 // ---------------------------------------------------------------------------
@@ -11,21 +13,50 @@ import type { ActivityEventView } from '@/types/leagues';
 // ---------------------------------------------------------------------------
 
 function getEventCopy(event: ActivityEventView, actor: string): string {
-  switch (event.type) {
+  // Normalize to lowercase so backend casing doesn't matter
+  const type = event.type.toLowerCase();
+
+  switch (type) {
+    case 'match_reported':
+      return `${actor} reportó un partido`;
     case 'match_confirmed':
       return `${actor} confirmó un partido`;
+    case 'match_disputed':
+      return `${actor} disputó el resultado de un partido`;
+    case 'match_resolved':
+      return 'Un partido fue resuelto por el administrador';
     case 'member_joined':
       return `${actor} se unió a la liga`;
-    case 'ranking_moved': {
+    case 'member_invited':
+      return `${actor} invitó a un jugador`;
+    case 'league_started':
+      return 'La liga comenzó';
+    case 'league_finished':
+      return 'La liga finalizó';
+    case 'ranking_moved':
+    case 'rankings_updated': {
       const delta = event.payload.delta;
-      if (typeof delta === 'number' && delta < 0) return `${actor} subió en la tabla`;
-      if (typeof delta === 'number' && delta > 0) return `${actor} bajó en la tabla`;
-      return 'Se actualizó la tabla';
+      if (typeof delta === 'number' && delta < 0) {
+        const pos = Math.abs(delta);
+        return `${actor} subió ${pos} ${pos === 1 ? 'posición' : 'posiciones'} en la tabla`;
+      }
+      if (typeof delta === 'number' && delta > 0) {
+        return `${actor} bajó ${delta} ${delta === 1 ? 'posición' : 'posiciones'} en la tabla`;
+      }
+      return 'Se actualizó la tabla de posiciones';
     }
     case 'challenge_issued':
       return `${actor} envió un desafío`;
+    case 'challenge_accepted':
+      return `${actor} aceptó un desafío`;
+    case 'challenge_rejected':
+      return `${actor} rechazó un desafío`;
     default:
-      return 'Nueva actividad';
+      // If the backend sends a title/subtitle, prefer those
+      if (event.payload.title && typeof event.payload.title === 'string') {
+        return event.payload.title;
+      }
+      return 'Actividad en la liga';
   }
 }
 
@@ -35,15 +66,35 @@ function getEventCopy(event: ActivityEventView, actor: string): string {
 
 const ActivityEventCard = memo(function ActivityEventCard({
   event,
+  onNavigate,
 }: {
   event: ActivityEventView;
+  onNavigate?: (url: string) => void;
 }) {
   const actor = event.actorName ?? 'Alguien';
   const copy = getEventCopy(event, actor);
   const initial = actor.charAt(0).toUpperCase();
 
+  const matchId = typeof event.payload.matchId === 'string' ? event.payload.matchId : null;
+  const isClickable = !!matchId && !!onNavigate;
+
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-white px-4 py-3">
+    <div
+      className={cn(
+        'flex items-start gap-3 rounded-xl border border-slate-100 bg-white px-4 py-3',
+        isClickable && 'cursor-pointer hover:bg-slate-50 active:bg-slate-100',
+      )}
+      onClick={isClickable ? () => onNavigate(`/matches/${matchId}`) : undefined}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={
+        isClickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') onNavigate(`/matches/${matchId}`);
+            }
+          : undefined
+      }
+    >
       <div
         aria-hidden="true"
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700"
@@ -51,7 +102,7 @@ const ActivityEventCard = memo(function ActivityEventCard({
         {initial}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-slate-900">{copy}</p>
+        <p className="line-clamp-2 text-sm font-medium text-slate-900">{copy}</p>
         <p className="mt-0.5 text-xs text-slate-500">{formatRelativeTime(event.createdAt)}</p>
       </div>
     </div>
@@ -91,10 +142,12 @@ export const LeagueActivityFeed = memo(function LeagueActivityFeed({
   leagueId,
   onLoadResult,
 }: LeagueActivityFeedProps) {
+  const router = useRouter();
   const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } =
     useLeagueActivity(leagueId);
 
   const items = data?.items ?? [];
+  const handleNavigate = (url: string) => router.push(url);
 
   if (isLoading) {
     return <ActivitySkeleton />;
@@ -113,7 +166,7 @@ export const LeagueActivityFeed = memo(function LeagueActivityFeed({
             onClick={onLoadResult}
             className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 active:bg-emerald-800"
           >
-            Cargar partido
+            Cargar resultado
           </button>
         )}
       </div>
@@ -123,7 +176,7 @@ export const LeagueActivityFeed = memo(function LeagueActivityFeed({
   return (
     <div className="space-y-2">
       {items.map((event) => (
-        <ActivityEventCard key={event.id} event={event} />
+        <ActivityEventCard key={event.id} event={event} onNavigate={handleNavigate} />
       ))}
 
       {hasNextPage && (

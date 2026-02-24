@@ -114,6 +114,18 @@ export function useMyMatches() {
   };
 }
 
+export function usePendingConfirmations() {
+  const token = useAuthStore((s) => s.token);
+
+  return useQuery({
+    queryKey: ['matches', 'pending-confirmations'],
+    queryFn: () => matchesService.getPendingConfirmations(),
+    enabled: !!token,
+    staleTime: 1000 * 30,
+    retry: false,
+  });
+}
+
 export function useMatch(matchId: string) {
   const token = useAuthStore((s) => s.token);
 

@@ -34,10 +34,6 @@ export default function LeaguesPage() {
           </div>
         )}
 
-        {!isLoading && !error && (
-          <MiniLeagueCta onClick={() => router.push('/minileague/new')} />
-        )}
-
         {!isLoading && !error && leagues && leagues.length === 0 && (
           <EmptyState onCreateClick={() => router.push('/leagues/new')} />
         )}
@@ -110,16 +106,3 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
   );
 }
 
-function MiniLeagueCta({ onClick }: { onClick: () => void }) {
-  return (
-    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-      <h2 className="text-base font-semibold text-emerald-900">Create MiniLeague</h2>
-      <p className="mt-1 text-sm text-emerald-800">
-        Start a mini league with friends in ~60s
-      </p>
-      <Button className="mt-4 w-full" size="lg" onClick={onClick}>
-        Create MiniLeague
-      </Button>
-    </div>
-  );
-}

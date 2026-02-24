@@ -237,7 +237,9 @@ describe('LeagueDetailPage', () => {
       error: null,
     });
     render(<LeagueDetailPage />);
-    expect(screen.getByText('Cargar resultado')).toBeInTheDocument();
+    // At least one enabled "Cargar resultado" button should be present (global CTA)
+    const buttons = screen.getAllByRole('button', { name: /Cargar resultado/i });
+    expect(buttons.some((btn) => !btn.hasAttribute('disabled'))).toBe(true);
   });
 
   it('hides CTA and shows explanation when league is UPCOMING', () => {
@@ -247,7 +249,9 @@ describe('LeagueDetailPage', () => {
       error: null,
     });
     render(<LeagueDetailPage />);
-    expect(screen.queryByText('Cargar resultado')).not.toBeInTheDocument();
+    // The global CTA is absent; the Partidos tab button is disabled
+    const buttons = screen.queryAllByRole('button', { name: /Cargar resultado/i });
+    expect(buttons.every((btn) => btn.hasAttribute('disabled'))).toBe(true);
     expect(screen.getByText(/La liga aún no está activa/)).toBeInTheDocument();
   });
 
@@ -268,7 +272,9 @@ describe('LeagueDetailPage', () => {
       error: null,
     });
     render(<LeagueDetailPage />);
-    expect(screen.queryByText('Cargar resultado')).not.toBeInTheDocument();
+    // Global CTA is absent; Partidos tab button is disabled
+    const buttons = screen.queryAllByRole('button', { name: /Cargar resultado/i });
+    expect(buttons.every((btn) => btn.hasAttribute('disabled'))).toBe(true);
     expect(screen.getByText(/Liga finalizada/)).toBeInTheDocument();
   });
 
@@ -284,7 +290,7 @@ describe('LeagueDetailPage', () => {
     expect(screen.getByText(/Cargá un partido jugado/i)).toBeInTheDocument();
   });
 
-  it('shows empty state and "Cargar partido" button when finished', () => {
+  it('shows empty state and disabled "Cargar resultado" button when finished', () => {
     mockLeagueDetail.mockReturnValue({
       data: { ...BASE_LEAGUE, status: 'finished' },
       isLoading: false,
@@ -293,8 +299,9 @@ describe('LeagueDetailPage', () => {
     mockLeagueMatches.mockReturnValue({ data: [] });
     render(<LeagueDetailPage />);
     expect(screen.getByText('Todavía no hay partidos')).toBeInTheDocument();
-    // "Cargar partido" button should be visible but disabled for finished leagues
-    expect(screen.getByRole('button', { name: /Cargar partido/i })).toBeDisabled();
+    // "Cargar resultado" button in the Partidos tab should be visible but disabled
+    const buttons = screen.getAllByRole('button', { name: /Cargar resultado/i });
+    expect(buttons.some((btn) => btn.hasAttribute('disabled'))).toBe(true);
   });
 
   it('renders match cards when matches exist', () => {

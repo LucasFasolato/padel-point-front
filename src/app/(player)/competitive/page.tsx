@@ -8,7 +8,7 @@ import {
   useSkillRadar,
 } from '@/hooks/use-competitive-profile';
 import { useChallengeActions, useChallengesInbox } from '@/hooks/use-challenges';
-import { useMyMatches } from '@/hooks/use-matches';
+import { useMyMatches, usePendingConfirmations } from '@/hooks/use-matches';
 import { CategoryBadge } from '@/app/components/competitive/category-badge';
 import { EloChart } from '@/app/components/competitive/elo-chart';
 import { SkillRadarCard } from '@/app/components/competitive/skill-radar-card';
@@ -23,8 +23,7 @@ import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { EloHistoryPoint } from '@/types/competitive';
-import type { Challenge } from '@/types/competitive';
+import type { Challenge, EloHistoryPoint, MatchResult } from '@/types/competitive';
 
 const COMPETITIVE_PENDING_CHALLENGES_LIMIT = 3;
 
@@ -48,6 +47,7 @@ export default function CompetitivePage() {
   const inboxQuery = useChallengesInbox(COMPETITIVE_PENDING_CHALLENGES_LIMIT);
   const { acceptDirect, rejectDirect } = useChallengeActions();
   const { data: matches, isLoading: loadingMatches, error: matchesError } = useMyMatches();
+  const { data: pendingConfirmationsData } = usePendingConfirmations();
 
   if (loadingOnboarding || loadingProfile) {
     return (
@@ -87,6 +87,7 @@ export default function CompetitivePage() {
   }
 
   const confirmedMatches = matches?.filter((m) => m.status === 'confirmed').slice(0, 5) || [];
+  const pendingConfirmations = pendingConfirmationsData ?? [];
   const pendingChallenges = (inboxQuery.data ?? []).filter(
     (challenge) =>
       challenge.status === 'pending' && !hiddenChallengeIds.includes(challenge.id)
@@ -128,7 +129,7 @@ export default function CompetitivePage() {
             <div>
               <p className="text-sm font-semibold text-slate-900">{profile.displayName}</p>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Current ELO
+                ELO actual
               </p>
               <p className="mt-1 text-4xl font-bold leading-none text-slate-900">{profile.elo}</p>
             </div>
@@ -143,13 +144,13 @@ export default function CompetitivePage() {
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <StreakStat label="Current streak" value={streakCurrent} />
-            <StreakStat label="Best streak" value={streakBest} />
+            <StreakStat label="Racha actual" value={streakCurrent} />
+            <StreakStat label="Mejor racha" value={streakBest} />
           </div>
 
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-amber-900">Peak ELO</span>
+              <span className="text-sm font-medium text-amber-900">ELO máximo</span>
               <span className="text-sm font-semibold text-amber-950">{peakElo}</span>
             </div>
           </div>
@@ -232,16 +233,16 @@ export default function CompetitivePage() {
         {skillRadarQuery.isLoading ? (
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">Radar</h2>
+              <h2 className="text-lg font-semibold text-slate-900">Radar de juego</h2>
               <p className="mt-1 text-sm text-slate-600">Cargando métricas de juego...</p>
             </div>
             <Skeleton className="h-72 w-full rounded-lg" />
           </section>
         ) : skillRadarQuery.isError ? (
           <section className="rounded-xl border border-rose-200 bg-rose-50 p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-rose-900">Radar</h2>
+            <h2 className="text-lg font-semibold text-rose-900">Radar de juego</h2>
             <p className="mt-2 text-sm text-rose-700">
-              No pudimos cargar tu radar de skills.
+              No pudimos cargar tu radar de juego.
             </p>
             <Button
               type="button"
@@ -259,13 +260,13 @@ export default function CompetitivePage() {
 
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">Last 10 form</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Últimos 10</h2>
             <span className="text-xs font-medium text-slate-500">{last10.length}/10</span>
           </div>
 
           {last10.length === 0 ? (
             <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-600">
-              Play your first match to start tracking form.
+              Jugá tu primer partido para registrar tu forma.
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">
@@ -332,8 +333,25 @@ export default function CompetitivePage() {
             </section>
           )}
 
+          {pendingConfirmations.length > 0 && (
+            <section className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-5 shadow-sm">
+              <h2 className="mb-3 text-base font-semibold text-blue-900">
+                Resultados por confirmar
+              </h2>
+              <div className="space-y-3">
+                {pendingConfirmations.map((match) => (
+                  <PendingConfirmationCard
+                    key={match.id}
+                    match={match}
+                    onConfirm={() => router.push(`/matches/${match.id}`)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">Ultimos partidos</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Últimos partidos</h2>
             {confirmedMatches.length > 0 && (
               <Button
                 variant="ghost"
@@ -382,11 +400,11 @@ export default function CompetitivePage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Button size="lg" onClick={() => router.push('/minileague/new')}>
-            Create MiniLeague
+          <Button size="lg" onClick={() => router.push('/leagues/new')}>
+            Crear liga
           </Button>
           <Button size="lg" variant="outline" onClick={() => router.push('/leagues')}>
-            View my leagues
+            Ver mis ligas
           </Button>
         </div>
 
@@ -459,6 +477,44 @@ function PendingChallengeInboxCard({
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PendingConfirmationCard({
+  match,
+  onConfirm,
+}: {
+  match: MatchResult;
+  onConfirm: () => void;
+}) {
+  const reporterName =
+    match.challenge?.teamA?.p1?.displayName ??
+    match.teamA?.[0]?.displayName ??
+    'Un jugador';
+
+  const sets = [
+    `${match.teamASet1}-${match.teamBSet1}`,
+    `${match.teamASet2}-${match.teamBSet2}`,
+    match.teamASet3 != null ? `${match.teamASet3}-${match.teamBSet3}` : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-white px-4 py-3">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-slate-900 truncate">{reporterName} reportó un resultado</p>
+        {sets && <p className="mt-0.5 text-xs text-slate-500">{sets}</p>}
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        onClick={onConfirm}
+        className="shrink-0"
+      >
+        Confirmar
+      </Button>
     </div>
   );
 }

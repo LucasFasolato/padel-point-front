@@ -27,17 +27,17 @@ describe('SkillRadarCard', () => {
   it('renders chart, labels and meta values', () => {
     render(<SkillRadarCard radar={makeRadar()} />);
 
-    expect(screen.getByRole('heading', { name: 'Radar' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Radar de juego' })).toBeInTheDocument();
     expect(screen.getByTestId('skill-radar-chart')).toBeInTheDocument();
     expect(screen.getByTestId('radar-chart-mock')).toBeInTheDocument();
-    expect(screen.getByText('Partidos 30d: 8')).toBeInTheDocument();
+    expect(screen.getByText('8 partidos (30 días)')).toBeInTheDocument();
     expect(screen.getByText('Muestra: 5')).toBeInTheDocument();
-    // Derived axis labels
-    expect(screen.getByText('Consistencia')).toBeInTheDocument();
-    expect(screen.getByText('Actividad')).toBeInTheDocument();
-    expect(screen.getByText('Momentum')).toBeInTheDocument();
-    expect(screen.getByText('Dominio')).toBeInTheDocument();
-    expect(screen.getByText('Resiliencia')).toBeInTheDocument();
+    // Derived axis labels appear in the metrics list (at least once each)
+    expect(screen.getAllByText('Consistencia').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Actividad').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Momentum').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Dominio').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Resiliencia').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows insufficient sample helper when meta.sampleSize < 3', () => {
@@ -48,7 +48,7 @@ describe('SkillRadarCard', () => {
     );
 
     expect(
-      screen.getByText('Jugá al menos 3 partidos para estadísticas más precisas'),
+      screen.getByText('Datos insuficientes — jugá al menos 3 partidos para mayor precisión.'),
     ).toBeInTheDocument();
     expect(screen.getByTestId('radar-chart-mock')).toBeInTheDocument();
   });
@@ -57,10 +57,7 @@ describe('SkillRadarCard', () => {
     render(<SkillRadarCard radar={null} />);
 
     expect(
-      screen.getByText('Todavia no hay datos suficientes para construir tu radar de skills.'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('Jugá al menos 3 partidos para estadísticas más precisas'),
+      screen.getByText(/Todavía no hay datos suficientes/),
     ).toBeInTheDocument();
     expect(screen.queryByTestId('radar-chart-mock')).not.toBeInTheDocument();
   });

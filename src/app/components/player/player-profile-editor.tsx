@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMyPlayerProfile, useUpdateMyPlayerProfile } from '@/hooks/use-player-profile';
+import { PublicTopBar } from '@/app/components/public/public-topbar';
 import type {
   MyPlayerProfileResponse,
   UpdateMyPlayerProfilePayload,
@@ -83,7 +82,6 @@ function validateForm(form: PlayerProfileFormState): FormErrors {
 }
 
 export function PlayerProfileEditor() {
-  const router = useRouter();
   const profileQuery = useMyPlayerProfile();
   const updateMutation = useUpdateMyPlayerProfile();
 
@@ -92,6 +90,8 @@ export function PlayerProfileEditor() {
 
   useEffect(() => {
     if (profileQuery.data) {
+      // Sync local editable form when fresh profile data arrives.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(toFormState(profileQuery.data));
       setErrors({});
     }
@@ -140,12 +140,14 @@ export function PlayerProfileEditor() {
 
   if (profileQuery.isLoading) {
     return (
-      <div className="mx-auto max-w-4xl px-6 py-10">
-        <div className="h-8 w-56 animate-pulse rounded bg-slate-200" />
-        <div className="mt-6 space-y-4 rounded-3xl border border-slate-200 bg-white p-6">
-          <div className="h-10 animate-pulse rounded bg-slate-100" />
-          <div className="h-32 animate-pulse rounded bg-slate-100" />
-          <div className="h-10 w-40 animate-pulse rounded-full bg-slate-100" />
+      <div className="min-h-screen bg-slate-50">
+        <PublicTopBar title="Mi perfil" backHref="/competitive" />
+        <div className="mx-auto max-w-4xl px-6 py-8">
+          <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6">
+            <div className="h-10 animate-pulse rounded bg-slate-100" />
+            <div className="h-32 animate-pulse rounded bg-slate-100" />
+            <div className="h-10 w-40 animate-pulse rounded-full bg-slate-100" />
+          </div>
         </div>
       </div>
     );
@@ -153,24 +155,19 @@ export function PlayerProfileEditor() {
 
   if (profileQuery.isError) {
     return (
-      <div className="mx-auto max-w-4xl px-6 py-10">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900"
-        >
-          <ArrowLeft size={16} />
-          Volver
-        </button>
-        <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-slate-600">No pudimos cargar tu perfil de jugador.</p>
-          <button
-            type="button"
-            onClick={() => profileQuery.refetch()}
-            className="mt-4 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
-          >
-            Reintentar
-          </button>
+      <div className="min-h-screen bg-slate-50">
+        <PublicTopBar title="Mi perfil" backHref="/competitive" />
+        <div className="mx-auto max-w-4xl px-6 py-8">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm text-slate-600">No pudimos cargar tu perfil de jugador.</p>
+            <button
+              type="button"
+              onClick={() => profileQuery.refetch()}
+              className="mt-4 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Reintentar
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -178,17 +175,9 @@ export function PlayerProfileEditor() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-4xl px-6 py-10">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900"
-        >
-          <ArrowLeft size={16} />
-          Volver
-        </button>
-
-        <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <PublicTopBar title="Mi perfil" backHref="/competitive" />
+      <div className="mx-auto max-w-4xl px-6 py-6">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-slate-900">Perfil de jugador</h1>
             <p className="mt-2 text-sm text-slate-500">
