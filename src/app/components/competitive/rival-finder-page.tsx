@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, ChevronDown, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Search, SlidersHorizontal, Users, Swords } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { RivalCard } from '@/app/components/competitive/rival-card';
 import { useRivalSuggestions, type RivalSuggestionFilters } from '@/hooks/use-rival-suggestions';
+import { usePartnerSuggestions } from '@/hooks/use-partner-suggestions';
 import { useCreateDirectChallenge } from '@/hooks/use-challenges';
 import {
   parseRivalFinderParams,
@@ -18,6 +19,7 @@ import {
 import type { RivalItem } from '@/services/competitive-service';
 
 const LIMIT = 20;
+type ActiveTab = 'rivals' | 'partners';
 
 function buildFilters(state: RivalFinderParamState): RivalSuggestionFilters {
   return {
@@ -30,9 +32,9 @@ function buildFilters(state: RivalFinderParamState): RivalSuggestionFilters {
   };
 }
 
-function RivalFinderSkeletonList() {
+function MatchmakingSkeletonList({ testId }: { testId: string }) {
   return (
-    <div className="space-y-3" data-testid="rival-finder-loading">
+    <div className="space-y-3" data-testid={testId}>
       {Array.from({ length: 3 }).map((_, index) => (
         <div key={index} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-start justify-between gap-3">
@@ -63,6 +65,9 @@ export function RivalFinderPage() {
   const searchParams = useSearchParams();
   const createDirectChallenge = useCreateDirectChallenge();
 
+  const activeTab: ActiveTab =
+    searchParams.get('tab') === 'partners' ? 'partners' : 'rivals';
+
   // Source of truth: URL search params → applied filters
   const appliedParams = useMemo(() => parseRivalFinderParams(searchParams), [searchParams]);
 
@@ -82,12 +87,21 @@ export function RivalFinderPage() {
     return !!(p.city || p.province || p.country);
   });
 
+  // Rival-specific interaction state
   const [sentUserIds, setSentUserIds] = useState<string[]>([]);
   const [sendingUserIds, setSendingUserIds] = useState<string[]>([]);
   const [cardErrors, setCardErrors] = useState<Record<string, string | undefined>>({});
 
-  const rivalsQuery = useRivalSuggestions(buildFilters(appliedParams));
+  // Only fetch the active tab to avoid double API calls
+  const rivalsQuery = useRivalSuggestions(buildFilters(appliedParams), {
+    enabled: activeTab === 'rivals',
+  });
   const rivals = rivalsQuery.data?.items ?? [];
+
+  const partnersQuery = usePartnerSuggestions(buildFilters(appliedParams), {
+    enabled: activeTab === 'partners',
+  });
+  const partners = partnersQuery.data?.items ?? [];
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -100,12 +114,20 @@ export function RivalFinderPage() {
   }, [appliedParams]);
 
   const pushFilters = useCallback(
-    (params: RivalFinderParamState) => {
+    (params: RivalFinderParamState, tab: ActiveTab = activeTab) => {
       const sp = buildSearchParams(params);
+      if (tab === 'partners') sp.set('tab', 'partners');
       const query = sp.toString();
       router.push(`/competitive/find${query ? `?${query}` : ''}`);
     },
-    [router],
+    [router, activeTab],
+  );
+
+  const setTab = useCallback(
+    (tab: ActiveTab) => {
+      pushFilters(appliedParams, tab);
+    },
+    [appliedParams, pushFilters],
   );
 
   const handleBack = () => {
@@ -123,7 +145,11 @@ export function RivalFinderPage() {
   const resetFilters = () => {
     setDraftFilters({ ...RIVAL_FINDER_DEFAULTS });
     setShowLocation(false);
-    router.push('/competitive/find');
+    // Keep the active tab when resetting filters
+    const sp = new URLSearchParams();
+    if (activeTab === 'partners') sp.set('tab', 'partners');
+    const query = sp.toString();
+    router.push(`/competitive/find${query ? `?${query}` : ''}`);
   };
 
   // One-tap fix: patch applied params and push to URL, keeping draft in sync
@@ -136,6 +162,7 @@ export function RivalFinderPage() {
     [appliedParams, pushFilters],
   );
 
+  // Rival CTA: send a direct challenge
   const handleChallenge = async (rival: RivalItem) => {
     setCardErrors((prev) => ({ ...prev, [rival.userId]: undefined }));
     setSendingUserIds((prev) => (prev.includes(rival.userId) ? prev : [...prev, rival.userId]));
@@ -154,52 +181,87 @@ export function RivalFinderPage() {
     }
   };
 
-  // Actionable empty state suggestions based on current applied filters
-  const emptyStateSuggestions = useMemo(() => {
-    const items = rivalsQuery.data?.items ?? [];
-    if (items.length > 0 || rivalsQuery.isLoading || rivalsQuery.isError) return [];
+  // Partner CTA: navigate to challenge creation with partner pre-filled
+  const handleInvitePartner = useCallback(
+    (partner: RivalItem) => {
+      router.push(
+        `/competitive/challenges/new?partnerUserId=${encodeURIComponent(partner.userId)}`,
+      );
+    },
+    [router],
+  );
 
-    const suggestions: Array<{ label: string; testId: string; action: () => void }> = [];
+  // Compute actionable empty state suggestions (shared by both tabs)
+  const buildEmptyStateSuggestions = useCallback(
+    (isLoading: boolean, isError: boolean, itemCount: number) => {
+      if (itemCount > 0 || isLoading || isError) return [];
 
-    if (appliedParams.sameCategory) {
-      suggestions.push({
-        label: 'Desactivar "misma categoría"',
-        testId: 'empty-disable-same-category',
-        action: () => applyQuickFix({ sameCategory: false }),
-      });
-    }
+      const suggestions: Array<{ label: string; testId: string; action: () => void }> = [];
 
-    const nextRange =
-      appliedParams.range === 50
-        ? 100
-        : appliedParams.range === 100
-          ? 150
-          : appliedParams.range === 150
-            ? 200
-            : null;
+      if (appliedParams.sameCategory) {
+        suggestions.push({
+          label: 'Desactivar "misma categoría"',
+          testId: 'empty-disable-same-category',
+          action: () => applyQuickFix({ sameCategory: false }),
+        });
+      }
 
-    if (nextRange !== null) {
-      suggestions.push({
-        label: `Ampliar rango a ±${nextRange}`,
-        testId: 'empty-increase-range',
-        action: () => applyQuickFix({ range: nextRange }),
-      });
-    }
+      const nextRange =
+        appliedParams.range === 50
+          ? 100
+          : appliedParams.range === 100
+            ? 150
+            : appliedParams.range === 150
+              ? 200
+              : null;
 
-    if (appliedParams.city || appliedParams.province || appliedParams.country) {
-      suggestions.push({
-        label: 'Limpiar ubicación',
-        testId: 'empty-clear-location',
-        action: () => applyQuickFix({ city: '', province: '', country: '' }),
-      });
-    }
+      if (nextRange !== null) {
+        suggestions.push({
+          label: `Ampliar rango a ±${nextRange}`,
+          testId: 'empty-increase-range',
+          action: () => applyQuickFix({ range: nextRange }),
+        });
+      }
 
-    return suggestions;
-  }, [rivalsQuery.data, rivalsQuery.isLoading, rivalsQuery.isError, appliedParams, applyQuickFix]);
+      if (appliedParams.city || appliedParams.province || appliedParams.country) {
+        suggestions.push({
+          label: 'Limpiar ubicación',
+          testId: 'empty-clear-location',
+          action: () => applyQuickFix({ city: '', province: '', country: '' }),
+        });
+      }
+
+      return suggestions;
+    },
+    [appliedParams, applyQuickFix],
+  );
+
+  const rivalEmptySuggestions = useMemo(
+    () =>
+      buildEmptyStateSuggestions(
+        rivalsQuery.isLoading,
+        rivalsQuery.isError,
+        rivalsQuery.data?.items.length ?? 0,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rivalsQuery.data, rivalsQuery.isLoading, rivalsQuery.isError, buildEmptyStateSuggestions],
+  );
+
+  const partnerEmptySuggestions = useMemo(
+    () =>
+      buildEmptyStateSuggestions(
+        partnersQuery.isLoading,
+        partnersQuery.isError,
+        partnersQuery.data?.items.length ?? 0,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [partnersQuery.data, partnersQuery.isLoading, partnersQuery.isError, buildEmptyStateSuggestions],
+  );
 
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-4xl px-4 py-5 sm:px-6">
+        {/* Header */}
         <div className="mb-4 flex items-center justify-between gap-3">
           <button
             type="button"
@@ -209,10 +271,48 @@ export function RivalFinderPage() {
             <ArrowLeft size={16} />
             Volver
           </button>
-          <h1 className="text-base font-bold text-slate-900 sm:text-lg">Buscar rival</h1>
+          <h1 className="text-base font-bold text-slate-900 sm:text-lg">Buscar jugadores</h1>
           <div className="w-[84px]" />
         </div>
 
+        {/* Tab switcher */}
+        <div
+          className="mb-4 flex gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1"
+          role="tablist"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'rivals'}
+            data-testid="tab-rivals"
+            onClick={() => setTab('rivals')}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+              activeTab === 'rivals'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Swords size={14} />
+            Rivales
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'partners'}
+            data-testid="tab-partners"
+            onClick={() => setTab('partners')}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+              activeTab === 'partners'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Users size={14} />
+            Compañeros
+          </button>
+        </div>
+
+        {/* Shared filter panel */}
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-2">
             <SlidersHorizontal size={16} className="text-slate-500" />
@@ -332,78 +432,168 @@ export function RivalFinderPage() {
           </div>
         </section>
 
+        {/* Results */}
         <div className="mt-4 space-y-3">
-          {rivalsQuery.isLoading ? (
-            <RivalFinderSkeletonList />
-          ) : rivalsQuery.isError ? (
-            <section className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
-              <h2 className="text-sm font-semibold text-rose-900">No pudimos cargar sugerencias</h2>
-              <p className="mt-1 text-sm text-rose-700">
-                Reintentá en unos segundos para volver a buscar rivales.
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="mt-3"
-                onClick={() => rivalsQuery.refetch()}
-              >
-                Reintentar
-              </Button>
-            </section>
-          ) : rivals.length === 0 ? (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
-              <h2 className="text-base font-semibold text-slate-900">
-                No encontramos rivales todavía
-              </h2>
-              <p className="mt-2 text-sm text-slate-600">
-                Ajustá los filtros para ampliar la búsqueda.
-              </p>
-              {emptyStateSuggestions.length > 0 ? (
-                <div className="mt-4 flex flex-col gap-2">
-                  {emptyStateSuggestions.map((s) => (
-                    <Button
-                      key={s.testId}
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      data-testid={s.testId}
-                      onClick={s.action}
-                    >
-                      {s.label}
-                    </Button>
-                  ))}
-                </div>
-              ) : (
-                <ul className="mt-3 space-y-1 text-left text-sm text-slate-600">
-                  <li>Jugá más partidos para mejorar sugerencias</li>
-                </ul>
-              )}
-            </section>
-          ) : (
+          {/* ── Rivals tab ── */}
+          {activeTab === 'rivals' && (
             <>
-              {rivals.map((rival) => (
-                <RivalCard
-                  key={rival.userId}
-                  rival={rival}
-                  onChallenge={handleChallenge}
-                  sent={sentUserIds.includes(rival.userId)}
-                  sending={sendingUserIds.includes(rival.userId)}
-                  error={cardErrors[rival.userId] ?? null}
-                />
-              ))}
+              {rivalsQuery.isLoading ? (
+                <MatchmakingSkeletonList testId="rival-finder-loading" />
+              ) : rivalsQuery.isError ? (
+                <section className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                  <h2 className="text-sm font-semibold text-rose-900">
+                    No pudimos cargar sugerencias
+                  </h2>
+                  <p className="mt-1 text-sm text-rose-700">
+                    Reintentá en unos segundos para volver a buscar rivales.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-3"
+                    onClick={() => rivalsQuery.refetch()}
+                  >
+                    Reintentar
+                  </Button>
+                </section>
+              ) : rivals.length === 0 ? (
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
+                  <h2 className="text-base font-semibold text-slate-900">
+                    No encontramos rivales todavía
+                  </h2>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Ajustá los filtros para ampliar la búsqueda.
+                  </p>
+                  {rivalEmptySuggestions.length > 0 ? (
+                    <div className="mt-4 flex flex-col gap-2">
+                      {rivalEmptySuggestions.map((s) => (
+                        <Button
+                          key={s.testId}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          data-testid={s.testId}
+                          onClick={s.action}
+                        >
+                          {s.label}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <ul className="mt-3 space-y-1 text-left text-sm text-slate-600">
+                      <li>Jugá más partidos para mejorar sugerencias</li>
+                    </ul>
+                  )}
+                </section>
+              ) : (
+                <>
+                  {rivals.map((rival) => (
+                    <RivalCard
+                      key={rival.userId}
+                      rival={rival}
+                      onChallenge={handleChallenge}
+                      sent={sentUserIds.includes(rival.userId)}
+                      sending={sendingUserIds.includes(rival.userId)}
+                      error={cardErrors[rival.userId] ?? null}
+                    />
+                  ))}
+                  {rivalsQuery.hasNextPage ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      fullWidth
+                      onClick={() => rivalsQuery.fetchNextPage()}
+                      loading={rivalsQuery.isFetchingNextPage}
+                    >
+                      {rivalsQuery.isFetchingNextPage ? 'Cargando...' : 'Cargar más sugerencias'}
+                    </Button>
+                  ) : null}
+                </>
+              )}
+            </>
+          )}
 
-              {rivalsQuery.hasNextPage ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  fullWidth
-                  onClick={() => rivalsQuery.fetchNextPage()}
-                  loading={rivalsQuery.isFetchingNextPage}
-                >
-                  {rivalsQuery.isFetchingNextPage ? 'Cargando...' : 'Cargar más sugerencias'}
-                </Button>
-              ) : null}
+          {/* ── Partners tab ── */}
+          {activeTab === 'partners' && (
+            <>
+              {partnersQuery.isLoading ? (
+                <MatchmakingSkeletonList testId="partner-finder-loading" />
+              ) : partnersQuery.isError ? (
+                <section className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                  <h2 className="text-sm font-semibold text-rose-900">
+                    No pudimos cargar sugerencias
+                  </h2>
+                  <p className="mt-1 text-sm text-rose-700">
+                    Reintentá en unos segundos para volver a buscar compañeros.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-3"
+                    onClick={() => partnersQuery.refetch()}
+                  >
+                    Reintentar
+                  </Button>
+                </section>
+              ) : partners.length === 0 ? (
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
+                  <h2 className="text-base font-semibold text-slate-900">
+                    No encontramos compañeros todavía
+                  </h2>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Ajustá los filtros para ampliar la búsqueda.
+                  </p>
+                  {partnerEmptySuggestions.length > 0 ? (
+                    <div className="mt-4 flex flex-col gap-2">
+                      {partnerEmptySuggestions.map((s) => (
+                        <Button
+                          key={s.testId}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          data-testid={s.testId}
+                          onClick={s.action}
+                        >
+                          {s.label}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <ul className="mt-3 space-y-1 text-left text-sm text-slate-600">
+                      <li>Jugá más partidos para mejorar sugerencias</li>
+                    </ul>
+                  )}
+                </section>
+              ) : (
+                <>
+                  {partners.map((partner) => (
+                    <RivalCard
+                      key={partner.userId}
+                      rival={partner}
+                      onChallenge={handleInvitePartner}
+                      ctaLabel="Invitar"
+                      ctaSentLabel="Invitado"
+                      sent={false}
+                      sending={false}
+                    />
+                  ))}
+                  {partnersQuery.hasNextPage ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      fullWidth
+                      onClick={() => partnersQuery.fetchNextPage()}
+                      loading={partnersQuery.isFetchingNextPage}
+                    >
+                      {partnersQuery.isFetchingNextPage
+                        ? 'Cargando...'
+                        : 'Cargar más compañeros'}
+                    </Button>
+                  ) : null}
+                </>
+              )}
             </>
           )}
         </div>

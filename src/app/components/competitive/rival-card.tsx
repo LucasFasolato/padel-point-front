@@ -10,6 +10,10 @@ interface RivalCardProps {
   sending?: boolean;
   sent?: boolean;
   error?: string | null;
+  /** Label for the primary CTA button. Defaults to "Desafiar". */
+  ctaLabel?: string;
+  /** Label shown after the CTA has been triggered. Defaults to "Enviado". */
+  ctaSentLabel?: string;
 }
 
 function formatMomentum(value: number): string {
@@ -27,7 +31,15 @@ function getLocationLabel(rival: RivalItem): string | null {
   return country || null;
 }
 
-export function RivalCard({ rival, onChallenge, sending = false, sent = false, error }: RivalCardProps) {
+export function RivalCard({
+  rival,
+  onChallenge,
+  sending = false,
+  sent = false,
+  error,
+  ctaLabel = 'Desafiar',
+  ctaSentLabel = 'Enviado',
+}: RivalCardProps) {
   const visibleTags = rival.tags.slice(0, 3);
   const hiddenTagsCount = Math.max(0, rival.tags.length - visibleTags.length);
   const locationLabel = getLocationLabel(rival);
@@ -53,7 +65,7 @@ export function RivalCard({ rival, onChallenge, sending = false, sent = false, e
           disabled={sent}
           loading={sending}
         >
-          {sent ? 'Enviado' : 'Desafiar'}
+          {sent ? ctaSentLabel : ctaLabel}
         </Button>
       </div>
 

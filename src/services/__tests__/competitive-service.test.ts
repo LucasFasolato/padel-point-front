@@ -164,6 +164,68 @@ describe('competitiveService matchmaking rivals', () => {
   });
 });
 
+describe('competitiveService matchmaking partners', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('calls GET /competitive/matchmaking/partners with query params', async () => {
+    mockedApi.get.mockResolvedValue({ data: { items: [], nextCursor: null } });
+
+    await competitiveService.getPartnerSuggestions({
+      limit: 20,
+      cursor: 'p-next',
+      range: 150,
+      sameCategory: false,
+      city: 'Buenos Aires',
+    });
+
+    expect(mockedApi.get).toHaveBeenCalledWith('/competitive/matchmaking/partners', {
+      params: {
+        limit: 20,
+        cursor: 'p-next',
+        range: 150,
+        sameCategory: false,
+        city: 'Buenos Aires',
+      },
+    });
+  });
+
+  it('omits undefined query params', async () => {
+    mockedApi.get.mockResolvedValue({ data: { items: [], nextCursor: null } });
+
+    await competitiveService.getPartnerSuggestions({ limit: 20, city: undefined });
+
+    expect(mockedApi.get).toHaveBeenCalledWith('/competitive/matchmaking/partners', {
+      params: { limit: 20 },
+    });
+  });
+
+  it('returns items and nextCursor from the response', async () => {
+    const mockPartner = {
+      userId: 'abc',
+      displayName: 'Jugador Test',
+      category: 4,
+      elo: 1100,
+      avatarUrl: null,
+      matches30d: 3,
+      momentum30d: 5,
+      reasons: ['ELO similar'],
+      tags: [],
+      location: null,
+    };
+    mockedApi.get.mockResolvedValue({
+      data: { items: [mockPartner], nextCursor: 'cursor-xyz' },
+    });
+
+    const result = await competitiveService.getPartnerSuggestions({});
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].userId).toBe('abc');
+    expect(result.nextCursor).toBe('cursor-xyz');
+  });
+});
+
 describe('competitiveService ranking', () => {
   beforeEach(() => {
     vi.clearAllMocks();

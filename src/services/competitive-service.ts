@@ -23,6 +23,21 @@ export type RivalsQuery =
   NonNullable<paths['/competitive/matchmaking/rivals']['get']['parameters']['query']>;
 export type RivalItem = RivalsResponse['items'][number];
 
+// Partner matchmaking types.
+// NOTE: /competitive/matchmaking/partners is not yet in the OpenAPI schema.
+// Replace with schema-derived types once the backend publishes the endpoint.
+export type PartnerItem = RivalItem; // same DTO shape as rivals
+export type PartnersResponse = { items: PartnerItem[]; nextCursor: string | null };
+export type PartnersQuery = {
+  limit?: number;
+  cursor?: string;
+  range?: number;
+  sameCategory?: boolean;
+  city?: string;
+  province?: string;
+  country?: string;
+};
+
 function normalizeEloHistoryResponse(raw: CompetitiveProfileHistoryResponse | unknown): EloHistoryResponse {
   if (Array.isArray(raw)) {
     return {
@@ -120,6 +135,21 @@ export const competitiveService = {
     ) as Partial<RivalsQuery>;
 
     const { data } = await api.get<RivalsResponse>('/competitive/matchmaking/rivals', {
+      params: queryParams,
+    });
+    return data;
+  },
+
+  /**
+   * Obtiene sugerencias de compañeros para matchmaking competitivo.
+   * El endpoint acepta los mismos filtros que /rivals.
+   */
+  async getPartnerSuggestions(params: Partial<PartnersQuery> = {}): Promise<PartnersResponse> {
+    const queryParams = Object.fromEntries(
+      Object.entries(params).filter(([, value]) => value !== undefined),
+    ) as Partial<PartnersQuery>;
+
+    const { data } = await api.get<PartnersResponse>('/competitive/matchmaking/partners', {
       params: queryParams,
     });
     return data;
