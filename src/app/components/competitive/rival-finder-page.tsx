@@ -9,6 +9,7 @@ import { RivalCard } from '@/app/components/competitive/rival-card';
 import { useRivalSuggestions, type RivalSuggestionFilters } from '@/hooks/use-rival-suggestions';
 import { usePartnerSuggestions } from '@/hooks/use-partner-suggestions';
 import { useCreateDirectChallenge } from '@/hooks/use-challenges';
+import { useFavorites, useToggleFavorite } from '@/hooks/use-favorites';
 import {
   parseRivalFinderParams,
   buildSearchParams,
@@ -17,6 +18,7 @@ import {
   type RivalFinderParamState,
 } from '@/lib/rival-finder-params';
 import type { RivalItem } from '@/services/competitive-service';
+import type { paths } from '@/api/schema';
 
 const LIMIT = 20;
 type ActiveTab = 'rivals' | 'partners';
@@ -29,6 +31,26 @@ function buildFilters(state: RivalFinderParamState): RivalSuggestionFilters {
     city: state.city.trim() || undefined,
     province: state.province.trim() || undefined,
     country: state.country.trim() || undefined,
+  };
+}
+
+function buildOptimisticFavoriteItem(
+  rival: RivalItem,
+): paths['/players/me/favorites']['get']['responses'][200]['content']['application/json']['items'][number] {
+  return {
+    userId: rival.userId,
+    displayName: rival.displayName,
+    avatarUrl: rival.avatarUrl,
+    category: rival.category,
+    elo: rival.elo,
+    location: rival.location
+      ? {
+          city: rival.location.city ?? undefined,
+          province: rival.location.province ?? undefined,
+          country: rival.location.country ?? undefined,
+        }
+      : null,
+    createdAt: new Date().toISOString(),
   };
 }
 
@@ -64,6 +86,8 @@ export function RivalFinderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const createDirectChallenge = useCreateDirectChallenge();
+  const favoritesQuery = useFavorites({ limit: 100 });
+  const toggleFavorite = useToggleFavorite();
 
   const activeTab: ActiveTab =
     searchParams.get('tab') === 'partners' ? 'partners' : 'rivals';
@@ -102,6 +126,16 @@ export function RivalFinderPage() {
     enabled: activeTab === 'partners',
   });
   const partners = partnersQuery.data?.items ?? [];
+
+  const favoritedUserIds = useMemo(
+    () =>
+      new Set(
+        (favoritesQuery.data?.pages ?? [])
+          .flatMap((page) => page.items)
+          .map((favorite) => favorite.userId),
+      ),
+    [favoritesQuery.data],
+  );
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -189,6 +223,17 @@ export function RivalFinderPage() {
       );
     },
     [router],
+  );
+
+  const handleToggleFavorite = useCallback(
+    (rival: RivalItem) => {
+      toggleFavorite.mutate({
+        targetUserId: rival.userId,
+        isFavorited: favoritedUserIds.has(rival.userId),
+        optimisticItem: buildOptimisticFavoriteItem(rival),
+      });
+    },
+    [favoritedUserIds, toggleFavorite],
   );
 
   // Compute actionable empty state suggestions (shared by both tabs)
@@ -493,6 +538,12 @@ export function RivalFinderPage() {
                       key={rival.userId}
                       rival={rival}
                       onChallenge={handleChallenge}
+                      onToggleFavorite={handleToggleFavorite}
+                      isFavorited={favoritedUserIds.has(rival.userId)}
+                      favoriteLoading={
+                        toggleFavorite.isPending &&
+                        toggleFavorite.variables?.targetUserId === rival.userId
+                      }
                       sent={sentUserIds.includes(rival.userId)}
                       sending={sendingUserIds.includes(rival.userId)}
                       error={cardErrors[rival.userId] ?? null}
@@ -573,6 +624,12 @@ export function RivalFinderPage() {
                       key={partner.userId}
                       rival={partner}
                       onChallenge={handleInvitePartner}
+                      onToggleFavorite={handleToggleFavorite}
+                      isFavorited={favoritedUserIds.has(partner.userId)}
+                      favoriteLoading={
+                        toggleFavorite.isPending &&
+                        toggleFavorite.variables?.targetUserId === partner.userId
+                      }
                       ctaLabel="Invitar"
                       ctaSentLabel="Invitado"
                       sent={false}

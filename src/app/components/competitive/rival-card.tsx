@@ -1,6 +1,6 @@
 'use client';
 
-import { MapPin, TrendingUp } from 'lucide-react';
+import { MapPin, Star, TrendingUp } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import type { RivalItem } from '@/services/competitive-service';
 
@@ -14,6 +14,9 @@ interface RivalCardProps {
   ctaLabel?: string;
   /** Label shown after the CTA has been triggered. Defaults to "Enviado". */
   ctaSentLabel?: string;
+  isFavorited?: boolean;
+  onToggleFavorite?: (rival: RivalItem) => void;
+  favoriteLoading?: boolean;
 }
 
 function formatMomentum(value: number): string {
@@ -39,6 +42,9 @@ export function RivalCard({
   error,
   ctaLabel = 'Desafiar',
   ctaSentLabel = 'Enviado',
+  isFavorited = false,
+  onToggleFavorite,
+  favoriteLoading = false,
 }: RivalCardProps) {
   const visibleTags = rival.tags.slice(0, 3);
   const hiddenTagsCount = Math.max(0, rival.tags.length - visibleTags.length);
@@ -57,16 +63,34 @@ export function RivalCard({
           </div>
         </div>
 
-        <Button
-          type="button"
-          size="md"
-          className="shrink-0 min-w-[110px]"
-          onClick={() => onChallenge(rival)}
-          disabled={sent}
-          loading={sending}
-        >
-          {sent ? ctaSentLabel : ctaLabel}
-        </Button>
+        <div className="flex shrink-0 items-start gap-2">
+          {onToggleFavorite ? (
+            <button
+              type="button"
+              aria-label="Guardar jugador"
+              aria-pressed={isFavorited}
+              onClick={() => onToggleFavorite(rival)}
+              disabled={favoriteLoading}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 shadow-sm transition hover:bg-slate-50 hover:text-amber-500 disabled:opacity-50"
+            >
+              <Star
+                size={18}
+                className={isFavorited ? 'fill-current text-amber-500' : undefined}
+              />
+            </button>
+          ) : null}
+
+          <Button
+            type="button"
+            size="md"
+            className="min-w-[110px]"
+            onClick={() => onChallenge(rival)}
+            disabled={sent}
+            loading={sending}
+          >
+            {sent ? ctaSentLabel : ctaLabel}
+          </Button>
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">

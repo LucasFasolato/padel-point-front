@@ -7,6 +7,8 @@ const mockPush = vi.fn();
 const mockUseRivalSuggestions = vi.fn();
 const mockUsePartnerSuggestions = vi.fn();
 const mockUseCreateDirectChallenge = vi.fn();
+const mockUseFavorites = vi.fn();
+const mockUseToggleFavorite = vi.fn();
 const mockUseSearchParams = vi.fn();
 
 vi.mock('next/navigation', () => ({
@@ -24,6 +26,11 @@ vi.mock('@/hooks/use-partner-suggestions', () => ({
 
 vi.mock('@/hooks/use-challenges', () => ({
   useCreateDirectChallenge: () => mockUseCreateDirectChallenge(),
+}));
+
+vi.mock('@/hooks/use-favorites', () => ({
+  useFavorites: (...args: unknown[]) => mockUseFavorites(...args),
+  useToggleFavorite: () => mockUseToggleFavorite(),
 }));
 
 import RivalFinderPage from '../rival-finder-page';
@@ -71,6 +78,7 @@ function makeLoadingQueryResult() {
 
 describe('RivalFinderPage', () => {
   const mutateAsync = vi.fn();
+  const toggleFavoriteMutate = vi.fn();
   const refetch = vi.fn();
   const fetchNextPage = vi.fn();
 
@@ -84,6 +92,20 @@ describe('RivalFinderPage', () => {
     mockUseSearchParams.mockReturnValue(new URLSearchParams());
 
     mockUseCreateDirectChallenge.mockReturnValue({ mutateAsync, isPending: false });
+    mockUseToggleFavorite.mockReturnValue({
+      mutate: toggleFavoriteMutate,
+      isPending: false,
+      variables: undefined,
+    });
+    mockUseFavorites.mockReturnValue({
+      data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    });
 
     mockUseRivalSuggestions.mockReturnValue({
       data: { items: [makeRival()], pages: [], pageParams: [], nextCursor: null },
@@ -151,6 +173,60 @@ describe('RivalFinderPage', () => {
   });
 
   // ─── Tab switching ────────────────────────────────────────────────────────────
+
+  it('clicking favorite star calls toggleFavorite mutation', () => {
+    render(<RivalFinderPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar jugador' }));
+
+    expect(toggleFavoriteMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetUserId: '11111111-1111-4111-8111-111111111111',
+        isFavorited: false,
+        optimisticItem: expect.objectContaining({
+          userId: '11111111-1111-4111-8111-111111111111',
+          displayName: 'Rival Uno',
+        }),
+      }),
+    );
+  });
+
+  it('renders favorite star as pressed when rival is already favorited', () => {
+    mockUseFavorites.mockReturnValue({
+      data: {
+        pages: [
+          {
+            items: [
+              {
+                userId: '11111111-1111-4111-8111-111111111111',
+                displayName: 'Rival Uno',
+                avatarUrl: null,
+                category: 5,
+                elo: 1208,
+                createdAt: '2026-02-24T12:00:00Z',
+                location: { city: 'Rosario', province: 'Santa Fe', country: 'Argentina' },
+              },
+            ],
+            nextCursor: null,
+          },
+        ],
+        pageParams: [undefined],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    });
+
+    render(<RivalFinderPage />);
+
+    expect(screen.getByRole('button', { name: 'Guardar jugador' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
 
   describe('tab switching', () => {
     it('renders Rivales and Compañeros tabs', () => {

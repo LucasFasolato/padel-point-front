@@ -56,4 +56,20 @@ describe('RivalCard', () => {
 
     expect(onChallenge).toHaveBeenCalledWith(rival);
   });
+
+  it('renders favorite toggle and triggers callback', () => {
+    const onToggleFavorite = vi.fn();
+    const rival = makeRival();
+
+    render(
+      <RivalCard rival={rival} onChallenge={vi.fn()} onToggleFavorite={onToggleFavorite} />,
+    );
+
+    const starButton = screen.getByRole('button', { name: 'Guardar jugador' });
+    expect(starButton).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(starButton);
+
+    expect(onToggleFavorite).toHaveBeenCalledWith(rival);
+  });
 });

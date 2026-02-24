@@ -112,4 +112,41 @@ export const PlayerService = {
     const { data } = await api.patch<MyPlayerProfileResponse>('/players/me/profile', payload);
     return data;
   },
+
+  addFavorite: async (
+    targetUserId: paths['/players/me/favorites/{targetUserId}']['post']['parameters']['path']['targetUserId'],
+  ): Promise<
+    paths['/players/me/favorites/{targetUserId}']['post']['responses'][200]['content']['application/json']
+  > => {
+    const { data } = await api.post<
+      paths['/players/me/favorites/{targetUserId}']['post']['responses'][200]['content']['application/json']
+    >(`/players/me/favorites/${targetUserId}`);
+    return data;
+  },
+
+  removeFavorite: async (
+    targetUserId: paths['/players/me/favorites/{targetUserId}']['delete']['parameters']['path']['targetUserId'],
+  ): Promise<
+    paths['/players/me/favorites/{targetUserId}']['delete']['responses'][200]['content']['application/json']
+  > => {
+    const { data } = await api.delete<
+      paths['/players/me/favorites/{targetUserId}']['delete']['responses'][200]['content']['application/json']
+    >(`/players/me/favorites/${targetUserId}`);
+    return data;
+  },
+
+  listFavorites: async (
+    params: NonNullable<paths['/players/me/favorites']['get']['parameters']['query']> = {},
+  ): Promise<paths['/players/me/favorites']['get']['responses'][200]['content']['application/json']> => {
+    const queryParams = Object.fromEntries(
+      Object.entries(params).filter(([, value]) => value !== undefined),
+    ) as NonNullable<paths['/players/me/favorites']['get']['parameters']['query']>;
+
+    const { data } = await api.get<
+      paths['/players/me/favorites']['get']['responses'][200]['content']['application/json']
+    >('/players/me/favorites', {
+      params: queryParams,
+    });
+    return data;
+  },
 };

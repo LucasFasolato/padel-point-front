@@ -708,6 +708,23 @@ export interface paths {
         patch: operations["ClubsController_update"];
         trace?: never;
     };
+    "/competitive/matchmaking/partners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Find suggested partners for current player */
+        get: operations["CompetitiveController_matchmakingPartners"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/competitive/matchmaking/rivals": {
         parameters: {
             query?: never;
@@ -1718,6 +1735,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/me/favorites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List my favorite players (paginated) */
+        get: operations["PlayersFavoritesController_listFavorites"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/me/favorites/{targetUserId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a player to my favorites */
+        post: operations["PlayersFavoritesController_addFavorite"];
+        /** Remove a player from my favorites */
+        delete: operations["PlayersFavoritesController_removeFavorite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/me/profile": {
         parameters: {
             query?: never;
@@ -2315,6 +2367,30 @@ export interface components {
             nextCursor: string | null;
         };
         MockPaymentWebhookDto: Record<string, never>;
+        PlayerFavoriteItemResponseDto: {
+            avatarUrl: string | null;
+            category: number;
+            /** Format: date-time */
+            createdAt: string;
+            displayName: string;
+            elo: number;
+            location: components["schemas"]["PlayerFavoriteLocationDto"] | null;
+            /** Format: uuid */
+            userId: string;
+        };
+        PlayerFavoriteLocationDto: {
+            city?: string;
+            country?: string;
+            province?: string;
+        };
+        PlayerFavoriteMutationResponseDto: {
+            /** @example true */
+            ok: boolean;
+        };
+        PlayerFavoritesListResponseDto: {
+            items: components["schemas"]["PlayerFavoriteItemResponseDto"][];
+            nextCursor: string | null;
+        };
         PlayerLocationResponseDto: {
             city?: string | null;
             country?: string | null;
@@ -3406,6 +3482,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    CompetitiveController_matchmakingPartners: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+                range?: number;
+                sameCategory?: boolean;
+                city?: string;
+                province?: string;
+                country?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchmakingRivalsResponseDto"];
+                };
             };
         };
     };
@@ -4868,6 +4971,70 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    PlayersFavoritesController_listFavorites: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerFavoritesListResponseDto"];
+                };
+            };
+        };
+    };
+    PlayersFavoritesController_addFavorite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                targetUserId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerFavoriteMutationResponseDto"];
+                };
+            };
+        };
+    };
+    PlayersFavoritesController_removeFavorite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                targetUserId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerFavoriteMutationResponseDto"];
+                };
             };
         };
     };
