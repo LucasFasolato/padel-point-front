@@ -1,47 +1,32 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Search, SlidersHorizontal } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, ChevronDown, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { RivalCard } from '@/app/components/competitive/rival-card';
 import { useRivalSuggestions, type RivalSuggestionFilters } from '@/hooks/use-rival-suggestions';
 import { useCreateDirectChallenge } from '@/hooks/use-challenges';
+import {
+  parseRivalFinderParams,
+  buildSearchParams,
+  RIVAL_FINDER_DEFAULTS,
+  RIVAL_FINDER_RANGES,
+  type RivalFinderParamState,
+} from '@/lib/rival-finder-params';
 import type { RivalItem } from '@/services/competitive-service';
 
-const DEFAULT_FILTERS: RivalSuggestionFilters = {
-  limit: 20,
-  range: 100,
-  sameCategory: true,
-};
+const LIMIT = 20;
 
-type RivalFinderQueryState = {
-  range: number;
-  sameCategory: boolean;
-  city: string;
-  province: string;
-  country: string;
-};
-
-function buildFilters(state: RivalFinderQueryState): RivalSuggestionFilters {
+function buildFilters(state: RivalFinderParamState): RivalSuggestionFilters {
   return {
-    ...DEFAULT_FILTERS,
+    limit: LIMIT,
     range: state.range,
     sameCategory: state.sameCategory,
     city: state.city.trim() || undefined,
     province: state.province.trim() || undefined,
     country: state.country.trim() || undefined,
-  };
-}
-
-function createDefaultQueryState(): RivalFinderQueryState {
-  return {
-    range: DEFAULT_FILTERS.range ?? 100,
-    sameCategory: DEFAULT_FILTERS.sameCategory ?? true,
-    city: '',
-    province: '',
-    country: '',
   };
 }
 
@@ -75,26 +60,53 @@ function RivalFinderSkeletonList() {
 
 export function RivalFinderPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const createDirectChallenge = useCreateDirectChallenge();
 
-  const [draftFilters, setDraftFilters] = useState<RivalFinderQueryState>(createDefaultQueryState);
-  const [appliedFilters, setAppliedFilters] = useState<RivalSuggestionFilters>(DEFAULT_FILTERS);
+  // Source of truth: URL search params → applied filters
+  const appliedParams = useMemo(() => parseRivalFinderParams(searchParams), [searchParams]);
+
+  // Draft state for the filter form (initialized from URL)
+  const [draftFilters, setDraftFilters] = useState<RivalFinderParamState>(() =>
+    parseRivalFinderParams(searchParams),
+  );
+
+  // Sync draft when URL changes externally (Back/Forward navigation)
+  useEffect(() => {
+    setDraftFilters(parseRivalFinderParams(searchParams));
+  }, [searchParams]);
+
+  // Collapsible location section: open by default if URL has location params
+  const [showLocation, setShowLocation] = useState(() => {
+    const p = parseRivalFinderParams(searchParams);
+    return !!(p.city || p.province || p.country);
+  });
+
   const [sentUserIds, setSentUserIds] = useState<string[]>([]);
   const [sendingUserIds, setSendingUserIds] = useState<string[]>([]);
   const [cardErrors, setCardErrors] = useState<Record<string, string | undefined>>({});
 
-  const rivalsQuery = useRivalSuggestions(appliedFilters);
+  const rivalsQuery = useRivalSuggestions(buildFilters(appliedParams));
   const rivals = rivalsQuery.data?.items ?? [];
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
-    if ((appliedFilters.range ?? DEFAULT_FILTERS.range) !== DEFAULT_FILTERS.range) count += 1;
-    if ((appliedFilters.sameCategory ?? DEFAULT_FILTERS.sameCategory) !== DEFAULT_FILTERS.sameCategory) count += 1;
-    if (appliedFilters.city) count += 1;
-    if (appliedFilters.province) count += 1;
-    if (appliedFilters.country) count += 1;
+    if (appliedParams.range !== RIVAL_FINDER_DEFAULTS.range) count += 1;
+    if (appliedParams.sameCategory !== RIVAL_FINDER_DEFAULTS.sameCategory) count += 1;
+    if (appliedParams.city) count += 1;
+    if (appliedParams.province) count += 1;
+    if (appliedParams.country) count += 1;
     return count;
-  }, [appliedFilters]);
+  }, [appliedParams]);
+
+  const pushFilters = useCallback(
+    (params: RivalFinderParamState) => {
+      const sp = buildSearchParams(params);
+      const query = sp.toString();
+      router.push(`/competitive/find${query ? `?${query}` : ''}`);
+    },
+    [router],
+  );
 
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -105,14 +117,24 @@ export function RivalFinderPage() {
   };
 
   const applyFilters = () => {
-    setAppliedFilters(buildFilters(draftFilters));
+    pushFilters(draftFilters);
   };
 
   const resetFilters = () => {
-    const nextState = createDefaultQueryState();
-    setDraftFilters(nextState);
-    setAppliedFilters(buildFilters(nextState));
+    setDraftFilters({ ...RIVAL_FINDER_DEFAULTS });
+    setShowLocation(false);
+    router.push('/competitive/find');
   };
+
+  // One-tap fix: patch applied params and push to URL, keeping draft in sync
+  const applyQuickFix = useCallback(
+    (patch: Partial<RivalFinderParamState>) => {
+      const next: RivalFinderParamState = { ...appliedParams, ...patch };
+      setDraftFilters(next);
+      pushFilters(next);
+    },
+    [appliedParams, pushFilters],
+  );
 
   const handleChallenge = async (rival: RivalItem) => {
     setCardErrors((prev) => ({ ...prev, [rival.userId]: undefined }));
@@ -131,6 +153,49 @@ export function RivalFinderPage() {
       setSendingUserIds((prev) => prev.filter((id) => id !== rival.userId));
     }
   };
+
+  // Actionable empty state suggestions based on current applied filters
+  const emptyStateSuggestions = useMemo(() => {
+    const items = rivalsQuery.data?.items ?? [];
+    if (items.length > 0 || rivalsQuery.isLoading || rivalsQuery.isError) return [];
+
+    const suggestions: Array<{ label: string; testId: string; action: () => void }> = [];
+
+    if (appliedParams.sameCategory) {
+      suggestions.push({
+        label: 'Desactivar "misma categoría"',
+        testId: 'empty-disable-same-category',
+        action: () => applyQuickFix({ sameCategory: false }),
+      });
+    }
+
+    const nextRange =
+      appliedParams.range === 50
+        ? 100
+        : appliedParams.range === 100
+          ? 150
+          : appliedParams.range === 150
+            ? 200
+            : null;
+
+    if (nextRange !== null) {
+      suggestions.push({
+        label: `Ampliar rango a ±${nextRange}`,
+        testId: 'empty-increase-range',
+        action: () => applyQuickFix({ range: nextRange }),
+      });
+    }
+
+    if (appliedParams.city || appliedParams.province || appliedParams.country) {
+      suggestions.push({
+        label: 'Limpiar ubicación',
+        testId: 'empty-clear-location',
+        action: () => applyQuickFix({ city: '', province: '', country: '' }),
+      });
+    }
+
+    return suggestions;
+  }, [rivalsQuery.data, rivalsQuery.isLoading, rivalsQuery.isError, appliedParams, applyQuickFix]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -171,7 +236,7 @@ export function RivalFinderPage() {
                 }
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               >
-                {[50, 100, 150, 250].map((value) => (
+                {RIVAL_FINDER_RANGES.map((value) => (
                   <option key={value} value={value}>
                     ±{value}
                   </option>
@@ -189,47 +254,71 @@ export function RivalFinderPage() {
               />
               Misma categoría
             </label>
+          </div>
 
-            <label className="block text-sm text-slate-700">
-              <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                Ciudad
-              </span>
-              <input
-                type="text"
-                value={draftFilters.city}
-                onChange={(e) => setDraftFilters((prev) => ({ ...prev, city: e.target.value }))}
-                placeholder="Ej: Córdoba"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              />
-            </label>
+          {/* Collapsible location section */}
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => setShowLocation((prev) => !prev)}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700"
+              aria-expanded={showLocation}
+            >
+              {showLocation ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              Ubicación
+              {(draftFilters.city || draftFilters.province || draftFilters.country) && (
+                <span className="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-700">
+                  activa
+                </span>
+              )}
+            </button>
 
-            <label className="block text-sm text-slate-700">
-              <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                Provincia
-              </span>
-              <input
-                type="text"
-                value={draftFilters.province}
-                onChange={(e) =>
-                  setDraftFilters((prev) => ({ ...prev, province: e.target.value }))
-                }
-                placeholder="Ej: Córdoba"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              />
-            </label>
+            {showLocation && (
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <label className="block text-sm text-slate-700">
+                  <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Ciudad
+                  </span>
+                  <input
+                    type="text"
+                    value={draftFilters.city}
+                    onChange={(e) => setDraftFilters((prev) => ({ ...prev, city: e.target.value }))}
+                    placeholder="Ej: Córdoba"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
 
-            <label className="block text-sm text-slate-700 sm:col-span-2">
-              <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                País
-              </span>
-              <input
-                type="text"
-                value={draftFilters.country}
-                onChange={(e) => setDraftFilters((prev) => ({ ...prev, country: e.target.value }))}
-                placeholder="Ej: Argentina"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              />
-            </label>
+                <label className="block text-sm text-slate-700">
+                  <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Provincia
+                  </span>
+                  <input
+                    type="text"
+                    value={draftFilters.province}
+                    onChange={(e) =>
+                      setDraftFilters((prev) => ({ ...prev, province: e.target.value }))
+                    }
+                    placeholder="Ej: Córdoba"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+
+                <label className="block text-sm text-slate-700 sm:col-span-2">
+                  <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                    País
+                  </span>
+                  <input
+                    type="text"
+                    value={draftFilters.country}
+                    onChange={(e) =>
+                      setDraftFilters((prev) => ({ ...prev, country: e.target.value }))
+                    }
+                    placeholder="Ej: Argentina"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+              </div>
+            )}
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
@@ -264,14 +353,32 @@ export function RivalFinderPage() {
             </section>
           ) : rivals.length === 0 ? (
             <section className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
-              <h2 className="text-base font-semibold text-slate-900">No encontramos rivales todavía</h2>
+              <h2 className="text-base font-semibold text-slate-900">
+                No encontramos rivales todavía
+              </h2>
               <p className="mt-2 text-sm text-slate-600">
-                Ajustá filtros o volvé más tarde para nuevas sugerencias.
+                Ajustá los filtros para ampliar la búsqueda.
               </p>
-              <ul className="mt-3 space-y-1 text-left text-sm text-slate-600">
-                <li>Jugá más partidos para mejorar sugerencias</li>
-                <li>Desactivá “misma categoría”</li>
-              </ul>
+              {emptyStateSuggestions.length > 0 ? (
+                <div className="mt-4 flex flex-col gap-2">
+                  {emptyStateSuggestions.map((s) => (
+                    <Button
+                      key={s.testId}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      data-testid={s.testId}
+                      onClick={s.action}
+                    >
+                      {s.label}
+                    </Button>
+                  ))}
+                </div>
+              ) : (
+                <ul className="mt-3 space-y-1 text-left text-sm text-slate-600">
+                  <li>Jugá más partidos para mejorar sugerencias</li>
+                </ul>
+              )}
             </section>
           ) : (
             <>
