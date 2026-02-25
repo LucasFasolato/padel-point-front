@@ -104,7 +104,8 @@ export function BookingDrawer() {
     setAvailabilityForCourt,
   } = useBookingStore();
 
-  const { token: authToken } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const authToken = user?.userId ? 'session' : null;
 
   // Profile state
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
@@ -189,7 +190,6 @@ export function BookingDrawer() {
     const fetchProfile = async () => {
       try {
         const res = await api.get<PlayerProfile>('/me/profile', {
-          headers: { Authorization: `Bearer ${authToken}` },
           signal: profileAbortRef.current?.signal,
         });
         setProfile(res.data ?? null);

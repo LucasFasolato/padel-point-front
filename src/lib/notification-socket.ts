@@ -28,7 +28,7 @@ const CHALLENGE_UPDATE_EVENT_NAMES = new Set([
 
 export interface NotificationSocketOptions {
   url: string;
-  token: string;
+  token?: string;
   queryClient: QueryClient;
   onStatusChange?: (connected: boolean) => void;
   /** Called for every "league:activity" event received over WS. */
@@ -60,9 +60,10 @@ export class NotificationSocket {
 
     try {
       const separator = this.options.url.includes('?') ? '&' : '?';
-      this.ws = new WebSocket(
-        `${this.options.url}${separator}token=${encodeURIComponent(this.options.token)}`
-      );
+      const tokenQuery = this.options.token
+        ? `${separator}token=${encodeURIComponent(this.options.token)}`
+        : '';
+      this.ws = new WebSocket(`${this.options.url}${tokenQuery}`);
     } catch {
       this.scheduleReconnect();
       return;

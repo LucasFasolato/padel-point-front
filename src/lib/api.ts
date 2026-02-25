@@ -1,61 +1,125 @@
-import axios from 'axios';
+import axios, { type InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/auth-store';
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
 
 if (!baseURL && typeof window !== 'undefined') {
   console.warn(
-    '[PadelPoint] NEXT_PUBLIC_API_URL no está definido. Axios usará rutas relativas.'
+    '[PadelPoint] NEXT_PUBLIC_API_URL no esta definido. Axios usara rutas relativas.'
   );
 }
 
 const api = axios.create({
   baseURL,
+  withCredentials: true,
   timeout: 15000,
   headers: {
     Accept: 'application/json',
   },
 });
 
-// Attach JWT solo para endpoints NO públicos
-api.interceptors.request.use((config) => {
-  const url = config.url ?? '';
-  const isPublic = url.startsWith('/public');
+type RetryableRequestConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+};
 
-  if (!isPublic) {
-    const token = useAuthStore.getState().token; 
-    if (token && !config.headers?.Authorization) {
-      config.headers = config.headers ?? {};
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+let refreshPromise: Promise<void> | null = null;
+
+function getRequestPath(url?: string): string {
+  if (!url) return '';
+
+  try {
+    const parsed = new URL(
+      url,
+      baseURL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
+    );
+    return parsed.pathname;
+  } catch {
+    return url;
+  }
+}
+
+function shouldSkipRefresh(url?: string): boolean {
+  const path = getRequestPath(url);
+
+  return (
+    path === '/auth/login' ||
+    path === '/auth/register' ||
+    path === '/auth/refresh' ||
+    path === '/auth/logout' ||
+    path.startsWith('/auth/password/')
+  );
+}
+
+function shouldRedirectToLogin(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const path = window.location.pathname;
+  return path !== '/login' && path !== '/register';
+}
+
+function handleAuthFailure() {
+  useAuthStore.getState().clearUser();
+
+  if (shouldRedirectToLogin()) {
+    window.location.href = '/login';
+  }
+}
+
+async function refreshSession(): Promise<void> {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(
+        '/auth/refresh',
+        null,
+        {
+          baseURL,
+          withCredentials: true,
+          timeout: 15000,
+          headers: {
+            Accept: 'application/json',
+          },
+        }
+      )
+      .then(() => undefined)
+      .finally(() => {
+        refreshPromise = null;
+      });
   }
 
-  return config;
-});
+  return refreshPromise;
+}
 
-// Global 401 handler — clears auth and redirects to /login
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (
-      axios.isAxiosError(error) &&
-      error.response?.status === 401 &&
-      typeof window !== 'undefined'
-    ) {
-      const url = error.config?.url ?? '';
-      const isAuthEndpoint = url.startsWith('/auth/');
-      const isAlreadyOnAuth =
-        window.location.pathname === '/login' ||
-        window.location.pathname === '/register';
-
-      if (!isAuthEndpoint && !isAlreadyOnAuth) {
-        useAuthStore.getState().logout();
-        window.location.href = '/login';
-      }
+  async (error) => {
+    if (!axios.isAxiosError(error) || error.response?.status !== 401) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
-  },
+    const originalRequest = error.config as RetryableRequestConfig | undefined;
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
+
+    if (shouldSkipRefresh(originalRequest.url)) {
+      return Promise.reject(error);
+    }
+
+    if (originalRequest._retry) {
+      handleAuthFailure();
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    try {
+      await refreshSession();
+      return api(originalRequest);
+    } catch (refreshError) {
+      handleAuthFailure();
+      return Promise.reject(refreshError);
+    }
+  }
 );
 
 export default api;

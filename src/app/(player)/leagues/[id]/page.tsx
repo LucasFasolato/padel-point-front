@@ -78,7 +78,8 @@ function isForbiddenOrNotFound(error: unknown): boolean {
 export default function LeagueDetailPage() {
   const params = useParams<{ id?: string | string[] }>();
   const searchParams = useSearchParams();
-  const authToken = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const isAuthed = Boolean(user?.userId);
   const rawId = getSingleParam(params?.id);
   if (!isUuid(rawId)) {
     return <LeagueNotFoundState />;
@@ -89,7 +90,7 @@ export default function LeagueDetailPage() {
   const shareToken = searchParams.get('token');
   const justCreated = searchParams.get('created') === '1';
 
-  if (isShareMode && !authToken) {
+  if (isShareMode && !isAuthed) {
     return (
       <LeaguePublicShareView
         leagueId={rawId}

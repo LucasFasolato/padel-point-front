@@ -249,7 +249,8 @@ export default function CheckoutPage() {
   const { reservationId } = useParams() as { reservationId: string };
   const checkoutToken = searchParams.get('token') ?? '';
 
-  const { token: authToken } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const authToken = user?.userId ? 'session' : null;
 
   // State
   const [reservation, setReservation] = useState<CheckoutReservation | null>(null);
@@ -344,7 +345,6 @@ export default function CheckoutPage() {
     const fetchProfile = async () => {
       try {
         const res = await api.get<PlayerProfile>('/me/profile', {
-          headers: { Authorization: `Bearer ${authToken}` },
           signal: profileAbortRef.current?.signal,
         });
         setProfile(res.data ?? null);

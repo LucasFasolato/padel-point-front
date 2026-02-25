@@ -104,7 +104,8 @@ function formatAmount(amount: number | null) {
 
 export default function MyReservationsPage() {
   const router = useRouter();
-  const { token, logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
+  const token = user?.userId ? 'session' : null;
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -147,9 +148,6 @@ export default function MyReservationsPage() {
       initialAbortRef.current = controller;
       try {
         const res = await api.get<ReservationsResponse>('/me/reservations', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
           params: {
             page,
             limit: 10,
@@ -195,9 +193,6 @@ export default function MyReservationsPage() {
 
     try {
       const res = await api.get<ReservationsResponse>('/me/reservations', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         params: {
           page,
           limit: meta?.limit ?? 10,
@@ -441,11 +436,7 @@ export default function MyReservationsPage() {
       const res = await api.post<{ url?: string }>(
         `/me/reservations/${reservationId}/receipt-link`,
         {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        {}
       );
 
       const url = res.data?.url;

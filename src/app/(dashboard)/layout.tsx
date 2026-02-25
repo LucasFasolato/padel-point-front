@@ -13,20 +13,23 @@ import {
   X 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/auth-store';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const user = useAuthStore((s) => s.user);
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const clearUser = useAuthStore((s) => s.clearUser);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
-  // 1. Protection Check (Simple & Robust)
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
+    if (!hydrated) return;
+    if (!user?.userId) {
       router.push('/login');
     }
-  }, [router]);
+  }, [hydrated, user?.userId, router]);
 
   // Handle mobile responsive sidebar
   useEffect(() => {
@@ -37,7 +40,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('accessToken');
+    clearUser();
     router.push('/login');
   };
 

@@ -83,7 +83,7 @@ export function addLeagueActivityListener(
  */
 export function useNotificationSocket() {
   const queryClient = useQueryClient();
-  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
   const socketRef = useRef<NotificationSocket | null>(null);
 
   const handleStatusChange = useCallback((connected: boolean) => {
@@ -91,11 +91,10 @@ export function useNotificationSocket() {
   }, []);
 
   useEffect(() => {
-    if (!token || !WS_URL) return;
+    if (!user?.userId || !WS_URL) return;
 
     const socket = new NotificationSocket({
       url: WS_URL,
-      token,
       queryClient,
       onStatusChange: handleStatusChange,
       onLeagueActivity: (event) => {
@@ -112,7 +111,7 @@ export function useNotificationSocket() {
       globalSocket = null;
       setWsConnected(false);
     };
-  }, [token, queryClient, handleStatusChange]);
+  }, [user?.userId, queryClient, handleStatusChange]);
 }
 
 // ---------------------------------------------------------------------------

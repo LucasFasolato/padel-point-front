@@ -71,7 +71,7 @@ type StatsState = {
 };
 
 export default function DashboardPage() {
-  const { user, token } = useAuthStore();
+  const { user } = useAuthStore();
   const { clubs, activeClub, fetchMyClubs, setActiveClub, loading } = useClubStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -198,7 +198,7 @@ export default function DashboardPage() {
     },
   ];
 
-  if (!token) {
+  if (!user?.userId) {
     return (
       <div className="flex h-96 flex-col items-center justify-center text-slate-400">
         <LayoutDashboard size={48} className="mb-4 opacity-50" />

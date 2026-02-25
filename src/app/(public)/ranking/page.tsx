@@ -37,12 +37,11 @@ function getPositionDeltaLabel(delta?: number | null): string | null {
 export default function RankingPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const token = useAuthStore((s) => s.token);
   const [selectedCategory, setSelectedCategory] = useState<Category | undefined>(undefined);
   const [isMyRowVisible, setIsMyRowVisible] = useState(true);
   const myRowRef = useRef<HTMLTableRowElement | null>(null);
 
-  const isAuthed = !!token && !!user?.userId;
+  const isAuthed = !!user?.userId;
 
   const rankingQuery = useRankingByCategory(selectedCategory);
   const players = rankingQuery.data?.items ?? [];

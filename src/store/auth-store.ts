@@ -1,29 +1,36 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-interface User {
+export interface User {
   userId: string;
   email: string;
   role: string;
 }
 
 interface AuthState {
-  token: string | null;
   user: User | null;
-  setAuth: (token: string, user: User) => void;
+  hydrated: boolean;
+  setUser: (user: User | null) => void;
+  clearUser: () => void;
+  setHydrated: (hydrated: boolean) => void;
+  setAuth: (_token: string, user: User) => void;
   logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      token: null,
       user: null,
-      setAuth: (token, user) => set({ token, user }),
-      logout: () => set({ token: null, user: null }),
+      hydrated: false,
+      setUser: (user) => set({ user }),
+      clearUser: () => set({ user: null }),
+      setHydrated: (hydrated) => set({ hydrated }),
+      setAuth: (_token, user) => set({ user }),
+      logout: () => set({ user: null }),
     }),
     {
-      name: 'padel-auth-storage', // name of the item in localStorage
+      name: 'padel-auth-storage',
+      partialize: (state) => ({ user: state.user }),
     }
   )
 );

@@ -50,7 +50,8 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function ProfilePage() {
-  const { token, user, logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
+  const token = user?.userId ? 'session' : null;
   const handleLogout = useLogout();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -94,7 +95,6 @@ export default function ProfilePage() {
 
     try {
       const res = await api.get<ProfileResponse>('/me/profile', {
-        headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
       });
 
@@ -142,7 +142,6 @@ export default function ProfilePage() {
         phone: form.phone.trim() || null,
       };
       const res = await api.patch<ProfileResponse>('/me/profile', payload, {
-        headers: { Authorization: `Bearer ${token}` },
       });
 
       const updated = res.data;

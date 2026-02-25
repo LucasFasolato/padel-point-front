@@ -27,9 +27,7 @@ function getResolveErrorMessage(error: unknown): string {
 
 export function useMyMatches() {
   const user = useAuthStore((s) => s.user);
-  const token = useAuthStore((s) => s.token);
-
-  const isAuthed = !!token && !!user?.userId;
+  const isAuthed = !!user?.userId;
 
   const { data: inbox } = useQuery({
     queryKey: ['challenges', 'inbox'],
@@ -115,24 +113,24 @@ export function useMyMatches() {
 }
 
 export function usePendingConfirmations() {
-  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
 
   return useQuery({
     queryKey: ['matches', 'pending-confirmations'],
     queryFn: () => matchesService.getPendingConfirmations(),
-    enabled: !!token,
+    enabled: !!user?.userId,
     staleTime: 1000 * 30,
     retry: false,
   });
 }
 
 export function useMatch(matchId: string) {
-  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
 
   return useQuery({
     queryKey: ['matches', matchId],
     queryFn: () => matchesService.getById(matchId),
-    enabled: !!token && !!matchId,
+    enabled: !!user?.userId && !!matchId,
     retry: false,
   });
 }

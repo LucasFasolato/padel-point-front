@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
+import { AuthBootstrap } from "@/components/auth/auth-bootstrap";
 import "./globals.css";
 import { Providers } from "./providers"; 
 
@@ -21,7 +22,10 @@ export default function RootLayout({
             'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
         }}
       >
-        <Providers>{children}</Providers> 
+        <Providers>
+          <AuthBootstrap />
+          {children}
+        </Providers> 
         <Toaster position="top-center" richColors expand closeButton />
       </body>
     </html>

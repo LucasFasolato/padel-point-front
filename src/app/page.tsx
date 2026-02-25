@@ -30,7 +30,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const { token, user } = useAuthStore();
+  const { user } = useAuthStore();
+  const isAuthed = Boolean(user?.userId);
 
   const loadFeatured = async () => {
     setLoading(true);
@@ -102,7 +103,7 @@ export default function HomePage() {
             <span className="text-xl font-bold tracking-tight text-slate-900">PadelPoint</span>
           </div>
           <div className="flex items-center gap-3">
-            {token ? (
+            {isAuthed ? (
               <Link
                 href="/me/profile"
                 className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-600"
@@ -187,7 +188,7 @@ export default function HomePage() {
       </div>
 
       {/* Quick Actions — Logged in */}
-      {token && (
+      {isAuthed && (
         <div className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
           <h2 className="mb-4 text-lg font-bold text-slate-900">Acceso rápido</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
