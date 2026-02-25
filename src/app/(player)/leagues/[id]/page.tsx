@@ -210,15 +210,16 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
 
   const handleShareStandings = async () => {
     try {
-      const resolvedUrl = await getOrCreateLeagueShareUrl({
+      const raw = await getOrCreateLeagueShareUrl({
         leagueId,
         leagueName: league.name,
         cachedUrl: shareUrl,
         enable: () => enableLeagueShare.mutateAsync(),
         onCache: setShareUrl,
       });
+      const absoluteUrl = normalizeShareUrl(raw);
 
-      const shareText = `Sumate a mi liga en PadelPoint: ${resolvedUrl}`;
+      const shareText = `Sumate a mi liga en PadelPoint: ${absoluteUrl}`;
 
       // 1. Web Share API (iOS/Android native sheet)
       if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
@@ -226,7 +227,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
           await navigator.share({
             title: league.name,
             text: shareText,
-            url: resolvedUrl,
+            url: absoluteUrl,
           });
           return;
         } catch (err) {
@@ -249,16 +250,17 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
 
   const handleCopyShareLink = async () => {
     try {
-      const resolvedUrl = await getOrCreateLeagueShareUrl({
+      const raw = await getOrCreateLeagueShareUrl({
         leagueId,
         leagueName: league.name,
         cachedUrl: shareUrl,
         enable: () => enableLeagueShare.mutateAsync(),
         onCache: setShareUrl,
       });
+      const absoluteUrl = normalizeShareUrl(raw);
 
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(resolvedUrl);
+        await navigator.clipboard.writeText(absoluteUrl);
         toast.success('Enlace copiado');
       } else {
         toast.error('No se pudo copiar el enlace.');
@@ -844,6 +846,22 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
       />
     </>
   );
+}
+
+/**
+ * Guarantees a share URL is absolute (https://…).
+ * If the backend returns a relative path for any reason, it is resolved against
+ * window.location.origin so WhatsApp / Web Share API receive a valid URL.
+ */
+export function normalizeShareUrl(url: string): string {
+  if (!url) return url;
+  if (/^https?:\/\//i.test(url)) return url;
+  if (typeof window === 'undefined') return url;
+  try {
+    return new URL(url, window.location.origin).toString();
+  } catch {
+    return url;
+  }
 }
 
 async function getOrCreateLeagueShareUrl(params: {

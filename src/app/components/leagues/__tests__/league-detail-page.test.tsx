@@ -403,3 +403,34 @@ describe('LeagueDetailPage', () => {
     expect(screen.getByText('El enlace puede estar vencido o ser inválido.')).toBeInTheDocument();
   });
 });
+
+import { normalizeShareUrl } from '@/app/(player)/leagues/[id]/page';
+
+describe('normalizeShareUrl', () => {
+  it('returns an already-absolute https URL unchanged', () => {
+    expect(normalizeShareUrl('https://padelpoint.app/public/leagues/abc/share?token=t1')).toBe(
+      'https://padelpoint.app/public/leagues/abc/share?token=t1'
+    );
+  });
+
+  it('returns an already-absolute http URL unchanged', () => {
+    expect(normalizeShareUrl('http://localhost/public/leagues/abc/share?token=t1')).toBe(
+      'http://localhost/public/leagues/abc/share?token=t1'
+    );
+  });
+
+  it('resolves a relative path against window.location.origin', () => {
+    const result = normalizeShareUrl('/public/leagues/abc/share?token=t1');
+    expect(result).toMatch(/^https?:\/\//);
+    expect(result).toContain('/public/leagues/abc/share?token=t1');
+  });
+
+  it('returns empty string unchanged', () => {
+    expect(normalizeShareUrl('')).toBe('');
+  });
+
+  it('handles a relative path without leading slash', () => {
+    const result = normalizeShareUrl('public/leagues/abc/share?token=t1');
+    expect(result).toMatch(/^https?:\/\//);
+  });
+});
