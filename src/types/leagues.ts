@@ -51,6 +51,7 @@ export interface League {
   endDate: string;
   creatorId: string;
   membersCount: number;
+  avatarUrl?: string | null;
   members?: LeagueMember[];
   standings?: StandingEntry[];
 }

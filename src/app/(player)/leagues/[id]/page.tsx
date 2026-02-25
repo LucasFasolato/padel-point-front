@@ -41,6 +41,7 @@ import {
   useEnableLeagueShare,
   usePublicLeagueStandings,
 } from '@/hooks/use-leagues';
+import { usePendingConfirmations } from '@/hooks/use-matches';
 import { useLeagueActivitySocket } from '@/hooks/use-notification-socket';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDateRange, getModeLabel } from '@/lib/league-utils';
@@ -84,6 +85,7 @@ export default function LeagueDetailPage() {
   const tabParam = searchParams.get('tab');
   const isShareMode = searchParams.get('share') === '1';
   const shareToken = searchParams.get('token');
+  const justCreated = searchParams.get('created') === '1';
 
   if (isShareMode && !authToken) {
     return (
@@ -94,18 +96,20 @@ export default function LeagueDetailPage() {
     );
   }
 
-  return <LeagueDetailContent leagueId={rawId} initialTabParam={tabParam} />;
+  return <LeagueDetailContent leagueId={rawId} initialTabParam={tabParam} justCreated={justCreated} />;
 }
 
 interface LeagueDetailContentProps {
   leagueId: string;
   initialTabParam: string | null;
+  justCreated?: boolean;
 }
 
-function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentProps) {
+function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueDetailContentProps) {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const enableLeagueShare = useEnableLeagueShare(leagueId);
+  const { data: pendingConfirmationsData } = usePendingConfirmations();
   const { data: league, isLoading, error } = useLeagueDetail(leagueId);
   const { data: standingsData, isLoading: standingsLoading } = useLeagueStandings(leagueId);
   const inviteMutation = useCreateInvites(leagueId);
@@ -209,54 +213,159 @@ function LeagueDetailContent({ leagueId, initialTabParam }: LeagueDetailContentP
         onCache: setShareUrl,
       });
 
+      const shareText = `Sumate a mi liga en PadelPoint: ${resolvedUrl}`;
+
+      // 1. Web Share API (iOS/Android native sheet)
       if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
         try {
           await navigator.share({
-            title: `Tabla de ${league.name}`,
-            text: `Mirá la tabla de ${league.name} en PadelPoint`,
+            title: league.name,
+            text: shareText,
             url: resolvedUrl,
           });
           return;
         } catch (err) {
-          if (err instanceof DOMException && err.name === 'AbortError') {
-            return;
-          }
+          if (err instanceof DOMException && err.name === 'AbortError') return;
+          // Fall through to WhatsApp
         }
       }
 
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(resolvedUrl);
-        toast.success('Enlace copiado');
-        return;
-      }
-
-      toast.error('No pudimos compartir la tabla.');
+      // 2. WhatsApp deep link fallback
+      const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
     } catch {
       toast.error('No pudimos generar el enlace para compartir.');
     }
   };
 
+  const handleCopyShareLink = async () => {
+    try {
+      const resolvedUrl = await getOrCreateLeagueShareUrl({
+        leagueId,
+        leagueName: league.name,
+        cachedUrl: shareUrl,
+        enable: () => enableLeagueShare.mutateAsync(),
+        onCache: setShareUrl,
+      });
+
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(resolvedUrl);
+        toast.success('Enlace copiado');
+      } else {
+        toast.error('No se pudo copiar el enlace.');
+      }
+    } catch {
+      toast.error('No pudimos generar el enlace para compartir.');
+    }
+  };
+
+  // Pending confirmations scoped to this league
+  const leaguePendingConfirmations = (pendingConfirmationsData ?? []).filter(
+    (m) => m.leagueId === leagueId
+  );
+
   return (
     <>
       <PublicTopBar title={league.name} backHref="/leagues" />
 
-      <div className="px-4 py-6 space-y-6">
+      <div className="px-4 py-6 space-y-4">
+        {/* Success banner – shown after league creation */}
+        {justCreated && (
+          <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <span className="text-lg">🎉</span>
+            <div>
+              <p className="text-sm font-semibold text-emerald-900">¡Liga creada!</p>
+              <p className="text-xs text-emerald-700">Invitá a tus amigos para empezar a jugar.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Pending confirmations for this league */}
+        {leaguePendingConfirmations.length > 0 && (
+          <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
+            <p className="mb-2 text-sm font-bold text-amber-900">
+              Resultados por confirmar ({leaguePendingConfirmations.length})
+            </p>
+            <div className="space-y-2">
+              {leaguePendingConfirmations.map((match) => {
+                const reporter =
+                  match.challenge?.teamA?.p1?.displayName ??
+                  match.teamA?.[0]?.displayName ??
+                  'Un jugador';
+                const sets = [
+                  `${match.teamASet1}-${match.teamBSet1}`,
+                  `${match.teamASet2}-${match.teamBSet2}`,
+                  match.teamASet3 != null ? `${match.teamASet3}-${match.teamBSet3}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(', ');
+                return (
+                  <div
+                    key={match.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white px-3 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        {reporter} reportó un resultado
+                      </p>
+                      {sets && <p className="text-xs text-slate-500">{sets}</p>}
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => router.push(`/matches/${match.id}`)}
+                      className="shrink-0"
+                    >
+                      Confirmar
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Hero */}
         <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 text-white shadow-lg">
           <div className="flex items-start justify-between mb-3">
-            <h1 className="text-xl font-bold pr-2">{league.name}</h1>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="min-h-[40px] border-white/30 bg-white/10 px-3 text-white hover:bg-white/20 hover:text-white"
-                onClick={() => void handleShareStandings()}
-                disabled={enableLeagueShare.isPending}
-              >
-                <Share2 size={16} />
-                Compartir
-              </Button>
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              {league.avatarUrl ? (
+                <img
+                  src={league.avatarUrl}
+                  alt={league.name}
+                  className="h-12 w-12 shrink-0 rounded-xl object-cover ring-2 ring-white/30"
+                />
+              ) : (
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/20 text-sm font-bold ring-2 ring-white/30">
+                  {league.name.split(' ').slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('') || '?'}
+                </div>
+              )}
+              <h1 className="text-xl font-bold leading-tight truncate">{league.name}</h1>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 ml-2">
+              <div className="flex flex-col gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="min-h-[36px] border-white/30 bg-white/10 px-3 text-white hover:bg-white/20 hover:text-white"
+                  onClick={() => void handleShareStandings()}
+                  disabled={enableLeagueShare.isPending}
+                >
+                  <Share2 size={14} />
+                  WhatsApp
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="min-h-[32px] border-white/30 bg-white/10 px-3 text-xs text-white hover:bg-white/20 hover:text-white"
+                  onClick={() => void handleCopyShareLink()}
+                  disabled={enableLeagueShare.isPending}
+                >
+                  Copiar link
+                </Button>
+              </div>
               <LeagueStatusBadge
                 status={league.status}
                 className="bg-white/20 text-white shrink-0"

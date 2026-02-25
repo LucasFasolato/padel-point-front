@@ -8,195 +8,124 @@ import { Skeleton } from '@/app/components/ui/skeleton';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { Button } from '@/app/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { Plus, Inbox, Send, Globe, Trophy } from 'lucide-react';
+import { Plus, Inbox, History } from 'lucide-react';
 
-type TabType = 'inbox' | 'ready' | 'outbox' | 'open';
+type TabType = 'bandeja' | 'pasados';
 
 export default function ChallengesPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<TabType>('inbox');
+  const [tab, setTab] = useState<TabType>('bandeja');
 
   const { inbox, outbox, openChallenges } = useChallenges();
   const { acceptDirect, rejectDirect, cancel, acceptOpen } = useChallengeActions();
 
-  const handleAcceptDirect = (id: string) => {
-    acceptDirect.mutate(id);
-  };
+  const handleAcceptDirect = (id: string) => acceptDirect.mutate(id);
+  const handleRejectDirect = (id: string) => rejectDirect.mutate(id);
+  const handleCancel = (id: string) => cancel.mutate(id);
+  const handleAcceptOpen = (id: string) => acceptOpen.mutate({ id });
 
-  const handleRejectDirect = (id: string) => {
-    rejectDirect.mutate(id);
-  };
-
-  const handleCancel = (id: string) => {
-    cancel.mutate(id);
-  };
-
-  const handleAcceptOpen = (id: string) => {
-    acceptOpen.mutate({ id });
-  };
-
-  const pendingCount = inbox.data?.filter((c) => c.status === 'pending').length || 0;
-  
-  // Combinar inbox + outbox y filtrar los READY
   const allChallenges = [...(inbox.data || []), ...(outbox.data || [])];
-  const readyChallenges = allChallenges.filter((c) => c.status === 'ready' || c.status === 'accepted');
-  const readyCount = readyChallenges.length;
+  const openChallengesList = openChallenges.data || [];
+
+  const bandejaChallenges = allChallenges.filter((c) =>
+    ['pending', 'accepted', 'ready'].includes(c.status)
+  );
+  const bandejaOpen = openChallengesList.filter((c) => c.status === 'pending');
+  const pasadosChallenges = allChallenges.filter((c) =>
+    ['rejected', 'cancelled', 'expired', 'completed', 'finished'].includes(c.status)
+  );
+
+  const pendingInboxCount = (inbox.data || []).filter((c) => c.status === 'pending').length;
+  const bandejaCount = bandejaChallenges.length + bandejaOpen.length;
+  const isLoading = inbox.isLoading || outbox.isLoading;
 
   return (
     <>
-      <PublicTopBar title="Desafíos" backHref="/competitive" />
-
-      <div className="container mx-auto max-w-4xl px-4 py-6">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Desafíos</h1>
-              <p className="text-sm text-slate-600">Gestioná tus partidos competitivos</p>
-            </div>
-            <Button
-              onClick={() => router.push('/competitive/challenges/new')}
-              className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              size="lg"
-            >
-              <Plus size={20} />
-              <span className="hidden sm:inline">Nuevo desafío</span>
-            </Button>
+      <PublicTopBar title="Desafios" backHref="/competitive" />
+      <div className="container mx-auto max-w-4xl px-4 py-4 pb-24">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Desafios</h1>
+            {pendingInboxCount > 0 && (
+              <p className="text-sm font-medium text-amber-600">
+                {pendingInboxCount} pendiente{pendingInboxCount !== 1 ? 's' : ''} de respuesta
+              </p>
+            )}
           </div>
+          <Button onClick={() => router.push('/competitive/challenges/new')} className="gap-2" size="lg">
+            <Plus size={18} />
+            Nuevo
+          </Button>
         </div>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as TabType)} className="mb-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="inbox" className="gap-2">
-              <Inbox size={16} />
-              <span className="hidden sm:inline">Recibidos</span>
-              {pendingCount > 0 && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
-                  {pendingCount}
+        <Tabs value={tab} onValueChange={(v) => setTab(v as TabType)}>
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="bandeja" className="gap-2">
+              <Inbox size={15} />
+              Bandeja
+              {bandejaCount > 0 && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white">
+                  {bandejaCount > 9 ? '9+' : bandejaCount}
                 </span>
               )}
             </TabsTrigger>
-            
-            <TabsTrigger value="ready" className="gap-2">
-              <Trophy size={16} />
-              <span className="hidden sm:inline">Por jugar</span>
-              {readyCount > 0 && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-xs font-bold text-white">
-                  {readyCount}
-                </span>
-              )}
-            </TabsTrigger>
-
-            <TabsTrigger value="outbox" className="gap-2">
-              <Send size={16} />
-              <span className="hidden sm:inline">Enviados</span>
-            </TabsTrigger>
-            
-            <TabsTrigger value="open" className="gap-2">
-              <Globe size={16} />
-              <span className="hidden sm:inline">Abiertos</span>
+            <TabsTrigger value="pasados" className="gap-2">
+              <History size={15} />
+              Pasados
             </TabsTrigger>
           </TabsList>
 
-          {/* INBOX */}
-          <TabsContent value="inbox">
-            {inbox.isLoading ? (
+          <TabsContent value="bandeja">
+            {isLoading ? (
               <LoadingSkeleton />
-            ) : inbox.data && inbox.data.length > 0 ? (
-              <div className="space-y-3">
-                {inbox.data.map((challenge) => (
-                  <ChallengeCard
-                    key={challenge.id}
-                    challenge={challenge}
-                    variant="inbox"
-                    onAccept={() => handleAcceptDirect(challenge.id)}
-                    onReject={() => handleRejectDirect(challenge.id)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <EmptyState
-                icon="📥"
-                message="No tenés desafíos pendientes"
-                description="Cuando alguien te desafíe, aparecerá acá"
-                actionLabel="Ver desafíos abiertos"
-                onAction={() => setTab('open')}
-              />
-            )}
-          </TabsContent>
-
-          {/* READY - Por jugar */}
-          <TabsContent value="ready">
-            {readyChallenges.length > 0 ? (
-              <div className="space-y-3">
-                {readyChallenges.map((challenge) => (
-                  <ChallengeCard
-                    key={challenge.id}
-                    challenge={challenge}
-                    variant="ready"
-                  />
-                ))}
-              </div>
-            ) : (
+            ) : bandejaChallenges.length === 0 && bandejaOpen.length === 0 ? (
               <EmptyState
                 icon="🎾"
-                message="No hay partidos listos para jugar"
-                description="Cuando aceptes un desafío, aparecerá acá"
-                actionLabel="Ver desafíos recibidos"
-                onAction={() => setTab('inbox')}
-              />
-            )}
-          </TabsContent>
-
-          {/* OUTBOX */}
-          <TabsContent value="outbox">
-            {outbox.isLoading ? (
-              <LoadingSkeleton />
-            ) : outbox.data && outbox.data.length > 0 ? (
-              <div className="space-y-3">
-                {outbox.data.map((challenge) => (
-                  <ChallengeCard
-                    key={challenge.id}
-                    challenge={challenge}
-                    variant="outbox"
-                    onCancel={() => handleCancel(challenge.id)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <EmptyState
-                icon="📤"
-                message="No enviaste ningún desafío todavía"
-                description="¿Listo para competir?"
+                message="No tenes desafios activos"
+                description="Desafia a un rival o espera que alguien te desafie"
                 actionLabel="Desafiar jugador"
                 onAction={() => router.push('/competitive/challenges/new')}
               />
+            ) : (
+              <div className="space-y-3">
+                {(inbox.data || []).filter((c) => c.status === 'pending').map((challenge) => (
+                  <ChallengeCard key={challenge.id} challenge={challenge} variant="inbox"
+                    onAccept={() => handleAcceptDirect(challenge.id)}
+                    onReject={() => handleRejectDirect(challenge.id)} />
+                ))}
+                {allChallenges.filter((c) => c.status === 'ready' || c.status === 'accepted').map((challenge) => (
+                  <ChallengeCard key={challenge.id} challenge={challenge} variant="ready" />
+                ))}
+                {(outbox.data || []).filter((c) => c.status === 'pending').map((challenge) => (
+                  <ChallengeCard key={challenge.id} challenge={challenge} variant="outbox"
+                    onCancel={() => handleCancel(challenge.id)} />
+                ))}
+                {bandejaOpen.map((challenge) => (
+                  <ChallengeCard key={challenge.id} challenge={challenge} variant="inbox"
+                    onAccept={() => handleAcceptOpen(challenge.id)} />
+                ))}
+              </div>
             )}
           </TabsContent>
 
-          {/* OPEN */}
-          <TabsContent value="open">
-            {openChallenges.isLoading ? (
+          <TabsContent value="pasados">
+            {isLoading ? (
               <LoadingSkeleton />
-            ) : openChallenges.data && openChallenges.data.length > 0 ? (
-              <div className="space-y-3">
-                {openChallenges.data.map((challenge) => (
-                  <ChallengeCard
-                    key={challenge.id}
-                    challenge={challenge}
-                    variant="inbox"
-                    onAccept={() => handleAcceptOpen(challenge.id)}
-                  />
-                ))}
-              </div>
-            ) : (
+            ) : pasadosChallenges.length === 0 ? (
               <EmptyState
-                icon="🌍"
-                message="No hay desafíos abiertos disponibles"
-                description="Sé el primero en publicar uno"
-                actionLabel="Crear desafío abierto"
-                onAction={() => router.push('/competitive/challenges/new?type=open')}
+                icon="📋"
+                message="No hay desafios anteriores"
+                description="Aqui apareceran los desafios rechazados o cancelados"
+                actionLabel="Ver bandeja"
+                onAction={() => setTab('bandeja')}
               />
+            ) : (
+              <div className="space-y-3">
+                {pasadosChallenges.map((challenge) => {
+                  const isOutbox = (outbox.data || []).some((c) => c.id === challenge.id);
+                  return <ChallengeCard key={challenge.id} challenge={challenge} variant={isOutbox ? 'outbox' : 'inbox'} />;
+                })}
+              </div>
             )}
           </TabsContent>
         </Tabs>
@@ -208,37 +137,20 @@ export default function ChallengesPage() {
 function LoadingSkeleton() {
   return (
     <div className="space-y-3">
-      {[1, 2, 3].map((i) => (
-        <Skeleton key={i} className="h-40 w-full" />
-      ))}
+      {[1, 2, 3].map((i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
     </div>
   );
 }
 
-function EmptyState({
-  icon,
-  message,
-  description,
-  actionLabel,
-  onAction,
-}: {
-  icon: string;
-  message: string;
-  description: string;
-  actionLabel: string;
-  onAction: () => void;
+function EmptyState({ icon, message, description, actionLabel, onAction }: {
+  icon: string; message: string; description: string; actionLabel: string; onAction: () => void;
 }) {
   return (
-    <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 py-16 text-center">
-      <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white text-4xl shadow-sm">
-        {icon}
-      </div>
-      <h3 className="mb-2 text-lg font-semibold text-slate-900">{message}</h3>
-      <p className="mb-6 text-sm text-slate-600">{description}</p>
-      <Button onClick={onAction} className="gap-2">
-        <Plus size={16} />
-        {actionLabel}
-      </Button>
+    <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 py-14 text-center">
+      <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl shadow-sm">{icon}</div>
+      <h3 className="mb-1 text-base font-semibold text-slate-900">{message}</h3>
+      <p className="mb-5 px-6 text-sm text-slate-500">{description}</p>
+      <Button onClick={onAction} size="sm" variant="outline">{actionLabel}</Button>
     </div>
   );
 }

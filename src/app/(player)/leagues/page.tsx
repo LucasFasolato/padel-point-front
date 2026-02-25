@@ -17,7 +17,7 @@ export default function LeaguesPage() {
     <>
       <PublicTopBar title="Mis ligas" backHref="/" />
 
-      <div className="px-4 py-6 space-y-6">
+      <div className="px-4 py-6 pb-28 space-y-6">
         {isLoading && <PageSkeleton />}
 
         {error && (
@@ -40,19 +40,9 @@ export default function LeaguesPage() {
 
         {!isLoading && !error && leagues && leagues.length > 0 && (
           <>
-            <Button
-              fullWidth
-              size="lg"
-              onClick={() => router.push('/leagues/new')}
-              className="gap-2"
-            >
-              <Plus size={18} />
-              Crear liga
-            </Button>
-
             {groupLeaguesByStatus(leagues).map((group) => (
               <section key={group.status}>
-                <h2 className="mb-3 text-sm font-semibold text-slate-500 uppercase tracking-wide">
+                <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">
                   {group.label}
                 </h2>
                 <div className="space-y-3">
@@ -69,6 +59,19 @@ export default function LeaguesPage() {
           </>
         )}
       </div>
+
+      {/* Sticky bottom FAB */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-slate-50 via-slate-50/95 to-transparent pb-4 pt-6 px-4">
+        <Button
+          fullWidth
+          size="lg"
+          onClick={() => router.push('/leagues/new')}
+          className="gap-2 shadow-lg"
+        >
+          <Plus size={18} />
+          Nueva liga
+        </Button>
+      </div>
     </>
   );
 }
@@ -76,7 +79,6 @@ export default function LeaguesPage() {
 function PageSkeleton() {
   return (
     <div className="space-y-4">
-      <Skeleton className="h-12 w-full rounded-xl" />
       <Skeleton className="h-5 w-24 rounded" />
       <Skeleton className="h-20 w-full rounded-xl" />
       <Skeleton className="h-20 w-full rounded-xl" />
@@ -95,14 +97,9 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
       <h3 className="mb-2 text-lg font-semibold text-slate-900">
         Todavía no tenés ligas
       </h3>
-      <p className="mb-6 text-sm text-slate-600 px-6">
-        Creá tu primera liga y desafiá a tus amigos a competir durante la temporada.
+      <p className="mb-6 px-6 text-sm text-slate-600">
+        Creá tu primera liga y desafiá a tus amigos a competir.
       </p>
-      <Button onClick={onCreateClick} className="gap-2">
-        <Plus size={16} />
-        Crear liga
-      </Button>
     </div>
   );
 }
-

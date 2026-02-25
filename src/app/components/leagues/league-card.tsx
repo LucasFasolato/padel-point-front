@@ -11,6 +11,12 @@ interface LeagueCardProps {
 }
 
 export function LeagueCard({ league, onClick, className }: LeagueCardProps) {
+  const initials = league.name
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
+
   return (
     <div
       role={onClick ? 'button' : undefined}
@@ -23,27 +29,41 @@ export function LeagueCard({ league, onClick, className }: LeagueCardProps) {
         }
       }}
       className={cn(
-        'rounded-xl border border-slate-200 bg-white p-4 transition-all',
+        'flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 transition-all',
         onClick && 'cursor-pointer hover:shadow-md hover:border-slate-300',
         className,
       )}
     >
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900 truncate pr-2">
-          {league.name}
-        </h3>
-        <LeagueStatusBadge status={league.status} />
-      </div>
+      {/* League avatar or initials */}
+      {league.avatarUrl ? (
+        <img
+          src={league.avatarUrl}
+          alt={league.name}
+          className="h-11 w-11 shrink-0 rounded-xl object-cover"
+        />
+      ) : (
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-sm font-bold text-emerald-700">
+          {initials || '?'}
+        </div>
+      )}
 
-      <div className="flex items-center gap-4 text-sm text-slate-600">
-        <span className="flex items-center gap-1.5">
-          <Calendar size={14} className="text-slate-400" />
-          {formatDateRange(league.startDate, league.endDate)}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <Users size={14} className="text-slate-400" />
-          {league.membersCount}
-        </span>
+      {/* Content */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="truncate text-sm font-semibold text-slate-900">{league.name}</h3>
+          <LeagueStatusBadge status={league.status} />
+        </div>
+
+        <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
+          <span className="flex items-center gap-1">
+            <Calendar size={11} className="text-slate-400" />
+            {formatDateRange(league.startDate, league.endDate)}
+          </span>
+          <span className="flex items-center gap-1">
+            <Users size={11} className="text-slate-400" />
+            {league.membersCount}
+          </span>
+        </div>
       </div>
     </div>
   );

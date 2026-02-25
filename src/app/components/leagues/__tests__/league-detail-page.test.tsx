@@ -92,6 +92,10 @@ vi.mock('@/hooks/use-notification-socket', () => ({
   useLeagueActivitySocket: vi.fn(),
 }));
 
+vi.mock('@/hooks/use-matches', () => ({
+  usePendingConfirmations: vi.fn(() => ({ data: [] })),
+}));
+
 vi.mock('@/app/components/public/public-topbar', () => ({
   PublicTopBar: ({ title }: { title: string }) => <div data-testid="topbar">{title}</div>,
 }));
@@ -159,7 +163,7 @@ describe('LeagueDetailPage', () => {
     expect(screen.getByTestId('tab-ajustes')).toBeInTheDocument();
   });
 
-  it('clicking share enables share link and copies to clipboard when native share is unavailable', async () => {
+  it('clicking copy link enables share link and copies to clipboard', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText },
@@ -178,7 +182,7 @@ describe('LeagueDetailPage', () => {
 
     render(<LeagueDetailPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Compartir/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Copiar link/i }));
 
     await waitFor(() => {
       expect(enableShareMutateAsyncMock).toHaveBeenCalled();
