@@ -63,6 +63,23 @@ describe('formatDateRange', () => {
     expect(result).toContain('2025');
     expect(result).toContain('2026');
   });
+
+  it('returns null when startDate is missing', () => {
+    expect(formatDateRange(null, '2026-03-28')).toBeNull();
+    expect(formatDateRange(undefined, '2026-03-28')).toBeNull();
+    expect(formatDateRange('', '2026-03-28')).toBeNull();
+  });
+
+  it('returns null when endDate is missing', () => {
+    expect(formatDateRange('2026-01-15', null)).toBeNull();
+    expect(formatDateRange('2026-01-15', undefined)).toBeNull();
+    expect(formatDateRange('2026-01-15', '')).toBeNull();
+  });
+
+  it('returns null for epoch/pre-2000 dates (permanent league sentinel)', () => {
+    expect(formatDateRange('1970-01-01', '1970-01-01')).toBeNull();
+    expect(formatDateRange('1969-12-31', '1970-01-01')).toBeNull();
+  });
 });
 
 describe('STATUS_LABELS', () => {

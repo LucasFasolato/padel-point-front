@@ -39,6 +39,8 @@ const useCreateLeagueMatchMock = vi.fn(() => ({ mutate: vi.fn(), isPending: fals
 const useCaptureLeagueMatchResultMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
 const useEnableLeagueShareMock = vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false }));
 const usePublicLeagueStandingsMock = vi.fn(() => ({ data: undefined, isLoading: false, error: null, refetch: vi.fn() }));
+const useLeaguePendingConfirmationsMock = vi.fn(() => ({ data: [] }));
+const useDeleteLeagueMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
 const enableShareMutateAsyncMock = vi.fn();
 
 vi.mock('@/hooks/use-leagues', async (importOriginal) => {
@@ -59,6 +61,8 @@ vi.mock('@/hooks/use-leagues', async (importOriginal) => {
     useCaptureLeagueMatchResult: (id: string) => useCaptureLeagueMatchResultMock(id),
     useEnableLeagueShare: (id: string) => useEnableLeagueShareMock(id),
     usePublicLeagueStandings: (id: string, token: string) => usePublicLeagueStandingsMock(id, token),
+    useLeaguePendingConfirmations: (id: string) => useLeaguePendingConfirmationsMock(id),
+    useDeleteLeague: () => useDeleteLeagueMock(),
   };
 });
 

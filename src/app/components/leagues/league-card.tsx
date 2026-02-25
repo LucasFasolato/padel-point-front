@@ -55,10 +55,14 @@ export function LeagueCard({ league, onClick, className }: LeagueCardProps) {
         </div>
 
         <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
-          <span className="flex items-center gap-1">
-            <Calendar size={11} className="text-slate-400" />
-            {formatDateRange(league.startDate, league.endDate)}
-          </span>
+          {formatDateRange(league.startDate, league.endDate) ? (
+            <span className="flex items-center gap-1">
+              <Calendar size={11} className="text-slate-400" />
+              {formatDateRange(league.startDate, league.endDate)}
+            </span>
+          ) : (
+            <span className="text-slate-400">Liga permanente</span>
+          )}
           <span className="flex items-center gap-1">
             <Users size={11} className="text-slate-400" />
             {league.membersCount}

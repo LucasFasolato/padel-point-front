@@ -30,6 +30,7 @@ import type {
   ActivityResponse,
   LeagueShareEnableResponse,
   LeagueShareDisableResponse,
+  LeagueShareStateResponse,
 } from '@/types/leagues';
 
 type CaptureLeagueMatchResultBody =
@@ -366,6 +367,16 @@ export const leagueService = {
     return normalizeLeagueStandingsResponse(data);
   },
 
+  /** Get current share state for a league (enabled/disabled + shareToken). */
+  async getLeagueShare(leagueId: string): Promise<LeagueShareStateResponse> {
+    const validLeagueId = assertValidLeagueId(leagueId);
+    const { data } = await api.get(`/leagues/${validLeagueId}/share`);
+    const enabled = data?.enabled === true || data?.shareEnabled === true;
+    const shareToken = typeof data?.shareToken === 'string' ? data.shareToken : null;
+    const shareUrlPath = typeof data?.shareUrlPath === 'string' ? data.shareUrlPath : null;
+    return { enabled, shareToken, shareUrlPath };
+  },
+
   /** Enable public sharing of league standings. */
   async enableLeagueShare(leagueId: string): Promise<LeagueShareEnableResponse> {
     const validLeagueId = assertValidLeagueId(leagueId);
@@ -475,6 +486,19 @@ export const leagueService = {
   async linkChallengeMatch(challengeId: string, matchId: string): Promise<LeagueChallenge> {
     const { data } = await api.post(`/challenges/${challengeId}/link-match`, { matchId });
     return normalizeLeagueChallenge(data);
+  },
+
+  /** Fetch pending match confirmations scoped to a league. */
+  async getLeaguePendingConfirmations(leagueId: string): Promise<import('@/types/competitive').MatchResult[]> {
+    const validLeagueId = assertValidLeagueId(leagueId);
+    const { data } = await api.get(`/leagues/${validLeagueId}/pending-confirmations`);
+    return Array.isArray(data) ? data : [];
+  },
+
+  /** Delete a league (only allowed if upcoming and user is the only member). */
+  async deleteLeague(leagueId: string): Promise<void> {
+    const validLeagueId = assertValidLeagueId(leagueId);
+    await api.delete(`/leagues/${validLeagueId}`);
   },
 
   /** Fetch activity feed for a league with cursor-based pagination. */

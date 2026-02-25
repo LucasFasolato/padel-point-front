@@ -79,10 +79,14 @@ function InviteContent() {
         <h2 className="text-lg font-bold text-slate-900">{invite.leagueName}</h2>
 
         <div className="flex items-center gap-4 text-sm text-slate-600">
-          <span className="flex items-center gap-1.5">
-            <Calendar size={14} className="text-slate-400" />
-            {formatDateRange(invite.startDate, invite.endDate)}
-          </span>
+          {formatDateRange(invite.startDate, invite.endDate) ? (
+            <span className="flex items-center gap-1.5">
+              <Calendar size={14} className="text-slate-400" />
+              {formatDateRange(invite.startDate, invite.endDate)}
+            </span>
+          ) : (
+            <span className="text-slate-500">Liga permanente</span>
+          )}
           <span className="flex items-center gap-1.5">
             <Users size={14} className="text-slate-400" />
             {invite.membersCount} miembros

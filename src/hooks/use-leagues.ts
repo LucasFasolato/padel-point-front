@@ -513,4 +513,37 @@ export function useLeagueActivity(leagueId: string, limit = ACTIVITY_DEFAULT_LIM
   });
 }
 
+/** Pending match confirmations scoped to a specific league.
+ * Falls back gracefully when the endpoint is not yet available (404/500). */
+export function useLeaguePendingConfirmations(leagueId: string) {
+  const enabled = isUuid(leagueId);
+  return useQuery({
+    queryKey: ['leagues', 'pending-confirmations', leagueId] as const,
+    queryFn: () => leagueService.getLeaguePendingConfirmations(leagueId),
+    enabled,
+    staleTime: 1000 * 30,
+    retry: false,
+  });
+}
+
+/** Delete a league (upcoming + only member). Shows 409 error gracefully. */
+export function useDeleteLeague() {
+  const qc = useSafeQueryClient();
+
+  return useMutation({
+    mutationFn: (leagueId: string) => leagueService.deleteLeague(leagueId),
+    onSuccess: () => {
+      qc?.invalidateQueries({ queryKey: KEYS.list });
+      toast.success('Liga eliminada.');
+    },
+    onError: (err) => {
+      if (axios.isAxiosError(err) && err.response?.status === 409) {
+        toast.error('No podés eliminar una liga con más miembros.');
+      } else {
+        toast.error('No se pudo eliminar la liga. Intentá de nuevo.');
+      }
+    },
+  });
+}
+
 export const LEAGUE_QUERY_KEYS = KEYS;

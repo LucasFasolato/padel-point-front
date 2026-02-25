@@ -135,13 +135,22 @@ export function getMatchSourceColors(source?: string): { bg: string; text: strin
   return MATCH_SOURCE_COLORS[source as LeagueMatchSource] ?? FALLBACK_COLORS;
 }
 
-/** Format a date range for display, e.g. "15 ene – 28 feb 2026". */
-export function formatDateRange(startDate: string, endDate: string): string {
+/** Format a date range for display, e.g. "15 ene – 28 feb 2026".
+ *  Returns null when either date is missing/invalid (e.g. permanent leagues). */
+export function formatDateRange(
+  startDate: string | null | undefined,
+  endDate: string | null | undefined
+): string | null {
+  if (!startDate || !endDate) return null;
+
   const start = new Date(startDate);
   const end = new Date(endDate);
 
-  const sameYear = start.getFullYear() === end.getFullYear();
+  // Guard against Invalid Date or epoch (1970) that indicates no real date
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+  if (start.getFullYear() < 2000 || end.getFullYear() < 2000) return null;
 
+  const sameYear = start.getFullYear() === end.getFullYear();
   const startFmt = format(start, sameYear ? "d MMM" : "d MMM yyyy", { locale: es });
   const endFmt = format(end, "d MMM yyyy", { locale: es });
 

@@ -42,6 +42,12 @@ export interface LeagueShareDisableResponse {
   ok: boolean;
 }
 
+export interface LeagueShareStateResponse {
+  enabled: boolean;
+  shareToken?: string | null;
+  shareUrlPath?: string | null;
+}
+
 export interface League {
   id: string;
   name: string;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Users, UserPlus, Calendar, Trophy, Info, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -40,6 +40,8 @@ import {
   useCaptureLeagueMatchResult,
   useEnableLeagueShare,
   usePublicLeagueStandings,
+  useLeaguePendingConfirmations,
+  useDeleteLeague,
 } from '@/hooks/use-leagues';
 import { usePendingConfirmations } from '@/hooks/use-matches';
 import { useLeagueActivitySocket } from '@/hooks/use-notification-socket';
@@ -109,7 +111,8 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const enableLeagueShare = useEnableLeagueShare(leagueId);
-  const { data: pendingConfirmationsData } = usePendingConfirmations();
+  const { data: leagueScopedConfirmations } = useLeaguePendingConfirmations(leagueId);
+  const { data: allPendingConfirmations } = usePendingConfirmations();
   const { data: league, isLoading, error } = useLeagueDetail(leagueId);
   const { data: standingsData, isLoading: standingsLoading } = useLeagueStandings(leagueId);
   const inviteMutation = useCreateInvites(leagueId);
@@ -127,7 +130,9 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
   } = useLeagueSettings(leagueId);
   const updateSettings = useUpdateLeagueSettings(leagueId);
   const updateMemberRole = useUpdateMemberRole(leagueId);
+  const deleteLeague = useDeleteLeague();
   const [showInvite, setShowInvite] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showReportMethodSheet, setShowReportMethodSheet] = useState(false);
   const [showReservationReport, setShowReservationReport] = useState(false);
   const [showManualReport, setShowManualReport] = useState(false);
@@ -233,8 +238,12 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
       // 2. WhatsApp deep link fallback
       const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
       window.open(waUrl, '_blank', 'noopener,noreferrer');
-    } catch {
-      toast.error('No pudimos generar el enlace para compartir.');
+    } catch (err) {
+      if (isAxiosError(err) && err.response?.status === 403) {
+        toast.error('No tenés permisos para compartir esta liga.');
+      } else {
+        toast.error('No pudimos generar el enlace para compartir.');
+      }
     }
   };
 
@@ -254,15 +263,20 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
       } else {
         toast.error('No se pudo copiar el enlace.');
       }
-    } catch {
-      toast.error('No pudimos generar el enlace para compartir.');
+    } catch (err) {
+      if (isAxiosError(err) && err.response?.status === 403) {
+        toast.error('No tenés permisos para compartir esta liga.');
+      } else {
+        toast.error('No pudimos generar el enlace para compartir.');
+      }
     }
   };
 
-  // Pending confirmations scoped to this league
-  const leaguePendingConfirmations = (pendingConfirmationsData ?? []).filter(
-    (m) => m.leagueId === leagueId
-  );
+  // Pending confirmations scoped to this league.
+  // Primary: dedicated endpoint; fallback: general endpoint filtered by leagueId.
+  const leaguePendingConfirmations =
+    leagueScopedConfirmations ??
+    (allPendingConfirmations ?? []).filter((m) => m.leagueId === leagueId);
 
   return (
     <>
@@ -316,7 +330,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
                       onClick={() => router.push(`/matches/${match.id}`)}
                       className="shrink-0"
                     >
-                      Confirmar
+                      Ver y confirmar
                     </Button>
                   </div>
                 );
@@ -379,7 +393,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
           </p>
 
           <div className="flex items-center gap-4 text-sm text-emerald-100">
-            {isScheduled && (
+            {isScheduled && formatDateRange(league.startDate, league.endDate) && (
               <span className="flex items-center gap-1.5">
                 <Calendar size={14} />
                 Temporada: {formatDateRange(league.startDate, league.endDate)}
@@ -657,6 +671,58 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
                 isSaving={updateSettings.isPending}
               />
             )}
+
+            {/* Danger zone — only for upcoming leagues where user is owner and is the only member */}
+            {isUpcoming && !isReadOnly && league.membersCount <= 1 && (
+              <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4">
+                <p className="mb-1 text-sm font-bold text-rose-900">Zona de peligro</p>
+                <p className="mb-3 text-xs text-rose-700">
+                  Esta liga todavía no empezó y sos el único miembro. Podés eliminarla si querés.
+                </p>
+                {showDeleteConfirm ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-rose-900">
+                      ¿Seguro que querés eliminar &quot;{league.name}&quot;? Esta acción no se puede deshacer.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setShowDeleteConfirm(false)}
+                        disabled={deleteLeague.isPending}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="flex-1 bg-rose-600 hover:bg-rose-700 text-white border-0"
+                        loading={deleteLeague.isPending}
+                        onClick={() => {
+                          deleteLeague.mutate(leagueId, {
+                            onSuccess: () => router.push('/leagues'),
+                          });
+                        }}
+                      >
+                        Eliminar liga
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="border-rose-300 text-rose-700 hover:border-rose-400 hover:bg-rose-100"
+                    onClick={() => setShowDeleteConfirm(true)}
+                  >
+                    Eliminar liga
+                  </Button>
+                )}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
@@ -789,6 +855,20 @@ async function getOrCreateLeagueShareUrl(params: {
 }): Promise<string> {
   if (params.cachedUrl) return params.cachedUrl;
 
+  // 1. Check if share is already enabled (avoids unnecessary POST)
+  try {
+    const { leagueService } = await import('@/services/league-service');
+    const shareState = await leagueService.getLeagueShare(params.leagueId);
+    if (shareState.enabled && shareState.shareToken && shareState.shareUrlPath) {
+      const resolved = resolveShareUrl(shareState.shareUrlPath, params.leagueId, shareState.shareToken);
+      params.onCache(resolved);
+      return resolved;
+    }
+  } catch {
+    // GET not supported or failed; fall through to enable
+  }
+
+  // 2. Enable share (idempotent)
   const response = await params.enable();
   const resolved = resolveShareUrl(response.shareUrlPath, params.leagueId, response.shareToken);
   params.onCache(resolved);
