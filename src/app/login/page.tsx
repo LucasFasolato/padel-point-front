@@ -15,7 +15,7 @@ type LoginForm = {
 
 export default function LoginPage() {
   const router = useRouter();
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const setUser = useAuthStore((state) => state.setUser);
 
   const [form, setForm] = useState<LoginForm>({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
@@ -41,18 +41,9 @@ export default function LoginPage() {
 
     try {
       const res = await authService.login(form.email.trim(), form.password);
+      if (controller.signal.aborted) return;
 
-      const token = res.accessToken ?? res.token;
-      if (!token) {
-        toastManager.error('No pudimos iniciar sesión. Intentá nuevamente.', {
-          idempotencyKey: 'login-missing-token',
-        });
-        return;
-      }
-
-      const user =
-        res.user || { userId: 'temp-id', email: form.email, role: 'USER' };
-      setAuth(token, user);
+      setUser(res.user);
       router.replace('/');
     } catch (err: unknown) {
       if (controller.signal.aborted) return;
@@ -60,16 +51,21 @@ export default function LoginPage() {
       if (typeof err === 'object' && err !== null && 'response' in err) {
         const status = (err as { response?: { status?: number } }).response?.status;
         if (status === 401) {
-          setError('Email o contraseña incorrectos.');
+          setError('Email o contrasena incorrectos.');
           return;
         }
         if (status === 403) {
-          setError('Tu cuenta no tiene permisos para ingresar acá.');
+          setError('Tu cuenta no tiene permisos para ingresar aca.');
           return;
         }
       }
 
-      toastManager.error('No pudimos iniciar sesión. Intentá nuevamente.', {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : 'No pudimos iniciar sesion. Intenta nuevamente.';
+
+      toastManager.error(message, {
         idempotencyKey: 'login-network-error',
       });
     } finally {
@@ -79,16 +75,29 @@ export default function LoginPage() {
     }
   };
 
+  const handleGoogleLogin = () => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+    if (!apiUrl) {
+      toastManager.error('Falta configurar NEXT_PUBLIC_API_URL para Google.', {
+        idempotencyKey: 'login-google-missing-api-url',
+      });
+      return;
+    }
+
+    window.location.href = `${apiUrl}/auth/google`;
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-100">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl">
         <div className="bg-slate-900 p-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-blue-600">
             <UserCircle2 size={30} />
           </div>
-          <h1 className="text-2xl font-bold text-white">Iniciar sesión</h1>
+          <h1 className="text-2xl font-bold text-white">Iniciar sesion</h1>
           <p className="mt-2 text-sm text-slate-300">
-            Iniciá sesión para ver tus reservas y guardar tus datos.
+            Inicia sesion para ver tus reservas y guardar tus datos.
           </p>
         </div>
 
@@ -108,7 +117,7 @@ export default function LoginPage() {
                   type="email"
                   required
                   placeholder="tuemail@mail.com"
-                  className="w-full rounded-xl border border-slate-200 pl-10 p-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+                  className="w-full rounded-xl border border-slate-200 p-3 pl-10 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   autoComplete="email"
@@ -117,14 +126,22 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Contraseña</label>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <label className="block text-sm font-medium text-slate-700">Contrasena</label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-medium text-slate-500 hover:text-slate-700"
+                >
+                  Olvide mi contrasena
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 text-slate-400" size={20} />
                 <input
                   type="password"
                   required
-                  placeholder="••••••••"
-                  className="w-full rounded-xl border border-slate-200 pl-10 p-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+                  placeholder="********"
+                  className="w-full rounded-xl border border-slate-200 p-3 pl-10 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   autoComplete="current-password"
@@ -145,6 +162,14 @@ export default function LoginPage() {
                 </>
               )}
             </button>
+
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className="flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white py-3.5 font-bold text-slate-700 transition-all hover:bg-slate-50"
+            >
+              Continuar con Google
+            </button>
           </form>
 
           <div className="mt-4">
@@ -158,16 +183,16 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-6 text-center text-sm text-slate-500">
-            ¿No tenés cuenta?{' '}
+            No tenes cuenta?{' '}
             <Link href="/register" className="font-semibold text-emerald-600 hover:text-emerald-700">
               Registrate
             </Link>
           </div>
 
           <div className="mt-3 text-center text-sm text-slate-400">
-            ¿Sos dueño?{' '}
+            Sos dueno?{' '}
             <Link href="/admin/login" className="font-semibold text-slate-600 hover:text-blue-600">
-              Entrá al panel
+              Entra al panel
             </Link>
           </div>
         </div>

@@ -17,7 +17,7 @@ interface RegisterForm {
 
 export default function RegisterPage() {
   const router = useRouter();
-  const setAuth = useAuthStore((s) => s.setAuth);
+  const setUser = useAuthStore((s) => s.setUser);
 
   const [form, setForm] = useState<RegisterForm>({
     displayName: '',
@@ -45,17 +45,17 @@ export default function RegisterPage() {
     if (!form.email.trim()) {
       next.email = 'El email es obligatorio';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      next.email = 'Ingresá un email válido';
+      next.email = 'Ingresa un email valido';
     }
 
     if (!form.password) {
-      next.password = 'La contraseña es obligatoria';
+      next.password = 'La contrasena es obligatoria';
     } else if (form.password.length < 6) {
-      next.password = 'Mínimo 6 caracteres';
+      next.password = 'Minimo 6 caracteres';
     }
 
     if (form.password && form.confirmPassword !== form.password) {
-      next.confirmPassword = 'Las contraseñas no coinciden';
+      next.confirmPassword = 'Las contrasenas no coinciden';
     }
 
     setErrors(next);
@@ -76,18 +76,13 @@ export default function RegisterPage() {
       const res = await authService.register(
         form.displayName.trim(),
         form.email.trim(),
-        form.password,
+        form.password
       );
 
-      const token = res.accessToken ?? res.token;
+      if (controller.signal.aborted) return;
 
-      if (token && res.user) {
-        setAuth(token, res.user);
-        router.replace('/');
-      } else {
-        toastManager.success('¡Cuenta creada! Iniciá sesión para continuar.');
-        router.replace('/login');
-      }
+      setUser(res.user);
+      router.replace('/');
     } catch (err: unknown) {
       if (controller.signal.aborted) return;
 
@@ -95,16 +90,21 @@ export default function RegisterPage() {
         const resp = (err as { response?: { status?: number; data?: { message?: string } } }).response;
 
         if (resp?.status === 409) {
-          setErrors({ email: 'Este email ya está registrado' });
+          setErrors({ email: 'Este email ya esta registrado' });
           return;
         }
         if (resp?.status === 400) {
-          setErrors({ form: resp.data?.message || 'Revisá los datos e intentá de nuevo.' });
+          setErrors({ form: resp.data?.message || 'Revisa los datos e intenta de nuevo.' });
           return;
         }
       }
 
-      toastManager.error('No pudimos crear la cuenta. Intentá más tarde.', {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : 'No pudimos crear la cuenta. Intenta mas tarde.';
+
+      toastManager.error(message, {
         idempotencyKey: 'register-error',
       });
     } finally {
@@ -121,7 +121,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-100">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl">
         <div className="bg-slate-900 p-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
             <User size={30} />
@@ -148,7 +148,7 @@ export default function RegisterPage() {
                   type="text"
                   required
                   placeholder="Tu nombre"
-                  className="w-full rounded-xl border border-slate-200 pl-10 p-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
+                  className="w-full rounded-xl border border-slate-200 p-3 pl-10 outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                   value={form.displayName}
                   onChange={(e) => updateField('displayName', e.target.value)}
                   autoComplete="name"
@@ -167,7 +167,7 @@ export default function RegisterPage() {
                   type="email"
                   required
                   placeholder="tuemail@mail.com"
-                  className="w-full rounded-xl border border-slate-200 pl-10 p-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
+                  className="w-full rounded-xl border border-slate-200 p-3 pl-10 outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                   value={form.email}
                   onChange={(e) => updateField('email', e.target.value)}
                   autoComplete="email"
@@ -179,14 +179,14 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Contraseña</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Contrasena</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 text-slate-400" size={20} />
                 <input
                   type="password"
                   required
-                  placeholder="Mínimo 6 caracteres"
-                  className="w-full rounded-xl border border-slate-200 pl-10 p-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
+                  placeholder="Minimo 6 caracteres"
+                  className="w-full rounded-xl border border-slate-200 p-3 pl-10 outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                   value={form.password}
                   onChange={(e) => updateField('password', e.target.value)}
                   autoComplete="new-password"
@@ -198,14 +198,16 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Confirmar contraseña</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Confirmar contrasena
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 text-slate-400" size={20} />
                 <input
                   type="password"
                   required
-                  placeholder="Repetí la contraseña"
-                  className="w-full rounded-xl border border-slate-200 pl-10 p-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
+                  placeholder="Repeti la contrasena"
+                  className="w-full rounded-xl border border-slate-200 p-3 pl-10 outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                   value={form.confirmPassword}
                   onChange={(e) => updateField('confirmPassword', e.target.value)}
                   autoComplete="new-password"
@@ -232,9 +234,9 @@ export default function RegisterPage() {
           </form>
 
           <div className="mt-6 text-center text-sm text-slate-500">
-            ¿Ya tenés cuenta?{' '}
+            Ya tenes cuenta?{' '}
             <Link href="/login" className="font-semibold text-emerald-600 hover:text-emerald-700">
-              Iniciá sesión
+              Inicia sesion
             </Link>
           </div>
         </div>
