@@ -23,6 +23,7 @@ type RetryableRequestConfig = InternalAxiosRequestConfig & {
 };
 
 let refreshPromise: Promise<void> | null = null;
+let redirectingToLogin = false;
 
 function getRequestPath(url?: string): string {
   if (!url) return '';
@@ -44,6 +45,10 @@ function shouldSkipRefresh(url?: string): boolean {
   return (
     path === '/auth/login' ||
     path === '/auth/register' ||
+    path === '/auth/google' ||
+    path === '/auth/google/callback' ||
+    path === '/auth/apple' ||
+    path === '/auth/apple/callback' ||
     path === '/auth/refresh' ||
     path === '/auth/logout' ||
     path.startsWith('/auth/password/')
@@ -60,8 +65,9 @@ function shouldRedirectToLogin(): boolean {
 function handleAuthFailure() {
   useAuthStore.getState().clearUser();
 
-  if (shouldRedirectToLogin()) {
-    window.location.href = '/login';
+  if (shouldRedirectToLogin() && !redirectingToLogin) {
+    redirectingToLogin = true;
+    window.location.href = '/login?error=session';
   }
 }
 

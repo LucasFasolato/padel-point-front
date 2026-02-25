@@ -20,9 +20,21 @@ export default function LoginPage() {
   const [form, setForm] = useState<LoginForm>({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [banner, setBanner] = useState('');
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const errorParam = params.get('error');
+
+    if (errorParam === 'oauth') {
+      setBanner('No pudimos conectar tu cuenta. Proba nuevamente.');
+    } else if (errorParam === 'session') {
+      setBanner('Tu sesion expiro. Inicia sesion otra vez.');
+    } else {
+      setBanner('');
+    }
+
     return () => {
       abortRef.current?.abort();
     };
@@ -102,6 +114,12 @@ export default function LoginPage() {
         </div>
 
         <div className="p-8">
+          {banner && (
+            <div className="mb-4 rounded-lg border border-amber-100 bg-amber-50 p-3 text-center text-sm font-medium text-amber-700">
+              {banner}
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 rounded-lg border border-red-100 bg-red-50 p-3 text-center text-sm font-medium text-red-600">
               {error}

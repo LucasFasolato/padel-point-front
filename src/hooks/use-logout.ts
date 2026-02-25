@@ -17,11 +17,16 @@ export function useLogout() {
   const queryClient = useQueryClient();
   const storeLogout = useAuthStore((s) => s.logout);
 
-  const logout = useCallback(() => {
-    void logoutSession().catch(() => undefined);
-    storeLogout();
-    queryClient.clear();
-    router.push('/login');
+  const logout = useCallback(async () => {
+    try {
+      await logoutSession();
+    } catch {
+      // Local logout should still proceed if the server call fails.
+    } finally {
+      storeLogout();
+      queryClient.clear();
+      router.push('/login');
+    }
   }, [storeLogout, queryClient, router]);
 
   return logout;
