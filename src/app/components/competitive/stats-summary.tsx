@@ -25,7 +25,7 @@ export function StatsSummary({
         </div>
         
         <div className="text-center">
-          <div className="text-2xl font-bold text-green-600">{winRate}%</div>
+          <div className="text-2xl font-bold text-[#0E7C66]">{winRate}%</div>
           <div className="text-sm text-slate-600">Efectividad</div>
         </div>
         

@@ -20,7 +20,7 @@ export function BottomNav() {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-100 bg-white pb-safe shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
       <div className="flex h-20 items-center justify-around">
         {tabs.map((tab) => {
           const isActive =
@@ -31,7 +31,7 @@ export function BottomNav() {
           if (tab.highlight) {
             return (
               <Link key={tab.name} href={tab.href} className="relative -top-6">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 transition-all hover:shadow-xl active:scale-95">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#0E7C66] text-white shadow-lg shadow-[#0E7C66]/25 transition-all hover:shadow-xl hover:bg-[#065F46] active:scale-95">
                   <tab.icon size={24} />
                 </div>
               </Link>
@@ -49,7 +49,7 @@ export function BottomNav() {
               }
               className={cn(
                 'relative flex h-full min-h-[44px] w-full flex-col items-center justify-center gap-1 transition-colors',
-                isActive ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'
+                isActive ? 'text-[#0E7C66]' : 'text-slate-400 hover:text-slate-600'
               )}
             >
               <div className="relative">

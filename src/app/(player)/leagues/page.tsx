@@ -21,7 +21,7 @@ export default function LeaguesPage() {
         {isLoading && <PageSkeleton />}
 
         {error && (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-center">
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center">
             <p className="text-sm text-rose-700">No se pudieron cargar las ligas.</p>
             <Button
               variant="outline"
@@ -42,7 +42,7 @@ export default function LeaguesPage() {
           <>
             {groupLeaguesByStatus(leagues).map((group) => (
               <section key={group.status}>
-                <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+                <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                   {group.label}
                 </h2>
                 <div className="space-y-3">
@@ -61,7 +61,7 @@ export default function LeaguesPage() {
       </div>
 
       {/* Sticky bottom FAB */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-slate-50 via-slate-50/95 to-transparent pb-4 pt-6 px-4">
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-[#F7F8FA] via-[#F7F8FA]/95 to-transparent pb-4 pt-6 px-4">
         <Button
           fullWidth
           size="lg"
@@ -90,14 +90,14 @@ function PageSkeleton() {
 
 function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
   return (
-    <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 py-16 text-center">
-      <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white text-4xl shadow-sm">
-        <Trophy size={36} className="text-emerald-500" />
+    <div className="rounded-2xl border border-dashed border-slate-200 bg-[#F7F8FA] py-16 text-center">
+      <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-sm">
+        <Trophy size={36} className="text-[#0E7C66]" />
       </div>
-      <h3 className="mb-2 text-lg font-semibold text-slate-900">
+      <h3 className="mb-2 text-lg font-bold text-slate-900">
         Todavía no tenés ligas
       </h3>
-      <p className="mb-6 px-6 text-sm text-slate-600">
+      <p className="mb-6 px-6 text-sm text-slate-500">
         Creá tu primera liga y desafiá a tus amigos a competir.
       </p>
     </div>

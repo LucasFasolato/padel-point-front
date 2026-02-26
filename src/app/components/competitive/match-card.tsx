@@ -19,14 +19,14 @@ export function MatchCard({
   const isDisputed = match.status === 'disputed';
   const statusIcon = isDisputed ? '⚠️' : match.isWin ? '✅' : '❌';
   const statusText = isDisputed ? 'En disputa' : match.isWin ? 'Victoria' : 'Derrota';
-  const statusColor = isDisputed ? 'text-amber-600' : match.isWin ? 'text-green-600' : 'text-red-600';
+  const statusColor = isDisputed ? 'text-amber-600' : match.isWin ? 'text-[#0E7C66]' : 'text-rose-600';
   const isPending = match.status === 'pending_confirm';
 
   return (
     <div
       className={cn(
-        'rounded-lg border border-slate-200 bg-white p-4 transition-all',
-        onClick && 'cursor-pointer hover:shadow-md hover:border-slate-300',
+        'rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all',
+        onClick && 'cursor-pointer hover:shadow-md hover:border-[#0E7C66]/15',
         className
       )}
       onClick={onClick}
@@ -45,7 +45,7 @@ export function MatchCard({
         {match.eloChange !== null && (
           <div className={cn(
             'text-sm font-semibold',
-            match.eloChange > 0 ? 'text-green-600' : 'text-red-600'
+            match.eloChange > 0 ? 'text-[#0E7C66]' : 'text-rose-600'
           )}>
             {match.eloChange > 0 ? '+' : ''}{match.eloChange} ELO
           </div>

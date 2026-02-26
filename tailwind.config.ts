@@ -11,9 +11,11 @@ const config: Config = {
       // 1. Extend Colors - Padel Brand Identity
       colors: {
         padel: {
-          primary: '#10B981',    // Emerald-600 - Primary CTA & brand
-          dark: '#0F172A',       // Slate-900 - Dark backgrounds
-          surface: '#F8FAFC',    // Slate-50 - Light backgrounds
+          primary: '#0E7C66',    // Deep emerald - Primary CTA & brand
+          dark: '#0E7C66',       // Deep emerald dark
+          gradient: '#065F46',   // Gradient end (darker emerald)
+          accent: '#2563EB',     // Blue accent for secondary actions
+          surface: '#F7F8FA',    // Premium light background
           border: '#E2E8F0',     // Slate-200 - Borders
           muted: '#64748B',      // Slate-500 - Muted text
         }

@@ -32,13 +32,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary:
-        'bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-emerald-500',
+        'bg-[#0E7C66] text-white shadow-sm hover:bg-[#065F46] hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-[#0E7C66]',
       secondary:
         'bg-slate-800 text-white shadow-sm hover:bg-slate-900 hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-slate-500',
       outline:
-        'border-2 border-slate-300 bg-white text-slate-700 shadow-sm hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] focus-visible:ring-slate-500',
+        'border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98] focus-visible:ring-slate-400',
       ghost:
-        'text-slate-600 hover:bg-slate-100 hover:text-slate-900 active:scale-[0.98] focus-visible:ring-slate-500',
+        'text-slate-600 hover:bg-slate-100 hover:text-slate-900 active:scale-[0.98] focus-visible:ring-slate-400',
       danger:
         'bg-rose-600 text-white shadow-sm hover:bg-rose-700 hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-rose-500',
     };

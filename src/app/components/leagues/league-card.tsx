@@ -29,8 +29,8 @@ export function LeagueCard({ league, onClick, className }: LeagueCardProps) {
         }
       }}
       className={cn(
-        'flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 transition-all',
-        onClick && 'cursor-pointer hover:shadow-md hover:border-slate-300',
+        'flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all',
+        onClick && 'cursor-pointer hover:shadow-md hover:border-[#0E7C66]/20',
         className,
       )}
     >
@@ -42,7 +42,7 @@ export function LeagueCard({ league, onClick, className }: LeagueCardProps) {
           className="h-11 w-11 shrink-0 rounded-xl object-cover"
         />
       ) : (
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-sm font-bold text-emerald-700">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0E7C66]/10 text-sm font-bold text-[#0E7C66]">
           {initials || '?'}
         </div>
       )}
@@ -50,7 +50,7 @@ export function LeagueCard({ league, onClick, className }: LeagueCardProps) {
       {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="truncate text-sm font-semibold text-slate-900">{league.name}</h3>
+          <h3 className="truncate text-sm font-bold text-slate-900">{league.name}</h3>
           <LeagueStatusBadge status={league.status} />
         </div>
 

@@ -6,7 +6,7 @@ export default function PlayerLayout({ children }: { children: React.ReactNode }
   return (
     <Providers>
       <NotificationProvider />
-      <div className="min-h-screen bg-slate-50 pb-20">
+      <div className="min-h-screen bg-[#F7F8FA] pb-20">
         <main className="max-w-md mx-auto min-h-screen bg-white sm:shadow-xl sm:border-x sm:border-slate-100">
           {children}
         </main>

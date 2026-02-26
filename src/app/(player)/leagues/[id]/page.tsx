@@ -288,18 +288,18 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
       <div className="px-4 py-6 space-y-4">
         {/* Success banner – shown after league creation */}
         {justCreated && (
-          <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <div className="flex items-start gap-3 rounded-2xl border border-[#0E7C66]/20 bg-[#0E7C66]/5 px-4 py-3">
             <span className="text-lg">🎉</span>
             <div>
-              <p className="text-sm font-semibold text-emerald-900">¡Liga creada!</p>
-              <p className="text-xs text-emerald-700">Invitá a tus amigos para empezar a jugar.</p>
+              <p className="text-sm font-semibold text-[#065F46]">¡Liga creada!</p>
+              <p className="text-xs text-[#0E7C66]/80">Invitá a tus amigos para empezar a jugar.</p>
             </div>
           </div>
         )}
 
         {/* Pending confirmations for this league */}
         {leaguePendingConfirmations.length > 0 && (
-          <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-5">
             <p className="mb-2 text-sm font-bold text-amber-900">
               Resultados por confirmar ({leaguePendingConfirmations.length})
             </p>
@@ -319,7 +319,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
                 return (
                   <div
                     key={match.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white px-3 py-2.5"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-amber-200/60 bg-white px-3 py-2.5 shadow-sm"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-slate-900">
@@ -343,21 +343,21 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
         )}
 
         {/* Hero */}
-        <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 text-white shadow-lg">
-          <div className="flex items-start justify-between mb-3">
+        <div className="rounded-2xl bg-gradient-to-br from-[#0E7C66] to-[#065F46] p-6 text-white shadow-lg">
+          <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               {league.avatarUrl ? (
                 <img
                   src={league.avatarUrl}
                   alt={league.name}
-                  className="h-12 w-12 shrink-0 rounded-xl object-cover ring-2 ring-white/30"
+                  className="h-12 w-12 shrink-0 rounded-xl object-cover ring-2 ring-white/25"
                 />
               ) : (
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/20 text-sm font-bold ring-2 ring-white/30">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15 text-sm font-bold ring-2 ring-white/20">
                   {league.name.split(' ').slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('') || '?'}
                 </div>
               )}
-              <h1 className="text-xl font-bold leading-tight truncate">{league.name}</h1>
+              <h1 className="text-xl font-bold leading-tight tracking-tight truncate">{league.name}</h1>
             </div>
             <div className="flex items-center gap-2 shrink-0 ml-2">
               <div className="flex flex-col gap-1.5">
@@ -365,7 +365,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="min-h-[36px] border-white/30 bg-white/10 px-3 text-white hover:bg-white/20 hover:text-white"
+                  className="min-h-[36px] border-white/25 bg-white/10 px-3 text-white hover:bg-white/20 hover:text-white"
                   onClick={() => void handleShareStandings()}
                   disabled={enableLeagueShare.isPending}
                 >
@@ -376,7 +376,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="min-h-[32px] border-white/30 bg-white/10 px-3 text-xs text-white hover:bg-white/20 hover:text-white"
+                  className="min-h-[32px] border-white/25 bg-white/10 px-3 text-xs text-white hover:bg-white/20 hover:text-white"
                   onClick={() => void handleCopyShareLink()}
                   disabled={enableLeagueShare.isPending}
                 >
@@ -391,11 +391,11 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
           </div>
 
           {/* Mode label */}
-          <p className="text-sm font-medium text-emerald-50 mb-2">
+          <p className="text-sm font-medium text-white/70 mb-2">
             {getModeLabel(league.mode)}
           </p>
 
-          <div className="flex items-center gap-4 text-sm text-emerald-100">
+          <div className="flex items-center gap-4 text-sm text-white/60">
             {isScheduled && formatDateRange(league.startDate, league.endDate) && (
               <span className="flex items-center gap-1.5">
                 <Calendar size={14} />
@@ -403,7 +403,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
               </span>
             )}
             {isOpen && (
-              <span className="text-xs text-emerald-200">
+              <span className="text-xs text-white/50">
                 Se actualiza con cada partido confirmado
               </span>
             )}
@@ -419,7 +419,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
           <Button
             fullWidth
             size="lg"
-            className="gap-2"
+            className="gap-2 shadow-sm"
             onClick={() => setShowReportMethodSheet(true)}
           >
             <Trophy size={18} />
@@ -428,7 +428,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
         )}
 
         {showRecordMatchesBlockedBanner && (
-          <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+          <div className="flex items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3">
             <Info size={16} className="mt-0.5 shrink-0 text-blue-500" />
             <p className="text-sm text-blue-800">
               {recordMatchesBlockedMessage}
@@ -437,7 +437,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
         )}
 
         {isFinished && (
-          <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <div className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-[#F7F8FA] px-4 py-3">
             <Info size={16} className="mt-0.5 shrink-0 text-slate-400" />
             <p className="text-sm text-slate-600">
               Liga finalizada. No se pueden cargar más resultados.
@@ -476,13 +476,13 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
 
           {/* Partidos tab */}
           <TabsContent value="partidos">
-            <div className="mb-3 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+            <div className="mb-3 inline-flex rounded-xl border border-slate-100 bg-[#F7F8FA] p-1">
               <button
                 type="button"
                 onClick={() => setPartidosView('matches')}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                   partidosView === 'matches'
-                    ? 'bg-white text-slate-900 shadow-sm'
+                    ? 'bg-white text-[#0E7C66] shadow-sm'
                     : 'text-slate-500'
                 }`}
               >
@@ -491,9 +491,9 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
               <button
                 type="button"
                 onClick={() => setPartidosView('challenges')}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                   partidosView === 'challenges'
-                    ? 'bg-white text-slate-900 shadow-sm'
+                    ? 'bg-white text-[#0E7C66] shadow-sm'
                     : 'text-slate-500'
                 }`}
               >
@@ -542,7 +542,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
                     <Skeleton className="h-24 w-full rounded-xl" />
                   </div>
                 ) : matchList.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-[#F7F8FA] px-4 py-8 text-center">
                     <p className="text-sm font-semibold text-slate-900">
                       Todavía no hay partidos
                     </p>
@@ -598,10 +598,10 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
                   return (
                     <div
                       key={m.userId}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-white px-4 py-3"
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm"
                     >
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0E7C66]/10 text-sm font-semibold text-[#0E7C66]">
                           {(m.displayName || 'J').charAt(0).toUpperCase()}
                         </div>
                         <span className="truncate text-sm font-medium text-slate-900">
@@ -619,7 +619,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
                             if (nextRole === memberRole) return;
                             updateMemberRole.mutate({ userId: m.userId, role: nextRole });
                           }}
-                          className="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                          className="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 focus:border-[#0E7C66] focus:outline-none focus:ring-2 focus:ring-[#0E7C66]/15"
                         >
                           <option value="member">{ROLE_LABELS.member}</option>
                           <option value="owner">{ROLE_LABELS.owner}</option>
@@ -677,7 +677,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
 
             {/* Danger zone — only for upcoming leagues where user is owner and is the only member */}
             {isUpcoming && !isReadOnly && league.membersCount <= 1 && (
-              <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4">
+              <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-5">
                 <p className="mb-1 text-sm font-bold text-rose-900">Zona de peligro</p>
                 <p className="mb-3 text-xs text-rose-700">
                   Esta liga todavía no empezó y sos el único miembro. Podés eliminarla si querés.

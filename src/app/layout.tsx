@@ -16,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body
-        className={cn("bg-slate-50 text-slate-900 antialiased")}
+        className={cn("bg-[#F7F8FA] text-slate-900 antialiased")}
         style={{
           fontFamily:
             'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',

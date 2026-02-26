@@ -131,12 +131,12 @@ export default function CompetitivePage() {
 
       <div className="container mx-auto max-w-4xl space-y-4 px-4 py-4">
         {/* ── Hero card: ELO + CTA ── */}
-        <section className="rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 shadow-lg text-white">
+        <section className="rounded-2xl bg-gradient-to-br from-[#0E7C66] to-[#065F46] p-6 shadow-lg text-white">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-emerald-100">{profile.displayName}</p>
-              <p className="mt-1 text-4xl font-bold leading-none">{profile.elo}</p>
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200 mt-0.5">
+              <p className="text-sm font-medium text-white/70 tracking-wide">{profile.displayName}</p>
+              <p className="mt-1.5 text-5xl font-extrabold leading-none tracking-tight">{profile.elo}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/50 mt-1.5">
                 ELO actual
               </p>
             </div>
@@ -144,7 +144,7 @@ export default function CompetitivePage() {
               <CategoryBadge
                 category={profile.category}
                 size="md"
-                className="bg-white/20 text-white"
+                className="bg-white/20 text-white border-0"
               />
               <div className={getDeltaBadgeClassName(eloDelta30d)}>
                 {formatDeltaLabel(eloDelta30d)} (30d)
@@ -156,7 +156,7 @@ export default function CompetitivePage() {
           <button
             type="button"
             onClick={() => router.push('/competitive/find')}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3.5 text-base font-bold text-emerald-700 shadow-sm active:scale-[0.98] transition-transform"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3.5 text-base font-bold text-[#0E7C66] shadow-sm active:scale-[0.98] transition-transform hover:bg-white/95"
           >
             <Search size={20} />
             Buscar rival
@@ -165,7 +165,7 @@ export default function CompetitivePage() {
 
         {/* ── Pending confirmations – MUST NOT MISS ── */}
         {pendingConfirmations.length > 0 && (
-          <section className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 shadow-sm">
+          <section className="rounded-2xl border border-amber-200 bg-amber-50/80 p-5">
             <div className="mb-3 flex items-center gap-2">
               <CheckCircle2 size={18} className="text-amber-600" />
               <h2 className="text-sm font-bold text-amber-900">
@@ -215,7 +215,7 @@ export default function CompetitivePage() {
 
         {/* ── Pending challenges inbox ── */}
         {(inboxQuery.isLoading || pendingChallenges.length > 0) && (
-          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <h2 className="mb-3 text-sm font-bold text-slate-900">Desafíos pendientes</h2>
 
             {challengeActionError && (
@@ -248,7 +248,7 @@ export default function CompetitivePage() {
         )}
 
         {/* ── Tu progreso (compact) ── */}
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-bold text-slate-900">Tu progreso</h2>
             <Button
@@ -318,8 +318,8 @@ export default function CompetitivePage() {
 
         {/* ── Skill radar ── */}
         {skillRadarQuery.isLoading ? (
-          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <Skeleton className="h-60 w-full rounded-lg" />
+          <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <Skeleton className="h-60 w-full rounded-xl" />
           </section>
         ) : skillRadarQuery.isError ? null : (
           <SkillRadarCard radar={skillRadarQuery.data} />
@@ -327,7 +327,7 @@ export default function CompetitivePage() {
 
         {/* ── Últimos 10 ── */}
         {last10.length > 0 && (
-          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-bold text-slate-900">Últimos 10</h2>
               <span className="text-xs text-slate-400">{last10.length}/10</span>
@@ -338,10 +338,10 @@ export default function CompetitivePage() {
                   key={`${result}-${index}`}
                   className={
                     result === 'W'
-                      ? 'inline-flex min-h-[32px] min-w-[32px] items-center justify-center rounded-md bg-emerald-100 px-2 text-sm font-bold text-emerald-800'
+                      ? 'inline-flex min-h-[34px] min-w-[34px] items-center justify-center rounded-lg bg-[#0E7C66]/10 px-2 text-sm font-bold text-[#0E7C66]'
                       : result === 'D'
-                        ? 'inline-flex min-h-[32px] min-w-[32px] items-center justify-center rounded-md bg-amber-100 px-2 text-sm font-bold text-amber-800'
-                        : 'inline-flex min-h-[32px] min-w-[32px] items-center justify-center rounded-md bg-rose-100 px-2 text-sm font-bold text-rose-800'
+                        ? 'inline-flex min-h-[34px] min-w-[34px] items-center justify-center rounded-lg bg-amber-100 px-2 text-sm font-bold text-amber-700'
+                        : 'inline-flex min-h-[34px] min-w-[34px] items-center justify-center rounded-lg bg-rose-100 px-2 text-sm font-bold text-rose-700'
                   }
                 >
                   {result}
@@ -352,7 +352,7 @@ export default function CompetitivePage() {
         )}
 
         {/* ── Resumen ── */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-sm font-bold text-slate-900">Resumen</h2>
           <StatsSummary
             wins={profile.wins}
@@ -364,7 +364,7 @@ export default function CompetitivePage() {
         {/* ── Últimos partidos ── */}
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-900">Últimos partidos</h2>
+            <h2 className="text-base font-bold text-slate-900">Últimos partidos</h2>
             {confirmedMatches.length > 0 && (
               <Button variant="ghost" size="sm" onClick={() => router.push('/competitive-matches')}>
                 Ver todos
@@ -394,8 +394,8 @@ export default function CompetitivePage() {
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 py-10 text-center">
-              <p className="mb-3 text-sm text-slate-600">Todavía no jugaste partidos competitivos</p>
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-[#F7F8FA] py-10 text-center">
+              <p className="mb-3 text-sm text-slate-500">Todavía no jugaste partidos competitivos</p>
               <Button onClick={() => router.push('/competitive/challenges/new')}>
                 Desafiar jugador
               </Button>
@@ -404,10 +404,13 @@ export default function CompetitivePage() {
         </div>
 
         {/* ── ELO máximo ── */}
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+        <div className="rounded-2xl bg-gradient-to-r from-amber-50 to-amber-50/60 px-5 py-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-amber-900">ELO máximo</span>
-            <span className="text-sm font-bold text-amber-950">{peakElo}</span>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-600/70">Pico histórico</p>
+              <p className="text-sm font-semibold text-amber-900">ELO máximo</p>
+            </div>
+            <span className="text-2xl font-extrabold tracking-tight text-amber-900">{peakElo}</span>
           </div>
         </div>
       </div>
@@ -437,11 +440,11 @@ function ActionButton({
       className={cn(
         'relative flex flex-col items-center justify-center gap-2 rounded-2xl p-4 text-sm font-semibold transition-all active:scale-[0.97] min-h-[90px]',
         variant === 'default'
-          ? 'bg-white border border-slate-200 text-slate-800 shadow-sm hover:border-emerald-300 hover:shadow-md'
-          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          ? 'bg-white border border-slate-100 text-slate-800 shadow-sm hover:border-[#0E7C66]/20 hover:shadow-md'
+          : 'bg-[#F7F8FA] text-slate-500 hover:bg-slate-100'
       )}
     >
-      <span className={cn(variant === 'default' ? 'text-emerald-600' : 'text-slate-400')}>
+      <span className={cn(variant === 'default' ? 'text-[#0E7C66]' : 'text-slate-400')}>
         {icon}
       </span>
       <span>{label}</span>
@@ -468,7 +471,7 @@ function PendingChallengeInboxCard({
   const challengerName = challenge.teamA?.p1?.displayName || 'Un jugador';
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+    <div className="rounded-2xl border border-slate-100 bg-[#F7F8FA] p-3">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-slate-900">{challengerName}</p>
@@ -525,7 +528,7 @@ function PendingConfirmationCard({
     .join(', ');
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white px-3 py-2.5">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200/60 bg-white px-3 py-2.5 shadow-sm">
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-slate-900">
           {reporterName} reportó un resultado
@@ -541,9 +544,9 @@ function PendingConfirmationCard({
 
 function StreakStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-1 text-xl font-bold text-slate-900">{value}</p>
+    <div className="rounded-xl bg-[#F7F8FA] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">{label}</p>
+      <p className="mt-1.5 text-2xl font-extrabold tracking-tight text-slate-900">{value}</p>
     </div>
   );
 }
@@ -579,16 +582,16 @@ function formatDeltaLabel(delta: number) {
 }
 
 function getInlineDeltaClassName(delta: number) {
-  if (delta > 0) return 'font-semibold text-emerald-700';
-  if (delta < 0) return 'font-semibold text-rose-700';
-  return 'font-semibold text-slate-700';
+  if (delta > 0) return 'font-semibold text-[#0E7C66]';
+  if (delta < 0) return 'font-semibold text-rose-600';
+  return 'font-semibold text-slate-600';
 }
 
 function getDeltaBadgeClassName(delta: number) {
   const base = 'inline-flex items-center rounded-full px-3 py-1 text-xs font-bold';
-  if (delta > 0) return `${base} bg-emerald-100/60 text-emerald-900`;
+  if (delta > 0) return `${base} bg-white/15 text-white`;
   if (delta < 0) return `${base} bg-rose-100/60 text-rose-900`;
-  return `${base} bg-white/20 text-white`;
+  return `${base} bg-white/15 text-white`;
 }
 
 function CompetitiveErrorState() {
@@ -613,8 +616,8 @@ function CompetitiveEmptyState() {
   return (
     <div className="container mx-auto max-w-2xl px-4 py-16 text-center">
       <div className="mb-8">
-        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100">
-          <Trophy size={36} className="text-emerald-600" />
+        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[#0E7C66]/10">
+          <Trophy size={36} className="text-[#0E7C66]" />
         </div>
         <h1 className="mb-3 text-2xl font-bold text-slate-900">Activá tu perfil competitivo</h1>
         <p className="text-slate-600">Seguí tu progreso, desafiá amigos y mejorá tu juego</p>
