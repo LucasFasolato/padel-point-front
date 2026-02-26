@@ -223,7 +223,8 @@ describe('CompetitivePage onboarding gate', () => {
 
     expect(screen.getByTestId('elo-chart-mock')).toHaveTextContent('chart:1');
     expect(screen.getByText(/\u00DAltimo cambio:/)).toBeInTheDocument();
-    expect(screen.getByText(/Resultado de partido/)).toBeInTheDocument();
+    // "Resultado de partido" appears in both the activity feed and the "Tu progreso" section
+    expect(screen.getAllByText(/Resultado de partido/).length).toBeGreaterThan(0);
   });
 
   it('shows empty state when onboarding errors (graceful fallback)', () => {
