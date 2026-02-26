@@ -72,3 +72,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 Button.displayName = 'Button';
+
+/** Convenience alias for `<Button variant="primary">` */
+export function PrimaryButton(props: Omit<ButtonProps, 'variant'>) {
+  return <Button {...props} variant="primary" />;
+}
+PrimaryButton.displayName = 'PrimaryButton';
+
+/** Convenience alias for `<Button variant="secondary">` */
+export function SecondaryButton(props: Omit<ButtonProps, 'variant'>) {
+  return <Button {...props} variant="secondary" />;
+}
+SecondaryButton.displayName = 'SecondaryButton';

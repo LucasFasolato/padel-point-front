@@ -2,70 +2,64 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Trophy, Users, Bell, UserCircle } from 'lucide-react';
+import { Home, BarChart2, Users, UserCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useUnreadCount } from '@/hooks/use-notifications';
 
+const TABS = [
+  { name: 'Inicio', href: '/competitive', icon: Home },
+  { name: 'Ranking', href: '/ranking', icon: BarChart2 },
+  { name: 'Ligas', href: '/leagues', icon: Users },
+  { name: 'Perfil', href: '/me/profile', icon: UserCircle },
+] as const;
+
+/**
+ * BottomNav — Competitive v1 mobile navigation (4 tabs).
+ *
+ * Fixed at the bottom of the viewport with iOS safe-area support.
+ * All tap targets meet the 44px minimum.
+ */
 export function BottomNav() {
   const pathname = usePathname();
-  const { data: unreadCount } = useUnreadCount();
-  const hasUnread = (unreadCount ?? 0) > 0;
-
-  const tabs = [
-    { name: 'Inicio', href: '/', icon: Home },
-    { name: 'Competitivo', href: '/competitive', icon: Trophy },
-    { name: 'Ligas', href: '/leagues', icon: Users, highlight: true },
-    { name: 'Alertas', href: '/notifications', icon: Bell, badge: hasUnread },
-    { name: 'Perfil', href: '/me/profile', icon: UserCircle },
-  ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-100 bg-white pb-safe shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
-      <div className="flex h-20 items-center justify-around">
-        {tabs.map((tab) => {
+    <nav
+      aria-label="Navegación principal"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-100 bg-white"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
+      <div className="mx-auto flex h-14 max-w-md items-stretch">
+        {TABS.map((tab) => {
           const isActive =
-            tab.href !== '/'
-              ? pathname.startsWith(tab.href)
-              : pathname === '/' && !tab.highlight;
-
-          if (tab.highlight) {
-            return (
-              <Link key={tab.name} href={tab.href} className="relative -top-6">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#0E7C66] text-white shadow-lg shadow-[#0E7C66]/25 transition-all hover:shadow-xl hover:bg-[#065F46] active:scale-95">
-                  <tab.icon size={24} />
-                </div>
-              </Link>
-            );
-          }
+            pathname === tab.href || pathname.startsWith(tab.href + '/');
 
           return (
             <Link
               key={tab.name}
               href={tab.href}
-              aria-label={
-                tab.badge
-                  ? `${tab.name} — tienes notificaciones sin leer`
-                  : tab.name
-              }
+              aria-label={tab.name}
+              aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'relative flex h-full min-h-[44px] w-full flex-col items-center justify-center gap-1 transition-colors',
-                isActive ? 'text-[#0E7C66]' : 'text-slate-400 hover:text-slate-600'
+                'relative flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors',
+                'min-h-[44px]',
+                isActive
+                  ? 'text-[#0E7C66]'
+                  : 'text-slate-400 hover:text-slate-600'
               )}
             >
-              <div className="relative">
-                <tab.icon size={22} className={cn(isActive && 'fill-current')} />
-                {tab.badge && (
-                  <span
-                    className="pointer-events-none absolute -right-1.5 -top-1 block h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white"
-                    aria-hidden="true"
-                  />
-                )}
-              </div>
-              <span className="text-[11px] font-medium leading-tight">{tab.name}</span>
+              <tab.icon size={22} strokeWidth={isActive ? 2.5 : 1.75} />
+              <span className="text-[10px] font-medium leading-none">{tab.name}</span>
+
+              {/* Active indicator pill */}
+              {isActive && (
+                <span
+                  aria-hidden
+                  className="absolute bottom-0 left-1/2 h-0.5 w-7 -translate-x-1/2 rounded-full bg-[#0E7C66]"
+                />
+              )}
             </Link>
           );
         })}
       </div>
-    </div>
+    </nav>
   );
 }

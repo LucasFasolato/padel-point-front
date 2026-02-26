@@ -61,7 +61,7 @@ function makeRankingQuery(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe('Public Ranking Page', () => {
+describe('Ranking Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseRankingByCategory.mockReturnValue(makeRankingQuery());

@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/',
+  usePathname: () => '/competitive',
 }));
 
 vi.mock('next/link', () => ({
@@ -21,53 +21,48 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-const mockUseUnreadCount = vi.fn(() => ({ data: 0 }));
-
-vi.mock('@/hooks/use-notifications', () => ({
-  useUnreadCount: () => mockUseUnreadCount(),
-}));
-
 import { BottomNav } from '../bottom-nav';
 
 describe('BottomNav', () => {
-  beforeEach(() => {
-    mockUseUnreadCount.mockReturnValue({ data: 0 });
+  it('renders 4 navigation tabs', () => {
+    render(<BottomNav />);
+    expect(screen.getByText('Inicio')).toBeInTheDocument();
+    expect(screen.getByText('Ranking')).toBeInTheDocument();
+    expect(screen.getByText('Ligas')).toBeInTheDocument();
+    expect(screen.getByText('Perfil')).toBeInTheDocument();
   });
 
-  it('renders Alertas tab linking to /notifications', () => {
+  it('Inicio links to /competitive', () => {
     render(<BottomNav />);
-    const alertasLink = screen.getByText('Alertas').closest('a');
-    expect(alertasLink).toHaveAttribute('href', '/notifications');
+    expect(screen.getByText('Inicio').closest('a')).toHaveAttribute('href', '/competitive');
   });
 
-  it('Alertas link is clickable even when badge is showing', () => {
-    mockUseUnreadCount.mockReturnValue({ data: 3 });
+  it('Ranking links to /ranking', () => {
     render(<BottomNav />);
-
-    const alertasLink = screen.getByText('Alertas').closest('a');
-    expect(alertasLink).toHaveAttribute('href', '/notifications');
-
-    // Badge dot must have pointer-events-none so it never captures taps
-    const badge = alertasLink!.querySelector('span[aria-hidden="true"]');
-    expect(badge).toBeInTheDocument();
-    expect(badge!.className).toContain('pointer-events-none');
+    expect(screen.getByText('Ranking').closest('a')).toHaveAttribute('href', '/ranking');
   });
 
-  it('shows aria-label with unread hint when badge is present', () => {
-    mockUseUnreadCount.mockReturnValue({ data: 5 });
+  it('Ligas links to /leagues', () => {
     render(<BottomNav />);
-
-    const alertasLink = screen.getByLabelText(
-      'Alertas — tienes notificaciones sin leer'
-    );
-    expect(alertasLink).toBeInTheDocument();
+    expect(screen.getByText('Ligas').closest('a')).toHaveAttribute('href', '/leagues');
   });
 
-  it('shows plain aria-label when no unread notifications', () => {
-    mockUseUnreadCount.mockReturnValue({ data: 0 });
+  it('Perfil links to /me/profile', () => {
     render(<BottomNav />);
+    expect(screen.getByText('Perfil').closest('a')).toHaveAttribute('href', '/me/profile');
+  });
 
-    const alertasLink = screen.getByText('Alertas').closest('a');
-    expect(alertasLink).toHaveAttribute('aria-label', 'Alertas');
+  it('marks the active tab with aria-current="page"', () => {
+    // usePathname is mocked to return '/competitive'
+    render(<BottomNav />);
+    const inicioLink = screen.getByText('Inicio').closest('a');
+    expect(inicioLink).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('inactive tabs do not have aria-current', () => {
+    render(<BottomNav />);
+    expect(screen.getByText('Ranking').closest('a')).not.toHaveAttribute('aria-current');
+    expect(screen.getByText('Ligas').closest('a')).not.toHaveAttribute('aria-current');
+    expect(screen.getByText('Perfil').closest('a')).not.toHaveAttribute('aria-current');
   });
 });

@@ -242,7 +242,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <PublicTopBar title="Mi cuenta" backHref="/" />
+      <PublicTopBar title="Mi cuenta" backHref="/competitive" />
 
       {!token ? (
         <div className="px-4 py-16 text-center">
@@ -254,7 +254,7 @@ export default function ProfilePage() {
             >
               Iniciar sesión
             </Link>
-            <Link href="/" className="text-sm text-slate-500">Volver al inicio</Link>
+            <Link href="/competitive" className="text-sm text-slate-500">Volver al inicio</Link>
           </div>
         </div>
       ) : sessionExpired ? (

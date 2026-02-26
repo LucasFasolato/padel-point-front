@@ -10,7 +10,15 @@ export interface BadgeProps {
     | 'error'
     | 'info'
     | 'neutral'
-    | 'emerald';
+    | 'emerald'
+    /** ▲ Positive ELO / ranking movement */
+    | 'up'
+    /** ▼ Negative ELO / ranking movement */
+    | 'down'
+    /** Scheduled / future event */
+    | 'upcoming'
+    /** Currently active / in progress */
+    | 'live';
   /** Badge size */
   size?: 'sm' | 'md' | 'lg';
   /** Badge content */
@@ -52,6 +60,14 @@ export function Badge({
       'bg-slate-50 text-slate-600 ring-slate-500/10',
     emerald:
       'bg-emerald-50 text-emerald-700 ring-emerald-600/10',
+    up:
+      'bg-emerald-50 text-emerald-700 ring-emerald-600/10',
+    down:
+      'bg-rose-50 text-rose-700 ring-rose-600/10',
+    upcoming:
+      'bg-violet-50 text-violet-700 ring-violet-600/10',
+    live:
+      'bg-amber-50 text-amber-700 ring-amber-600/10',
   };
 
   const sizeStyles = {

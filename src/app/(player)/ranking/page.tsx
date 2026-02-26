@@ -98,7 +98,7 @@ export default function RankingPage() {
 
   return (
     <>
-      <PublicTopBar title="Ranking" backHref="/" />
+      <PublicTopBar title="Ranking" backHref="/competitive" />
 
       <div className="container mx-auto max-w-6xl px-4 py-6">
         {/* Page header */}
@@ -201,7 +201,7 @@ export default function RankingPage() {
 
       {/* Sticky my-position card */}
       {shouldShowMyPositionCard && myPlayer && myPosition && (
-        <div className="fixed inset-x-4 bottom-4 z-20 md:hidden">
+        <div className="fixed inset-x-4 bottom-20 z-20 md:hidden">
           <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-white/95 shadow-xl backdrop-blur-sm">
             <div className="h-1 w-full bg-gradient-to-r from-emerald-400 to-emerald-600" />
             <div className="flex items-center justify-between gap-3 px-4 py-3">
