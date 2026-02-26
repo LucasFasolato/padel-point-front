@@ -20,7 +20,7 @@ type RankingTab = {
 };
 
 const RANKING_TABS: RankingTab[] = [
-  { label: 'All' },
+  { label: 'Todos' },
   ...COMPETITIVE_RANKING_CATEGORIES.map((category) => ({
     label: `Cat ${category}`,
     value: category,
@@ -41,6 +41,10 @@ export default function RankingPage() {
   const [isMyRowVisible, setIsMyRowVisible] = useState(true);
   const myRowRef = useRef<HTMLTableRowElement | null>(null);
 
+  // Segmented selector state
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
+
   const isAuthed = !!user?.userId;
 
   const rankingQuery = useRankingByCategory(selectedCategory);
@@ -51,6 +55,23 @@ export default function RankingPage() {
   const myPosition = myPlayer ? (myPlayer.position ?? myPlayerIndex + 1) : null;
   const myPositionDeltaLabel = myPlayer ? getPositionDeltaLabel(myPlayer.positionDelta) : null;
   const shouldShowMyPositionCard = Boolean(isAuthed && myPlayer && !isMyRowVisible);
+
+  // Update sliding indicator position
+  useEffect(() => {
+    const activeIndex = RANKING_TABS.findIndex((t) => t.value === selectedCategory);
+    const el = tabRefs.current[activeIndex];
+    if (el) {
+      setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth, opacity: 1 });
+    }
+  }, [selectedCategory]);
+
+  // Initialise indicator on mount
+  useEffect(() => {
+    const el = tabRefs.current[0];
+    if (el) {
+      setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth, opacity: 1 });
+    }
+  }, []);
 
   useEffect(() => {
     setIsMyRowVisible(true);
@@ -80,27 +101,48 @@ export default function RankingPage() {
       <PublicTopBar title="Ranking" backHref="/" />
 
       <div className="container mx-auto max-w-6xl px-4 py-6">
+        {/* Page header */}
         <div className="mb-6">
-          <h1 className="mb-2 text-2xl font-bold text-slate-900">Ranking General</h1>
-          <p className="text-slate-600">Los mejores jugadores de PadelPoint</p>
+          <h1 className="mb-1 text-2xl font-extrabold tracking-tight text-slate-900">
+            Ranking General
+          </h1>
+          <p className="text-sm text-slate-500">Los mejores jugadores de PadelPoint por ELO</p>
         </div>
 
-        <div className="mb-4 -mx-4 overflow-x-auto px-4">
-          <div className="inline-flex min-w-full gap-2 sm:min-w-0" role="tablist" aria-label="Ranking categories">
-            {RANKING_TABS.map((tab) => {
+        {/* Segmented category selector */}
+        <div className="-mx-4 mb-6 overflow-x-auto px-4 pb-1">
+          <div
+            className="relative inline-flex min-w-max rounded-2xl bg-slate-100 p-1.5"
+            role="tablist"
+            aria-label="Ranking categories"
+          >
+            {/* Sliding indicator */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1.5 rounded-xl bg-white shadow-sm transition-all duration-300 ease-in-out"
+              style={{
+                left: indicatorStyle.left,
+                width: indicatorStyle.width,
+                opacity: indicatorStyle.opacity,
+                height: 'calc(100% - 12px)',
+              }}
+            />
+
+            {RANKING_TABS.map((tab, i) => {
               const isActive = tab.value === selectedCategory;
               return (
                 <button
                   key={tab.label}
+                  ref={(el) => {
+                    tabRefs.current[i] = el;
+                  }}
                   type="button"
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setSelectedCategory(tab.value)}
                   className={cn(
-                    'whitespace-nowrap rounded-full border px-3 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'border-blue-600 bg-blue-600 text-white'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                    'relative z-10 whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold transition-colors duration-200',
+                    isActive ? 'text-slate-900' : 'text-slate-500 hover:text-slate-700'
                   )}
                 >
                   {tab.label}
@@ -110,19 +152,20 @@ export default function RankingPage() {
           </div>
         </div>
 
+        {/* Content */}
         {rankingQuery.isLoading ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {[1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-16 w-full" />
+              <Skeleton key={i} className="h-[60px] w-full rounded-xl" />
             ))}
           </div>
         ) : rankingQuery.isError ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
-            <p className="text-sm text-slate-600">No se pudo cargar el ranking.</p>
+          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+            <p className="text-sm text-slate-500">No se pudo cargar el ranking.</p>
             <button
               type="button"
               onClick={() => rankingQuery.refetch()}
-              className="mt-3 rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="mt-4 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             >
               Reintentar
             </button>
@@ -137,38 +180,55 @@ export default function RankingPage() {
             />
 
             {rankingQuery.hasNextPage && (
-              <div className="flex justify-center">
+              <div className="flex justify-center pt-2">
                 <button
                   type="button"
                   onClick={() => rankingQuery.fetchNextPage()}
                   disabled={rankingQuery.isFetchingNextPage}
-                  className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {rankingQuery.isFetchingNextPage ? 'Cargando...' : 'Cargar mas'}
+                  {rankingQuery.isFetchingNextPage ? 'Cargando...' : 'Cargar más'}
                 </button>
               </div>
             )}
           </div>
         ) : (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 py-16 text-center text-slate-600">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 py-20 text-center text-sm text-slate-500">
             {EMPTY_RANKING_COPY}
           </div>
         )}
       </div>
 
+      {/* Sticky my-position card */}
       {shouldShowMyPositionCard && myPlayer && myPosition && (
         <div className="fixed inset-x-4 bottom-4 z-20 md:hidden">
-          <div className="rounded-xl border border-blue-200 bg-white/95 p-3 shadow-lg backdrop-blur">
-            <div className="flex items-center justify-between gap-3">
+          <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-white/95 shadow-xl backdrop-blur-sm">
+            <div className="h-1 w-full bg-gradient-to-r from-emerald-400 to-emerald-600" />
+            <div className="flex items-center justify-between gap-3 px-4 py-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Tu posicion</p>
-                <p className="text-sm font-semibold text-slate-900">{myPlayer.displayName}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                  Tu posición
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-slate-900">{myPlayer.displayName}</p>
               </div>
               <div className="text-right">
-                <p className="text-lg font-bold text-slate-900">#{myPosition}</p>
-                <p className="text-xs text-slate-600">
-                  {myPlayer.elo} ELO
-                  {myPositionDeltaLabel ? `  ${myPositionDeltaLabel}` : ''}
+                <p className="text-2xl font-extrabold tracking-tight text-slate-900">
+                  #{myPosition}
+                </p>
+                <p className="text-xs font-medium text-slate-500">
+                  <span className="font-bold text-emerald-600">{myPlayer.elo}</span> ELO
+                  {myPositionDeltaLabel ? (
+                    <span
+                      className={cn(
+                        'ml-1.5 font-semibold',
+                        myPlayer.positionDelta && myPlayer.positionDelta > 0
+                          ? 'text-emerald-600'
+                          : 'text-rose-500'
+                      )}
+                    >
+                      {myPositionDeltaLabel}
+                    </span>
+                  ) : null}
                 </p>
               </div>
             </div>
