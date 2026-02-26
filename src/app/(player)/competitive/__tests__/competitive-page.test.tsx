@@ -155,33 +155,33 @@ describe('CompetitivePage onboarding gate', () => {
     } as ReturnType<typeof useCompetitiveProfile>);
   });
 
-  it('shows skeleton while onboarding state is loading', () => {
-    mockedUseOnboardingState.mockReturnValue({
+  it('shows skeleton while profile is loading', () => {
+    mockedUseCompetitiveProfile.mockReturnValue({
       data: undefined,
       isLoading: true,
       isError: false,
-    } as ReturnType<typeof useOnboardingState>);
+    } as ReturnType<typeof useCompetitiveProfile>);
 
     render(<CompetitivePage />);
     expect(screen.queryByText('Activ\u00E1 tu perfil competitivo')).not.toBeInTheDocument();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it('redirects to onboarding when onboardingComplete is false', () => {
-    mockedUseOnboardingState.mockReturnValue({
-      data: {
-        onboardingComplete: false,
-        category: 0,
-        primaryGoal: '',
-        playingFrequency: '',
-        categoryLocked: false,
-      },
+  it('shows skeleton instead of error when profile returns 409 CITY_REQUIRED', () => {
+    const cityRequiredError = Object.assign(new Error('City required'), {
+      response: { status: 409, data: { code: 'CITY_REQUIRED' } },
+    });
+    mockedUseCompetitiveProfile.mockReturnValue({
+      data: undefined,
       isLoading: false,
-      isError: false,
-    } as ReturnType<typeof useOnboardingState>);
+      isError: true,
+      error: cityRequiredError,
+    } as ReturnType<typeof useCompetitiveProfile>);
 
     render(<CompetitivePage />);
-    expect(mockReplace).toHaveBeenCalledWith('/competitive/onboarding');
+    // Shows skeleton — OnboardingGuard in layout handles the redirect
+    expect(screen.queryByText('Activ\u00E1 tu perfil competitivo')).not.toBeInTheDocument();
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   it('renders competitive hub when onboardingComplete is true and profile exists', () => {

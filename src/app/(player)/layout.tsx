@@ -1,11 +1,13 @@
 import { BottomNav } from '@/app/components/player/bottom-nav';
 import { NotificationProvider } from '@/app/components/notifications/notification-provider';
+import { OnboardingGuard } from '@/app/components/player/onboarding-guard';
 import { Providers } from '@/app/providers';
 
 export default function PlayerLayout({ children }: { children: React.ReactNode }) {
   return (
     <Providers>
       <NotificationProvider />
+      <OnboardingGuard />
       {/* Outer shell: light gray background visible at tablet+ widths */}
       <div className="min-h-dvh bg-[#F7F8FA]">
         {/*

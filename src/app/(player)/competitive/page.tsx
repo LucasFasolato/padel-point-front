@@ -4,7 +4,6 @@ import { useState } from 'react';
 import {
   useCompetitiveProfile,
   useEloHistory,
-  useOnboardingState,
   useSkillRadar,
 } from '@/hooks/use-competitive-profile';
 import { useChallengeActions, useChallengesInbox } from '@/hooks/use-challenges';
@@ -42,11 +41,11 @@ export default function CompetitivePage() {
   const [hiddenChallengeIds, setHiddenChallengeIds] = useState<string[]>([]);
   const [challengeActionError, setChallengeActionError] = useState<string | null>(null);
   const [actingChallengeId, setActingChallengeId] = useState<string | null>(null);
-  const { data: onboarding, isLoading: loadingOnboarding } = useOnboardingState();
   const {
     data: profile,
     isLoading: loadingProfile,
     isError: profileError,
+    error: profileErrorData,
   } = useCompetitiveProfile();
   const eloHistoryQuery = useEloHistory(COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT);
   const skillRadarQuery = useSkillRadar();
@@ -55,7 +54,7 @@ export default function CompetitivePage() {
   const { data: matches, isLoading: loadingMatches, error: matchesError } = useMyMatches();
   const { data: pendingConfirmationsData } = usePendingConfirmations();
 
-  if (loadingOnboarding || loadingProfile) {
+  if (loadingProfile) {
     return (
       <>
         <PublicTopBar title="Competitivo" backHref="/" />
@@ -65,20 +64,22 @@ export default function CompetitivePage() {
   }
 
   if (profileError) {
+    // CITY_REQUIRED: the OnboardingGuard in layout will redirect.
+    // Show skeleton to avoid flashing an error state.
+    const status = (profileErrorData as { response?: { status?: number } } | null)?.response
+      ?.status;
+    if (status === 409) {
+      return (
+        <>
+          <PublicTopBar title="Competitivo" backHref="/" />
+          <CompetitivePageSkeleton />
+        </>
+      );
+    }
     return (
       <>
         <PublicTopBar title="Competitivo" backHref="/" />
         <CompetitiveErrorState />
-      </>
-    );
-  }
-
-  if (onboarding && !onboarding.onboardingComplete) {
-    router.replace('/competitive/onboarding');
-    return (
-      <>
-        <PublicTopBar title="Competitivo" backHref="/" />
-        <CompetitivePageSkeleton />
       </>
     );
   }

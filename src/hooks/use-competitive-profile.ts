@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 import {
   COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT,
   COMPETITIVE_RANKING_DEFAULT_LIMIT,
@@ -43,6 +44,11 @@ export function useCompetitiveProfile() {
     queryKey: ['competitive', 'profile'],
     queryFn: () => competitiveService.getMyProfile(),
     staleTime: 1000 * 60 * 5, // 5 min
+    retry: (failureCount, err) => {
+      // CITY_REQUIRED is a permanent gate — no point retrying
+      if (axios.isAxiosError(err) && err.response?.status === 409) return false;
+      return failureCount < 2;
+    },
   });
 }
 
