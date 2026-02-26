@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { Loader2, Mail } from 'lucide-react';
 import { requestReset } from '@/services/password-reset-service';
 import { toastManager } from '@/lib/toast';
+import { AuthCard } from '@/app/components/auth/auth-card';
 
-const SUCCESS_MESSAGE = 'Si el email existe, te enviamos un link de recuperacion.';
+const SUCCESS_MESSAGE = 'Si el email existe, te enviamos un link de recuperación.';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -33,27 +34,32 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-            <Mail className="h-7 w-7" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">Recuperar contrasena</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Ingresa tu email y te enviaremos un link para restablecerla.
-          </p>
+    <AuthCard backHref="/login">
+      <div className="mb-7 flex flex-col items-center text-center">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0E7C66]/10 text-[#0E7C66]">
+          <Mail className="h-6 w-6" />
         </div>
+        <h1 className="text-[22px] font-extrabold tracking-tight text-slate-900">
+          Recuperar contraseña
+        </h1>
+        <p className="mt-1.5 text-sm text-slate-500">
+          Ingresá tu email y te enviamos un link para restablecerla.
+        </p>
+      </div>
 
-        {submitted && (
-          <div className="mb-4 rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-700">
-            {SUCCESS_MESSAGE}
-          </div>
-        )}
+      {submitted && (
+        <div className="mb-5 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {SUCCESS_MESSAGE}
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Email
+          </label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
             <input
               type="email"
               required
@@ -61,26 +67,29 @@ export default function ForgotPasswordPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tuemail@mail.com"
-              className="w-full rounded-xl border border-slate-200 p-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-[#0E7C66] focus:bg-white focus:ring-2 focus:ring-[#0E7C66]/10"
             />
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-3 font-semibold text-white hover:bg-slate-800 disabled:opacity-70"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Enviar link de recuperacion
-          </button>
-        </form>
-
-        <div className="mt-5 text-center text-sm">
-          <Link href="/login" className="font-medium text-slate-600 hover:text-slate-900">
-            Volver a iniciar sesion
-          </Link>
         </div>
-      </div>
-    </div>
+
+        <button
+          type="submit"
+          disabled={loading || submitted}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0E7C66] text-sm font-semibold text-white transition-all hover:bg-[#0A6657] hover:shadow-md active:shadow-none disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          Enviar link de recuperación
+        </button>
+      </form>
+
+      <p className="mt-7 text-center text-sm text-slate-500">
+        <Link
+          href="/login"
+          className="font-medium text-slate-500 transition-colors hover:text-slate-900"
+        >
+          Volver a iniciar sesión
+        </Link>
+      </p>
+    </AuthCard>
   );
 }
