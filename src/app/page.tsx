@@ -1,297 +1,72 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Search, MapPin, Loader2, RefreshCw, AlertTriangle, Trophy, Users, Swords, Bell } from 'lucide-react';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { toastManager } from '@/lib/toast';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 
-import { Club } from '@/types';
-import ClubCard from '@/app/components/club-card';
-import { PlayerService } from '@/services/player-service';
-import { CompetitiveQuickLinks } from './components/competitive/competitive-quick-links';
-
-function ClubCardSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <div className="h-44 w-full animate-pulse bg-slate-100" />
-      <div className="p-4">
-        <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100" />
-        <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-slate-100" />
-        <div className="mt-6 h-10 w-full animate-pulse rounded-xl bg-slate-100" />
-      </div>
-    </div>
-  );
-}
-
+/**
+ * Home page — canonical route for "/".
+ *
+ * Behaviour:
+ * - Authenticated (hydrated + user set): silently redirect to /competitive.
+ * - Not authenticated: show minimal DS v1 landing with Login / Register CTAs.
+ *
+ * SSR-safe: no window/document access during render; redirect fires only in
+ * a client-side useEffect after auth hydration completes.
+ */
 export default function HomePage() {
-  const [query, setQuery] = useState('');
-  const [clubs, setClubs] = useState<Club[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [hasLoaded, setHasLoaded] = useState(false);
-  const { user } = useAuthStore();
-  const isAuthed = Boolean(user?.userId);
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const hydrated = useAuthStore((s) => s.hydrated);
 
-  const loadFeatured = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await PlayerService.listClubs();
-      setClubs(data ?? []);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-      const msg =
-        e?.response?.data?.message ||
-        e?.message ||
-        'No pudimos cargar los clubes.';
-      setError(msg);
-      setClubs([]);
-      toastManager.error('No pudimos cargar los clubes', {
-        idempotencyKey: 'clubs-load-error',
-      });
-    } finally {
-      setHasLoaded(true);
-      setLoading(false);
-    }
-  };
-
+  // Once AuthBootstrap resolves the session, redirect authenticated users.
   useEffect(() => {
-    loadFeatured();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleSearch = async (searchTerm: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await PlayerService.searchClubs(searchTerm);
-      setClubs(data ?? []);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-      const msg =
-        e?.response?.data?.message ||
-        e?.message ||
-        'No pudimos buscar clubes.';
-      setError(msg);
-      setClubs([]);
-      toastManager.error('No pudimos buscar clubes', {
-        idempotencyKey: 'clubs-search-error',
-      });
-    } finally {
-      setHasLoaded(true);
-      setLoading(false);
+    if (hydrated && user?.userId) {
+      router.replace('/competitive');
     }
-  };
-
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleSearch(query.trim());
-  };
-
-  const isSearching = query.trim().length > 0;
+  }, [hydrated, user, router]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Navbar */}
-      <nav className="border-b border-slate-200 bg-white sticky top-0 z-40">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">
-              P
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900">PadelPoint</span>
+    <div className="flex min-h-dvh flex-col bg-white">
+      {/* ── Center content ── */}
+      <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+        {/* Brand mark */}
+        <div className="mb-8">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#0E7C66] text-white shadow-sm">
+            <span className="text-3xl font-black leading-none">P</span>
           </div>
-          <div className="flex items-center gap-3">
-            {isAuthed ? (
-              <Link
-                href="/me/profile"
-                className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-600"
-              >
-                Mi cuenta
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="text-sm font-medium text-slate-700 hover:text-slate-900"
-                >
-                  Iniciar sesión
-                </Link>
-                <Link
-                  href="/register"
-                  className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-700"
-                >
-                  Registrarse
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
-
-      {/* Hero */}
-      <div className="relative overflow-hidden bg-slate-900 py-24 sm:py-32">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-blue-500 blur-3xl mix-blend-multiply filter" />
-          <div className="absolute top-24 -right-24 h-96 w-96 rounded-full bg-purple-500 blur-3xl mix-blend-multiply filter" />
-        </div>
-
-        <div className="relative mx-auto max-w-7xl px-6 lg:px-8 text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl mb-6">
-            Tu cancha, <span className="text-blue-400">al toque.</span>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+            Padel<span className="text-[#0E7C66]">Point</span>
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300 mb-10">
-            Encontrá y reservá canchas de pádel en tu ciudad en segundos. Sin llamadas, sin esperas.
+          <p className="mx-auto mt-2 max-w-[22ch] text-sm leading-relaxed text-slate-500">
+            Pádel competitivo. ELO, ligas y desafíos entre amigos.
           </p>
-
-          <form onSubmit={onSubmit} className="mx-auto max-w-2xl relative">
-            <div className="relative flex items-center">
-              <Search className="absolute left-4 h-6 w-6 text-slate-400" />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar por nombre, club o ciudad..."
-                className="h-14 w-full rounded-full border-0 bg-white pl-12 pr-32 text-slate-900 shadow-xl ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-lg"
-              />
-              <button
-                type="submit"
-                disabled={loading}
-                className="absolute right-2 top-2 bottom-2 rounded-full bg-blue-600 px-6 font-bold text-white hover:bg-blue-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Buscando
-                  </>
-                ) : (
-                  'Buscar'
-                )}
-              </button>
-            </div>
-          </form>
-          <CompetitiveQuickLinks />
-          {isSearching && (
-            <button
-              type="button"
-              onClick={() => {
-                setQuery('');
-                loadFeatured();
-              }}
-              className="mt-4 text-sm text-slate-300 hover:text-white underline underline-offset-4"
-            >
-              Limpiar búsqueda
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Quick Actions — Logged in */}
-      {isAuthed && (
-        <div className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
-          <h2 className="mb-4 text-lg font-bold text-slate-900">Acceso rápido</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Link
-              href="/competitive"
-              className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:shadow-md hover:border-slate-300"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                <Trophy size={20} />
-              </div>
-              <span className="text-sm font-medium text-slate-700">Competitivo</span>
-            </Link>
-            <Link
-              href="/leagues"
-              className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:shadow-md hover:border-slate-300"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                <Users size={20} />
-              </div>
-              <span className="text-sm font-medium text-slate-700">Mis ligas</span>
-            </Link>
-            <Link
-              href="/competitive/challenges"
-              className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:shadow-md hover:border-slate-300"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-600">
-                <Swords size={20} />
-              </div>
-              <span className="text-sm font-medium text-slate-700">Desafíos</span>
-            </Link>
-            <Link
-              href="/notifications"
-              className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:shadow-md hover:border-slate-300"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-                <Bell size={20} />
-              </div>
-              <span className="text-sm font-medium text-slate-700">Alertas</span>
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {/* Results */}
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-            {isSearching ? `Resultados para "${query.trim()}"` : 'Clubes Destacados'}
-          </h2>
-          {loading && hasLoaded && <Loader2 className="animate-spin text-blue-600" />}
         </div>
 
-        {/* First-load skeletons */}
-        {loading && !hasLoaded && (
-          <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <ClubCardSkeleton key={i} />
-            ))}
-          </div>
-        )}
+        {/* Primary CTAs */}
+        <div className="flex w-full max-w-xs flex-col gap-3">
+          <Link
+            href="/login"
+            className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#0E7C66] text-sm font-semibold text-white transition-colors hover:bg-[#065F46] focus:outline-none focus:ring-2 focus:ring-[#0E7C66]/30 active:scale-[0.98]"
+          >
+            Iniciar sesión
+          </Link>
+          <Link
+            href="/register"
+            className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300/40 active:scale-[0.98]"
+          >
+            Crear cuenta
+          </Link>
+        </div>
+      </main>
 
-        {/* Error */}
-        {!loading && error && (
-          <div className="text-center py-14 bg-white rounded-3xl border border-dashed border-slate-300">
-            <AlertTriangle className="mx-auto h-12 w-12 text-amber-500 mb-4" />
-            <h3 className="text-lg font-medium text-slate-900">
-              No pudimos {isSearching ? 'buscar' : 'cargar'} los clubes
-            </h3>
-            <p className="text-slate-500 mt-1 max-w-xl mx-auto">{error}</p>
-            <button
-              onClick={() => (isSearching ? handleSearch(query.trim()) : loadFeatured())}
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-600 transition-colors"
-            >
-              <RefreshCw size={16} />
-              Reintentar
-            </button>
-          </div>
-        )}
-
-        {/* Results */}
-        {!loading && !error && clubs.length > 0 && (
-          <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
-            {clubs.map((club) => (
-              <ClubCard key={club.id} club={club} />
-            ))}
-          </div>
-        )}
-
-        {/* Empty */}
-        {!loading && !error && hasLoaded && clubs.length === 0 && (
-          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-300">
-            <MapPin className="mx-auto h-12 w-12 text-slate-300 mb-4" />
-            <h3 className="text-lg font-medium text-slate-900">
-              {isSearching ? 'No encontramos clubes' : 'Todavía no hay clubes para mostrar'}
-            </h3>
-            <p className="text-slate-500">
-              {isSearching
-                ? 'Probá buscando con otro nombre o en otra ciudad.'
-                : 'Cuando haya clubes cargados, van a aparecer acá.'}
-            </p>
-          </div>
-        )}
-      </div>
+      {/* ── Minimal footer ── */}
+      <footer className="pb-8 text-center">
+        <p className="text-[11px] text-slate-400">
+          © {new Date().getFullYear()} PadelPoint
+        </p>
+      </footer>
     </div>
   );
 }
