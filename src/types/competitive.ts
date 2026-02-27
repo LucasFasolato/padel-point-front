@@ -195,6 +195,8 @@ export interface RankingEntry {
 export interface RankingResponse {
   items: RankingEntry[];
   nextCursor: string | null;
+  /** Present when backend returns page-based pagination instead of cursor-based. */
+  meta?: { page: number; pageSize: number; total: number };
 }
 
 export interface RankingQueryParams {

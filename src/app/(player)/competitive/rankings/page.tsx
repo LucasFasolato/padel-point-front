@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import { AlertTriangle, BarChart2 } from 'lucide-react';
+import { BarChart2, MapPin } from 'lucide-react';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { useRankings } from '@/hooks/use-rankings';
@@ -73,31 +73,45 @@ function CategorySelector({
   );
 }
 
-// ─── Error banner ─────────────────────────────────────────────────────────────
+// ─── Geo required banner ──────────────────────────────────────────────────────
 
 function GeoRequiredBanner({
   scope,
-  onGoToProfile,
+  onCompleteLocation,
+  onEditProfile,
 }: {
   scope: RankingScope;
-  onGoToProfile: () => void;
+  onCompleteLocation: () => void;
+  onEditProfile: () => void;
 }) {
   const msg =
     scope === 'city'
-      ? 'Necesitás tener una ciudad configurada para ver el ranking local.'
-      : 'Necesitás tener una provincia configurada para ver el ranking provincial.';
+      ? 'Necesitás una ciudad configurada para ver el ranking local.'
+      : 'Necesitás una provincia configurada para ver el ranking provincial.';
 
   return (
-    <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
-      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
-      <div className="flex-1">
-        <p className="text-sm font-semibold text-amber-900">{msg}</p>
+    <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 px-4 py-5">
+      <div className="flex items-start gap-3">
+        <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-[#0E7C66]" />
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-slate-900">Configurá tu ubicación</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{msg}</p>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-col gap-2.5">
         <button
           type="button"
-          onClick={onGoToProfile}
-          className="mt-2 text-xs font-bold text-amber-700 underline underline-offset-2"
+          onClick={onCompleteLocation}
+          className="min-h-[44px] w-full rounded-xl bg-[#0E7C66] px-4 py-3 text-sm font-semibold text-white transition-opacity active:opacity-80"
         >
-          Actualizar mi perfil
+          Completar ubicación
+        </button>
+        <button
+          type="button"
+          onClick={onEditProfile}
+          className="min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 active:bg-slate-100"
+        >
+          Editar perfil
         </button>
       </div>
     </div>
@@ -199,7 +213,8 @@ export default function RankingsPage() {
         {showGeoRequiredBanner && (
           <GeoRequiredBanner
             scope={effectiveScope}
-            onGoToProfile={() => router.push('/me/profile')}
+            onCompleteLocation={() => router.push('/competitive/onboarding')}
+            onEditProfile={() => router.push('/me/profile')}
           />
         )}
 

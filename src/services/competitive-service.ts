@@ -190,7 +190,7 @@ export const competitiveService = {
       queryParams.cursor = params.cursor;
     }
 
-    const { data } = await api.get('/competitive/ranking', {
+    const { data } = await api.get('/rankings', {
       params: queryParams,
     });
     return normalizeRankingResponse(data);
