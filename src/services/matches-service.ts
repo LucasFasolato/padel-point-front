@@ -66,6 +66,14 @@ export const matchesService = {
   },
 
   /**
+   * Obtener todos los partidos del usuario autenticado (GET /matches/me)
+   */
+  async getMyMatches(): Promise<MatchResult[]> {
+    const { data } = await api.get('/matches/me');
+    return Array.isArray(data) ? data : [];
+  },
+
+  /**
    * Obtener match por challenge
    */
   async getByChallenge(challengeId: string): Promise<MatchResult | null> {

@@ -116,7 +116,11 @@ export interface MatchResult {
   leagueId?: string | null;
   playedAt: string;
   source?: MatchSource;
-  
+  /** COMPETITIVE = affects ranking; FRIENDLY = personal record only */
+  matchType?: MatchType;
+  /** Backend-denormalised flag: whether this match did/will impact ELO */
+  impactRanking?: boolean;
+
   // Sets
   teamASet1: number;
   teamBSet1: number;
@@ -152,15 +156,16 @@ export interface MatchView {
   status: MatchResultStatus;
   winnerTeam: WinnerTeam;
   eloApplied: boolean;
-  
+  matchType?: MatchType;
+
   // Participantes (derivado de challenge)
   opponent: UserBasic;
   partner: UserBasic | null;
-  
+
   // Resultado para mí
   isWin: boolean;
   eloChange: number | null;
-  
+
   createdAt: string;
 }
 

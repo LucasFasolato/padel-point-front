@@ -96,6 +96,7 @@ export function useMyMatches() {
       status: match.status,
       winnerTeam: match.winnerTeam,
       eloApplied: match.eloApplied,
+      matchType: match.matchType ?? challenge.matchType,
       opponent,
       partner,
       isWin,
@@ -110,6 +111,22 @@ export function useMyMatches() {
     error: matchesQuery.error,
     isAuthed,
   };
+}
+
+/**
+ * Fetches all matches for the current user via GET /matches/me.
+ * Returns raw MatchResult[] sorted most-recent first.
+ */
+export function useMatchResultsList() {
+  const user = useAuthStore((s) => s.user);
+
+  return useQuery({
+    queryKey: ['matches', 'list'],
+    queryFn: () => matchesService.getMyMatches(),
+    enabled: !!user?.userId,
+    staleTime: 1000 * 60 * 2,
+    retry: false,
+  });
 }
 
 export function usePendingConfirmations() {

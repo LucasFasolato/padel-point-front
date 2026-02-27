@@ -1,203 +1,399 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { format, isPast, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { MapPin, Clock, Trophy, Loader2 } from 'lucide-react';
-import api from '@/lib/api';
-import { Reservation } from '@/types';
-import Link from 'next/link';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/app/components/ui/button';
+import { format, formatDistanceToNow, isSameMonth, parseISO, startOfMonth } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { Loader2 } from 'lucide-react';
+import { PublicTopBar } from '@/app/components/public/public-topbar';
+import { Skeleton } from '@/app/components/ui/skeleton';
+import { useMatchResultsList } from '@/hooks/use-matches';
+import { useAuthStore } from '@/store/auth-store';
+import type { MatchResult, MatchType } from '@/types/competitive';
+import { MatchResultStatus } from '@/types/competitive';
+import { cn } from '@/lib/utils';
 
-export default function MyMatchesPage() {
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [loading, setLoading] = useState(true);
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    const fetchMatches = async () => {
-      try {
-        const res = await api.get('/reservations/mine');
-        setReservations(res.data);
-      } catch (e) {
-        console.error('Failed to load matches');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchMatches();
-  }, []);
+type TypeFilter = 'all' | 'COMPETITIVE' | 'FRIENDLY';
 
-  const upcoming = reservations.filter(
-    (r) => !isPast(parseISO(r.endAt)) && r.status !== 'cancelled'
+const STATUS_LABEL: Record<string, string> = {
+  [MatchResultStatus.PENDING_CONFIRM]: 'Pendiente',
+  [MatchResultStatus.CONFIRMED]: 'Confirmado',
+  [MatchResultStatus.REJECTED]: 'Rechazado',
+  [MatchResultStatus.DISPUTED]: 'En disputa',
+  [MatchResultStatus.RESOLVED]: 'Resuelto',
+};
+
+const STATUS_CLASS: Record<string, string> = {
+  [MatchResultStatus.PENDING_CONFIRM]: 'bg-amber-100 text-amber-800',
+  [MatchResultStatus.CONFIRMED]: 'bg-emerald-100 text-emerald-700',
+  [MatchResultStatus.REJECTED]: 'bg-red-100 text-red-700',
+  [MatchResultStatus.DISPUTED]: 'bg-amber-100 text-amber-800',
+  [MatchResultStatus.RESOLVED]: 'bg-blue-100 text-blue-700',
+};
+
+function buildScore(m: MatchResult): string {
+  const sets = [
+    `${m.teamASet1}-${m.teamBSet1}`,
+    `${m.teamASet2}-${m.teamBSet2}`,
+  ];
+  if (m.teamASet3 !== null && m.teamBSet3 !== null) {
+    sets.push(`${m.teamASet3}-${m.teamBSet3}`);
+  }
+  return sets.join('  ');
+}
+
+function resolveMatchType(m: MatchResult): MatchType | undefined {
+  return m.matchType ?? m.challenge?.matchType;
+}
+
+function isImpactingElo(m: MatchResult): boolean {
+  const mt = resolveMatchType(m);
+  if (mt === 'COMPETITIVE') return true;
+  if (mt === 'FRIENDLY') return false;
+  return m.impactRanking ?? m.eloApplied;
+}
+
+// ─── sub-components ──────────────────────────────────────────────────────────
+
+function TypeBadge({ matchType }: { matchType?: MatchType }) {
+  if (!matchType) return null;
+  return matchType === 'COMPETITIVE' ? (
+    <span className="inline-flex items-center rounded-full bg-[#0E7C66]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#0E7C66]">
+      Competitivo
+    </span>
+  ) : (
+    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+      Amistoso
+    </span>
   );
-  const history = reservations.filter(
-    (r) => isPast(parseISO(r.endAt)) || r.status === 'cancelled'
-  );
+}
 
-  const displayed = activeTab === 'upcoming' ? upcoming : history;
-
+function FilterPill({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="p-6">
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">Mis Partidos</h1>
+    <button
+      onClick={onClick}
+      className={cn(
+        'min-h-[36px] shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-all',
+        active
+          ? 'bg-[#0E7C66] text-white shadow-sm'
+          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
-      {/* Tabs */}
-      <div className="relative mb-6 flex rounded-xl bg-slate-100 p-1">
-        <div
-          className="absolute inset-y-1 w-1/2 rounded-lg bg-white shadow-sm transition-all duration-300 ease-out"
-          style={{ left: activeTab === 'upcoming' ? '4px' : '50%' }}
-        />
-        <button
-          onClick={() => setActiveTab('upcoming')}
-          className={`relative z-10 flex-1 py-2.5 text-center text-sm font-bold transition-colors ${
-            activeTab === 'upcoming' ? 'text-slate-900' : 'text-slate-500'
-          }`}
-        >
-          Próximos ({upcoming.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`relative z-10 flex-1 py-2.5 text-center text-sm font-bold transition-colors ${
-            activeTab === 'history' ? 'text-slate-900' : 'text-slate-500'
-          }`}
-        >
-          Historial ({history.length})
-        </button>
-      </div>
-
-      {/* List */}
-      <div className="space-y-4">
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="animate-spin text-slate-400" />
-          </div>
-        ) : displayed.length === 0 ? (
-          <div className="py-10 text-center">
-            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-2xl">
-              🎾
-            </div>
-            <p className="font-medium text-slate-500">
-              No tienes partidos en esta lista.
-            </p>
-            {activeTab === 'upcoming' && (
-              <Link
-                href="/"
-                className="mt-2 block font-bold text-blue-600 hover:underline"
-              >
-                Reservar una cancha
-              </Link>
-            )}
-          </div>
-        ) : (
-          <AnimatePresence mode="popLayout">
-            {displayed.map((res) => (
-              <motion.div
-                key={res.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-              >
-                <MatchCard reservation={res} showCompetitiveButton={activeTab === 'history'} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        )}
-      </div>
+function MatchListSkeleton() {
+  return (
+    <div className="space-y-3 px-4">
+      {[1, 2, 3, 4].map((i) => (
+        <Skeleton key={i} className="h-[88px] w-full rounded-2xl" />
+      ))}
     </div>
   );
 }
 
-// Sub-component
-function MatchCard({
-  reservation,
-  showCompetitiveButton = false,
-}: {
-  reservation: Reservation;
-  showCompetitiveButton?: boolean;
-}) {
+function EmptyState({ typeFilter }: { typeFilter: TypeFilter }) {
   const router = useRouter();
-  const date = parseISO(reservation.startAt);
-  const isPastReservation = isPast(parseISO(reservation.endAt));
-  const isConfirmed = reservation.status === 'confirmed';
-  
-  const statusColors = {
-    confirmed: 'bg-green-100 text-green-700',
-    hold: 'bg-amber-100 text-amber-700',
-    cancelled: 'bg-red-50 text-red-500 line-through opacity-70',
-  };
-
-  const handleCompetitiveClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    router.push(`/competitive/challenges/new?reservationId=${reservation.id}`);
-  };
+  const label =
+    typeFilter === 'COMPETITIVE'
+      ? 'No tenés partidos competitivos.'
+      : typeFilter === 'FRIENDLY'
+        ? 'No tenés partidos amistosos.'
+        : 'Todavía no jugaste ningún partido.';
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-shadow hover:shadow-md">
-      <Link href={`/checkout/success/${reservation.id}`}>
-        <div className="p-4">
-          {/* Header */}
-          <div className="mb-3 flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              {/* Date Box */}
-              <div className="flex h-12 w-12 flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50">
-                <span className="text-[10px] font-bold uppercase text-slate-400">
-                  {format(date, 'MMM', { locale: es })}
-                </span>
-                <span className="text-lg font-bold leading-none text-slate-900">
-                  {format(date, 'd')}
-                </span>
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900">
-                  {reservation.court?.club?.nombre || 'Club Padel'}
-                </h3>
-                <p className="text-xs text-slate-500">{reservation.court?.nombre}</p>
-              </div>
-            </div>
+    <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
+        🎾
+      </div>
+      <p className="font-semibold text-slate-700">{label}</p>
+      <p className="mt-1 text-sm text-slate-500">Buscá un rival y empezá a jugar.</p>
+      <button
+        onClick={() => router.push('/competitive/find')}
+        className="mt-5 min-h-[44px] rounded-xl bg-[#0E7C66] px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#0A6657]"
+      >
+        Buscar partido
+      </button>
+    </div>
+  );
+}
 
+function MatchRow({
+  match,
+  myUserId,
+  onClick,
+}: {
+  match: MatchResult;
+  myUserId: string;
+  onClick: () => void;
+}) {
+  // Determine which team the current user is on
+  const inTeamA = (match.teamA ?? []).some((p) => p.userId === myUserId);
+  const inTeamB = (match.teamB ?? []).some((p) => p.userId === myUserId);
+  const inChallengeTeamA =
+    match.challenge?.teamA.p1.userId === myUserId ||
+    match.challenge?.teamA.p2?.userId === myUserId;
+  const effectiveIsTeamA = (match.teamA?.length ?? 0) > 0 ? inTeamA : inChallengeTeamA;
+
+  // Opponent names
+  let opponentNames = 'Oponente';
+  if (match.teamA?.length || match.teamB?.length) {
+    const opp = effectiveIsTeamA ? (match.teamB ?? []) : (match.teamA ?? []);
+    if (opp.length) opponentNames = opp.map((p) => p.displayName).join(' / ');
+  } else if (match.challenge) {
+    if (effectiveIsTeamA) {
+      opponentNames = [
+        match.challenge.teamB.p1?.displayName,
+        match.challenge.teamB.p2?.displayName,
+      ]
+        .filter(Boolean)
+        .join(' / ');
+    } else {
+      opponentNames = [
+        match.challenge.teamA.p1.displayName,
+        match.challenge.teamA.p2?.displayName,
+      ]
+        .filter(Boolean)
+        .join(' / ');
+    }
+  }
+
+  // Partner name
+  const myTeam = effectiveIsTeamA ? (match.teamA ?? []) : (match.teamB ?? []);
+  const partner = myTeam.find((p) => p.userId !== myUserId)?.displayName;
+
+  const isPending = match.status === MatchResultStatus.PENDING_CONFIRM;
+  const isWin =
+    !isPending &&
+    ((effectiveIsTeamA && match.winnerTeam === 'A') ||
+      (!effectiveIsTeamA && match.winnerTeam === 'B'));
+  const isLoss = !isPending && !isWin;
+
+  const score = buildScore(match);
+  const matchType = resolveMatchType(match);
+  const impactsElo = isImpactingElo(match);
+  const eloApplied = match.status === MatchResultStatus.CONFIRMED && match.eloApplied;
+
+  const resultLabel = isPending ? '·' : isWin ? 'G' : 'P';
+  const resultClass = isPending
+    ? 'bg-amber-50 text-amber-500'
+    : isWin
+      ? 'bg-emerald-50 text-emerald-600'
+      : 'bg-rose-50 text-rose-600';
+
+  const statusLabel = STATUS_LABEL[match.status] ?? match.status;
+  const statusClass = STATUS_CLASS[match.status] ?? 'bg-slate-100 text-slate-600';
+
+  // suppress unused
+  void inTeamB;
+  void isLoss;
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all active:scale-[0.98] hover:shadow-md hover:border-[#0E7C66]/15 text-left"
+    >
+      <div className="flex items-start gap-3">
+        {/* Result pill */}
+        <div
+          className={cn(
+            'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-black',
+            resultClass
+          )}
+        >
+          {resultLabel}
+        </div>
+
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          {/* Row 1: opponent + status badge */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate font-bold text-slate-900">vs. {opponentNames}</p>
+              {partner && (
+                <p className="truncate text-xs text-slate-500">Con {partner}</p>
+              )}
+            </div>
             <span
-              className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase ${
-                statusColors[reservation.status] || 'bg-slate-100'
-              }`}
+              className={cn(
+                'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold',
+                statusClass
+              )}
             >
-              {reservation.status === 'confirmed' ? 'Confirmado' : reservation.status}
+              {statusLabel}
             </span>
           </div>
 
-          {/* Info */}
-          <div className="flex items-center gap-4 pl-1 text-sm text-slate-600">
-            <div className="flex items-center gap-1.5">
-              <Clock size={16} className="text-blue-500" />
-              <span className="font-semibold">{format(date, 'HH:mm')} hs</span>
-            </div>
-            {reservation.court?.club?.direccion && (
-              <div className="flex items-center gap-1.5 overflow-hidden">
-                <MapPin size={16} className="shrink-0 text-slate-400" />
-                <span className="truncate">{reservation.court.club.direccion}</span>
-              </div>
+          {/* Row 2: score */}
+          <p className="mt-1 font-mono text-sm font-semibold text-slate-600">{score}</p>
+
+          {/* Row 3: type badge + elo indicator + time */}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <TypeBadge matchType={matchType} />
+            {eloApplied && (
+              <span
+                className={cn(
+                  'text-[10px] font-semibold',
+                  impactsElo ? 'text-[#0E7C66]' : 'text-slate-400'
+                )}
+              >
+                {impactsElo ? '● Impactó ELO' : '● Sin impacto ELO'}
+              </span>
             )}
+            <span className="ml-auto text-[10px] text-slate-400">
+              {formatDistanceToNow(parseISO(match.playedAt), {
+                addSuffix: true,
+                locale: es,
+              })}
+            </span>
           </div>
         </div>
-      </Link>
+      </div>
+    </button>
+  );
+}
 
-      {/* Botón de desafío competitivo */}
-      {showCompetitiveButton && isPastReservation && isConfirmed && (
-        <div className="border-t border-slate-100 bg-gradient-to-br from-blue-50 to-purple-50 p-3">
-          <Button
-            onClick={handleCompetitiveClick}
-            variant="outline"
-            size="sm"
-            className="w-full gap-2 border-2 border-blue-200 bg-white font-semibold text-blue-700 hover:border-blue-300 hover:bg-blue-50"
-          >
-            <Trophy size={16} />
-            Reportar como partido competitivo
-          </Button>
-        </div>
-      )}
+function MonthFilter({
+  months,
+  selected,
+  onSelect,
+}: {
+  months: Date[];
+  selected: Date | null;
+  onSelect: (m: Date | null) => void;
+}) {
+  if (months.length <= 1) return null;
+  return (
+    <div className="flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none">
+      <FilterPill active={selected === null} onClick={() => onSelect(null)}>
+        Todos los meses
+      </FilterPill>
+      {months.map((m) => {
+        const label = format(m, 'MMM yy', { locale: es });
+        const isActive = selected !== null && isSameMonth(m, selected);
+        return (
+          <FilterPill key={m.toISOString()} active={isActive} onClick={() => onSelect(m)}>
+            {label.charAt(0).toUpperCase() + label.slice(1)}
+          </FilterPill>
+        );
+      })}
     </div>
+  );
+}
+
+// ─── page ─────────────────────────────────────────────────────────────────────
+
+export default function MyMatchesPage() {
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const { data: matches, isLoading, isError, refetch } = useMatchResultsList();
+
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [monthFilter, setMonthFilter] = useState<Date | null>(null);
+
+  const months = useMemo(() => {
+    if (!matches?.length) return [];
+    const seen = new Set<string>();
+    const result: Date[] = [];
+    const sorted = [...matches].sort(
+      (a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime()
+    );
+    for (const m of sorted) {
+      const key = format(parseISO(m.playedAt), 'yyyy-MM');
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(startOfMonth(parseISO(m.playedAt)));
+      }
+    }
+    return result;
+  }, [matches]);
+
+  const filtered = useMemo(() => {
+    let list = matches ?? [];
+    list = [...list].sort(
+      (a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime()
+    );
+    if (typeFilter !== 'all') {
+      list = list.filter((m) => resolveMatchType(m) === typeFilter);
+    }
+    if (monthFilter !== null) {
+      list = list.filter((m) => isSameMonth(parseISO(m.playedAt), monthFilter));
+    }
+    return list;
+  }, [matches, typeFilter, monthFilter]);
+
+  return (
+    <>
+      <PublicTopBar title="Mis Partidos" backHref="/competitive" />
+
+      <div className="pb-6 pt-4">
+        {/* Type filter pills */}
+        <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-none">
+          <FilterPill active={typeFilter === 'all'} onClick={() => setTypeFilter('all')}>
+            Todos
+          </FilterPill>
+          <FilterPill
+            active={typeFilter === 'COMPETITIVE'}
+            onClick={() => setTypeFilter('COMPETITIVE')}
+          >
+            Competitivo
+          </FilterPill>
+          <FilterPill
+            active={typeFilter === 'FRIENDLY'}
+            onClick={() => setTypeFilter('FRIENDLY')}
+          >
+            Amistoso
+          </FilterPill>
+        </div>
+
+        {/* Month filter (only shown when matches span multiple months) */}
+        {!isLoading && !isError && (
+          <MonthFilter months={months} selected={monthFilter} onSelect={setMonthFilter} />
+        )}
+
+        {/* Content */}
+        {isLoading ? (
+          <div className="mt-3">
+            <MatchListSkeleton />
+          </div>
+        ) : isError ? (
+          <div className="mt-10 flex flex-col items-center gap-4 px-6 text-center">
+            <p className="text-sm text-slate-500">No pudimos cargar tus partidos.</p>
+            <button
+              onClick={() => refetch()}
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-slate-700 transition-all hover:bg-slate-50"
+            >
+              <Loader2 className="animate-spin" size={14} />
+              Reintentar
+            </button>
+          </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState typeFilter={typeFilter} />
+        ) : (
+          <div className="mt-3 space-y-3 px-4">
+            {filtered.map((m) => (
+              <MatchRow
+                key={m.id}
+                match={m}
+                myUserId={user?.userId ?? ''}
+                onClick={() => router.push(`/matches/${m.id}`)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
