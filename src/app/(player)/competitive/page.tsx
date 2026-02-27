@@ -10,8 +10,8 @@ import {
   useEloHistory,
   useSkillRadar,
 } from '@/hooks/use-competitive-profile';
-import { useChallengeActions, useChallengesInbox } from '@/hooks/use-challenges';
-import { usePendingConfirmations } from '@/hooks/use-matches';
+import { useChallengeActions } from '@/hooks/use-challenges';
+import { useIntents } from '@/hooks/use-intents';
 import { CategoryBadge } from '@/app/components/competitive/category-badge';
 import { EloChart } from '@/app/components/competitive/elo-chart';
 import { ActivityFeed } from '@/app/components/competitive/activity-feed';
@@ -23,13 +23,11 @@ import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT } from '@/lib/competitive-constants';
 import { formatEloChange, getEloHistoryReasonLabel } from '@/lib/competitive-utils';
 import { cn } from '@/lib/utils';
-import type { Challenge, EloHistoryPoint, MatchResult } from '@/types/competitive';
-
-const CHALLENGES_LIMIT = 5;
+import type { EloHistoryPoint, UserIntent } from '@/types/competitive';
 
 export default function CompetitivePage() {
   const router = useRouter();
-  const [hiddenChallengeIds, setHiddenChallengeIds] = useState<string[]>([]);
+  const [hiddenIntentIds, setHiddenIntentIds] = useState<string[]>([]);
   const [challengeActionError, setChallengeActionError] = useState<string | null>(null);
   const [actingChallengeId, setActingChallengeId] = useState<string | null>(null);
   const [chartOpen, setChartOpen] = useState(true);
@@ -42,9 +40,8 @@ export default function CompetitivePage() {
   } = useCompetitiveProfile();
   const eloHistoryQuery = useEloHistory(COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT);
   const skillRadarQuery = useSkillRadar();
-  const inboxQuery = useChallengesInbox(CHALLENGES_LIMIT);
+  const intentsQuery = useIntents();
   const { acceptDirect, rejectDirect } = useChallengeActions();
-  const pendingConfirmationsQuery = usePendingConfirmations();
 
   if (loadingProfile) {
     return (
@@ -84,11 +81,8 @@ export default function CompetitivePage() {
     );
   }
 
-  const pendingConfirmations = (
-    Array.isArray(pendingConfirmationsQuery.data) ? pendingConfirmationsQuery.data : []
-  ).filter((m) => m?.id); // skip malformed items with no id
-  const pendingChallenges = (inboxQuery.data ?? []).filter(
-    (c) => c.status === 'pending' && !hiddenChallengeIds.includes(c.id)
+  const renderableIntents = intentsQuery.items.filter(
+    (intent) => !hiddenIntentIds.includes(intent.id) && isRenderableIntent(intent)
   );
   const eloHistory = eloHistoryQuery.data?.items ?? [];
   const latestEloPoint = eloHistory.length > 0 ? eloHistory[0] : null;
@@ -101,21 +95,24 @@ export default function CompetitivePage() {
   const peakElo = profile.peakElo ?? profile.elo;
 
   const hasActivity =
-    pendingConfirmationsQuery.isLoading ||
-    pendingConfirmationsQuery.isError ||
-    pendingConfirmations.length > 0 ||
-    pendingChallenges.length > 0 ||
+    intentsQuery.isLoading ||
+    intentsQuery.isError ||
+    renderableIntents.length > 0 ||
     recentEloEvents.length > 0;
 
-  const handleChallengeAction = async (action: 'accept' | 'reject', challengeId: string) => {
+  const handleChallengeAction = async (
+    action: 'accept' | 'reject',
+    challengeId: string,
+    intentId: string
+  ) => {
     setChallengeActionError(null);
     setActingChallengeId(challengeId);
-    setHiddenChallengeIds((prev) => (prev.includes(challengeId) ? prev : [...prev, challengeId]));
+    setHiddenIntentIds((prev) => (prev.includes(intentId) ? prev : [...prev, intentId]));
     try {
       if (action === 'accept') await acceptDirect.mutateAsync(challengeId);
       else await rejectDirect.mutateAsync(challengeId);
     } catch {
-      setHiddenChallengeIds((prev) => prev.filter((id) => id !== challengeId));
+      setHiddenIntentIds((prev) => prev.filter((id) => id !== intentId));
       setChallengeActionError('No pudimos actualizar el desafío. Reintentá.');
     } finally {
       setActingChallengeId(null);
@@ -183,73 +180,58 @@ export default function CompetitivePage() {
               <h2 className="text-sm font-bold text-slate-900">Actividad reciente</h2>
             </div>
 
-            {/* Pending confirmations — resilient: skeleton / error / empty / items */}
-            {pendingConfirmationsQuery.isLoading ? (
+            {/* Unified intents: confirmations + challenge invites */}
+            {intentsQuery.isLoading ? (
               <div>
                 <div className="bg-amber-50/80 px-5 py-2">
                   <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
                     <CheckCircle2 size={12} />
-                    Resultados por confirmar
+                    Desafíos
                   </p>
                 </div>
                 <div className="px-5 py-3">
                   <Skeleton className="h-16 w-full rounded-xl" />
                 </div>
               </div>
-            ) : pendingConfirmationsQuery.isError ? (
-              <PendingConfirmationsErrorCard
-                onRetry={() => pendingConfirmationsQuery.refetch()}
-              />
-            ) : pendingConfirmations.length > 0 ? (
+            ) : intentsQuery.isError ? (
+              <PendingIntentsErrorCard onRetry={() => intentsQuery.refetch()} />
+            ) : renderableIntents.length > 0 ? (
               <div>
                 <div className="bg-amber-50/80 px-5 py-2">
                   <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
                     <CheckCircle2 size={12} />
-                    Resultados por confirmar
+                    Desafíos
                   </p>
                 </div>
                 <div className="divide-y divide-slate-50">
-                  {pendingConfirmations.slice(0, 3).map((match) => (
-                    <PendingConfirmationCard
-                      key={match.id}
-                      match={match}
-                      onConfirm={() => router.push(`/matches/${match.id}`)}
+                  {renderableIntents.slice(0, 5).map((intent) => (
+                    <CompetitiveIntentCard
+                      key={intent.id}
+                      intent={intent}
+                      isLoading={
+                        intent.intentType === 'ACCEPT_CHALLENGE'
+                          ? actingChallengeId === intent.challengeId
+                          : false
+                      }
+                      onConfirm={(matchId) => router.push(`/matches/${matchId}`)}
+                      onAccept={(challengeId) =>
+                        handleChallengeAction('accept', challengeId, intent.id)
+                      }
+                      onReject={(challengeId) =>
+                        handleChallengeAction('reject', challengeId, intent.id)
+                      }
                     />
                   ))}
                 </div>
               </div>
             ) : null}
-
-            {/* Pending challenges */}
-            {pendingChallenges.length > 0 && (
-              <div className="border-t border-slate-100">
-                <div className="bg-slate-50/60 px-5 py-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    Desafíos pendientes
-                  </p>
-                </div>
-
-                {challengeActionError && (
-                  <p
-                    role="alert"
-                    className="mx-5 mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
-                  >
-                    {challengeActionError}
-                  </p>
-                )}
-
-                <div className="divide-y divide-slate-50">
-                  {pendingChallenges.map((challenge) => (
-                    <PendingChallengeInboxCard
-                      key={challenge.id}
-                      challenge={challenge}
-                      isLoading={actingChallengeId === challenge.id}
-                      onAccept={() => handleChallengeAction('accept', challenge.id)}
-                      onReject={() => handleChallengeAction('reject', challenge.id)}
-                    />
-                  ))}
-                </div>
-              </div>
+            {challengeActionError && (
+              <p
+                role="alert"
+                className="mx-5 mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+              >
+                {challengeActionError}
+              </p>
             )}
 
             {/* Recent ELO movement */}
@@ -407,62 +389,12 @@ function EloFeedItem({ point }: { point: EloHistoryPoint }) {
   );
 }
 
-function PendingChallengeInboxCard({
-  challenge,
-  isLoading,
-  onAccept,
-  onReject,
-}: {
-  challenge: Challenge;
-  isLoading?: boolean;
-  onAccept: () => void;
-  onReject: () => void;
-}) {
-  const challengerName = challenge.teamA?.p1?.displayName || 'Un jugador';
-
-  return (
-    <div className="px-5 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900">{challengerName}</p>
-          <p className="text-xs text-slate-500">Te desafió a un partido</p>
-          <p className="text-xs text-slate-400">
-            {formatDistanceToNow(new Date(challenge.createdAt), { addSuffix: true, locale: es })}
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="min-h-[40px]"
-            disabled={isLoading}
-            onClick={onReject}
-          >
-            Rechazar
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="primary"
-            className="min-h-[40px]"
-            disabled={isLoading}
-            onClick={onAccept}
-          >
-            Aceptar
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PendingConfirmationsErrorCard({ onRetry }: { onRetry: () => void }) {
+function PendingIntentsErrorCard({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="px-5 py-4">
       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
         <p className="text-sm font-semibold text-amber-900">
-          No pudimos cargar confirmaciones
+          No pudimos cargar tus desafíos
         </p>
         <p className="mt-0.5 text-xs text-amber-700">Reintentá en unos segundos.</p>
         <button
@@ -477,44 +409,93 @@ function PendingConfirmationsErrorCard({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-function PendingConfirmationCard({
-  match,
+function CompetitiveIntentCard({
+  intent,
+  isLoading,
   onConfirm,
+  onAccept,
+  onReject,
 }: {
-  match: MatchResult;
-  onConfirm: () => void;
+  intent: UserIntent;
+  isLoading?: boolean;
+  onConfirm: (matchId: string) => void;
+  onAccept: (challengeId: string) => void;
+  onReject: (challengeId: string) => void;
 }) {
-  const reporterName =
-    match.challenge?.teamA?.p1?.displayName ??
-    match.teamA?.[0]?.displayName ??
-    'Rival';
+  if (!isRenderableIntent(intent)) return null;
 
-  const s1a = match.teamASet1 ?? '—';
-  const s1b = match.teamBSet1 ?? '—';
-  const s2a = match.teamASet2 ?? '—';
-  const s2b = match.teamBSet2 ?? '—';
+  if (intent.intentType === 'CONFIRM_RESULT') {
+    return (
+      <div className="flex items-center justify-between gap-3 px-5 py-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-slate-900">
+            {intent.actorName} reportó un resultado
+          </p>
+          {intent.subtitle && <p className="text-xs text-slate-500">{intent.subtitle}</p>}
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => {
+            if (intent.matchId) onConfirm(intent.matchId);
+          }}
+          disabled={!intent.matchId}
+          className="min-h-[44px] shrink-0"
+        >
+          Confirmar
+        </Button>
+      </div>
+    );
+  }
 
-  const sets = [
-    `${s1a}-${s1b}`,
-    `${s2a}-${s2b}`,
-    match.teamASet3 != null ? `${match.teamASet3}-${match.teamBSet3 ?? '—'}` : null,
-  ]
-    .filter(Boolean)
-    .join(', ');
+  if (!intent.challengeId) return null;
 
   return (
-    <div className="flex items-center justify-between gap-3 px-5 py-3">
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-slate-900">
-          {reporterName} reportó un resultado
-        </p>
-        {sets && <p className="text-xs text-slate-500">{sets}</p>}
+    <div className="px-5 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-slate-900">{intent.actorName}</p>
+          <p className="text-xs text-slate-500">{intent.subtitle ?? 'Te desafió a un partido'}</p>
+          <p className="text-xs text-slate-400">
+            {formatDistanceToNow(new Date(intent.createdAt), { addSuffix: true, locale: es })}
+          </p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="min-h-[40px]"
+            disabled={isLoading}
+            onClick={() => onReject(intent.challengeId!)}
+          >
+            Rechazar
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="primary"
+            className="min-h-[40px]"
+            disabled={isLoading}
+            onClick={() => onAccept(intent.challengeId!)}
+          >
+            Aceptar
+          </Button>
+        </div>
       </div>
-      <Button type="button" size="sm" onClick={onConfirm} className="min-h-[44px] shrink-0">
-        Confirmar
-      </Button>
     </div>
   );
+}
+
+function isRenderableIntent(intent: UserIntent): boolean {
+  switch (intent.intentType) {
+    case 'CONFIRM_RESULT':
+      return intent.status === 'pending_confirm';
+    case 'ACCEPT_CHALLENGE':
+      return intent.status === 'pending';
+    default:
+      return false;
+  }
 }
 
 function CompetitivePageSkeleton() {

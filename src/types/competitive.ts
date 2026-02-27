@@ -204,3 +204,33 @@ export interface RankingQueryParams {
   limit?: number;
   cursor?: string;
 }
+
+// ── User Intents (normalised action items) ────────────────────────────────────
+
+/** The two kinds of action a user needs to take in the "Desafíos" section. */
+export type IntentType = 'CONFIRM_RESULT' | 'ACCEPT_CHALLENGE';
+export type IntentStatus = MatchResultStatus | ChallengeStatus | (string & {});
+
+/**
+ * Normalised "thing that needs my attention" — merges pending match
+ * confirmations (CONFIRM_RESULT) and incoming challenge invites
+ * (ACCEPT_CHALLENGE) into one renderable shape.
+ *
+ * Unknown intentType values are never rendered (guarded in the UI layer).
+ */
+export interface UserIntent {
+  /** Stable React key — prefixed with 'match:' or 'challenge:' */
+  id: string;
+  intentType: IntentType | (string & {});
+  /** Current status from source entity (match/challenge). */
+  status: IntentStatus;
+  /** Person who sent the confirmation / challenge */
+  actorName: string;
+  /** Secondary line: score string for confirmations, context for challenges */
+  subtitle: string | null;
+  createdAt: string;
+  /** Set only for CONFIRM_RESULT */
+  matchId?: string;
+  /** Set only for ACCEPT_CHALLENGE */
+  challengeId?: string;
+}

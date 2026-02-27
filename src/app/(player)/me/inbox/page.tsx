@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { Skeleton } from '@/app/components/ui/skeleton';
-import { Button } from '@/app/components/ui/button';
 import { useInbox } from '@/hooks/use-inbox';
 import { useChallengeActions } from '@/hooks/use-challenges';
 import {
@@ -27,21 +26,16 @@ import {
 import { NOTIFICATION_TYPES } from '@/types/notifications';
 import { cn } from '@/lib/utils';
 import type { InboxSectionState } from '@/hooks/use-inbox';
-import type { MatchResult, Challenge } from '@/types/competitive';
+import type { UserIntent } from '@/types/competitive';
 import type { AppNotification } from '@/types/notifications';
 
-// ── Tab definition ────────────────────────────────────────────────────────────
-
-type TabId = 'partidos' | 'desafios' | 'invitaciones' | 'alertas';
+type TabId = 'desafios' | 'invitaciones' | 'alertas';
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'partidos', label: 'Partidos' },
   { id: 'desafios', label: 'Desafíos' },
   { id: 'invitaciones', label: 'Ligas' },
   { id: 'alertas', label: 'Alertas' },
 ];
-
-// ── Alert icon config ─────────────────────────────────────────────────────────
 
 function getAlertConfig(type: string): {
   Icon: LucideIcon;
@@ -66,24 +60,6 @@ function getAlertConfig(type: string): {
       return { Icon: Bell, iconBg: 'bg-slate-50', iconColor: 'text-slate-400' };
   }
 }
-
-// ── Shared: score string ──────────────────────────────────────────────────────
-
-function buildScore(match: MatchResult): string {
-  const s1a = match.teamASet1 ?? '—';
-  const s1b = match.teamBSet1 ?? '—';
-  const s2a = match.teamASet2 ?? '—';
-  const s2b = match.teamBSet2 ?? '—';
-  return [
-    `${s1a}-${s1b}`,
-    `${s2a}-${s2b}`,
-    match.teamASet3 != null ? `${match.teamASet3}-${match.teamBSet3 ?? '—'}` : null,
-  ]
-    .filter(Boolean)
-    .join(', ');
-}
-
-// ── Shared UI primitives ──────────────────────────────────────────────────────
 
 function SectionSkeleton() {
   return (
@@ -140,7 +116,6 @@ function SectionEmptyState({
   );
 }
 
-/** Base row: icon chip + text block + optional CTA slot */
 function InboxItemRow({
   iconBg,
   iconColor,
@@ -162,18 +137,16 @@ function InboxItemRow({
 }) {
   return (
     <div className="flex items-start gap-3.5 rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-      {/* Icon chip */}
       <div
         className={cn(
           'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
-          iconBg,
+          iconBg
         )}
         aria-hidden
       >
         <Icon className={cn('h-4 w-4', iconColor)} />
       </div>
 
-      {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <p className="text-sm font-semibold leading-snug text-slate-900">
@@ -185,14 +158,10 @@ function InboxItemRow({
             )}
             {title}
           </p>
-          <time className="mt-px shrink-0 text-[10px] font-medium text-slate-400">
-            {timeAgo}
-          </time>
+          <time className="mt-px shrink-0 text-[10px] font-medium text-slate-400">{timeAgo}</time>
         </div>
 
-        {subtitle && (
-          <p className="mt-0.5 text-xs leading-snug text-slate-500">{subtitle}</p>
-        )}
+        {subtitle && <p className="mt-0.5 text-xs leading-snug text-slate-500">{subtitle}</p>}
 
         {children && <div className="mt-3">{children}</div>}
       </div>
@@ -200,115 +169,95 @@ function InboxItemRow({
   );
 }
 
-// ── Tab: Partidos (pending confirmations) ──────────────────────────────────────
-
-function ConfirmationsTab({
-  section,
-  onConfirm,
-}: {
-  section: InboxSectionState<MatchResult>;
-  onConfirm: (match: MatchResult) => void;
-}) {
-  if (section.isLoading) return <SectionSkeleton />;
-  if (section.isError) return <SectionErrorCard onRetry={section.refetch} />;
-  if (section.items.length === 0) {
-    return (
-      <SectionEmptyState
-        Icon={CheckCircle2}
-        title="Todo al día"
-        subtitle="No tenés resultados pendientes de confirmar."
-      />
-    );
+function isRenderableIntent(intent: UserIntent): boolean {
+  switch (intent.intentType) {
+    case 'CONFIRM_RESULT':
+      return intent.status === 'pending_confirm';
+    case 'ACCEPT_CHALLENGE':
+      return intent.status === 'pending' && !!intent.challengeId;
+    default:
+      return false;
   }
-
-  return (
-    <div className="space-y-3">
-      {section.items.map((match) => {
-        const reporterName =
-          match.challenge?.teamA?.p1?.displayName ??
-          match.teamA?.[0]?.displayName ??
-          'Rival';
-        const score = buildScore(match);
-        const timeAgo = formatDistanceToNow(new Date(match.createdAt), {
-          addSuffix: true,
-          locale: es,
-        });
-
-        return (
-          <InboxItemRow
-            key={match.id}
-            Icon={CheckCircle2}
-            iconBg="bg-amber-50"
-            iconColor="text-amber-600"
-            title={`${reporterName} reportó un resultado`}
-            subtitle={score || undefined}
-            timeAgo={timeAgo}
-          >
-            <button
-              type="button"
-              onClick={() => onConfirm(match)}
-              className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[#0E7C66] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#0B6B58] active:scale-[0.98]"
-            >
-              Confirmar resultado
-            </button>
-          </InboxItemRow>
-        );
-      })}
-    </div>
-  );
 }
 
-// ── Tab: Desafíos (challenge inbox) ───────────────────────────────────────────
-
-function ChallengesTab({
+function IntentsTab({
   section,
   actingId,
+  onConfirm,
   onAccept,
   onReject,
 }: {
-  section: InboxSectionState<Challenge>;
+  section: InboxSectionState<UserIntent>;
   actingId: string | null;
+  onConfirm: (matchId: string) => void;
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
 }) {
   if (section.isLoading) return <SectionSkeleton />;
   if (section.isError) return <SectionErrorCard onRetry={section.refetch} />;
-  if (section.items.length === 0) {
+
+  const renderable = section.items.filter(isRenderableIntent);
+  if (renderable.length === 0) {
     return (
       <SectionEmptyState
         Icon={Swords}
         title="Sin desafíos pendientes"
-        subtitle="Desafiá a alguien desde Buscar partido para empezar."
+        subtitle="Cuando tengas acciones pendientes de partidos aparecerán aquí."
       />
     );
   }
 
   return (
     <div className="space-y-3">
-      {section.items.map((challenge) => {
-        const challengerName =
-          challenge.teamA?.p1?.displayName ?? 'Un jugador';
-        const isActing = actingId === challenge.id;
-        const timeAgo = formatDistanceToNow(new Date(challenge.createdAt), {
+      {renderable.map((intent) => {
+        const timeAgo = formatDistanceToNow(new Date(intent.createdAt), {
           addSuffix: true,
           locale: es,
         });
 
+        if (intent.intentType === 'CONFIRM_RESULT') {
+          return (
+            <InboxItemRow
+              key={intent.id}
+              Icon={CheckCircle2}
+              iconBg="bg-amber-50"
+              iconColor="text-amber-600"
+              title={`${intent.actorName} reportó un resultado`}
+              subtitle={intent.subtitle || undefined}
+              timeAgo={timeAgo}
+            >
+              <button
+                type="button"
+                disabled={!intent.matchId}
+                onClick={() => {
+                  if (intent.matchId) onConfirm(intent.matchId);
+                }}
+                className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[#0E7C66] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#0B6B58] active:scale-[0.98] disabled:opacity-50"
+              >
+                Confirmar resultado
+              </button>
+            </InboxItemRow>
+          );
+        }
+
+        if (!intent.challengeId) return null;
+
+        const isActing = actingId === intent.challengeId;
         return (
           <InboxItemRow
-            key={challenge.id}
+            key={intent.id}
             Icon={Swords}
             iconBg="bg-violet-50"
             iconColor="text-violet-600"
-            title={challengerName}
-            subtitle="Te desafió a un partido"
+            title={intent.actorName}
+            subtitle={intent.subtitle ?? 'Te desafió a un partido'}
             timeAgo={timeAgo}
           >
             <div className="flex gap-2">
               <button
                 type="button"
                 disabled={isActing}
-                onClick={() => onReject(challenge.id)}
+                onClick={() => onReject(intent.challengeId!)}
                 className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
               >
                 Rechazar
@@ -316,7 +265,7 @@ function ChallengesTab({
               <button
                 type="button"
                 disabled={isActing}
-                onClick={() => onAccept(challenge.id)}
+                onClick={() => onAccept(intent.challengeId!)}
                 className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl bg-[#0E7C66] px-3 text-sm font-semibold text-white transition-colors hover:bg-[#0B6B58] disabled:opacity-50 active:scale-[0.98]"
               >
                 {isActing ? 'Procesando…' : 'Aceptar'}
@@ -328,8 +277,6 @@ function ChallengesTab({
     </div>
   );
 }
-
-// ── Tab: Invitaciones (league invites) ────────────────────────────────────────
 
 function InvitesTab({
   section,
@@ -360,12 +307,16 @@ function InvitesTab({
         const hasActed = actedIds.has(notif.id);
         const inviteStatus = notif.actionMeta?.inviteStatus ?? notif.data?.inviteStatus;
         const isResolved = hasActed || (inviteStatus && inviteStatus !== 'pending');
-        const leagueName = notif.actionMeta?.leagueName ?? notif.data?.leagueName as string | undefined;
-        const inviterName = notif.actionMeta?.inviterName ?? notif.data?.inviterName as string | undefined;
+        const leagueName =
+          (notif.actionMeta?.leagueName as string | undefined) ??
+          (notif.data?.leagueName as string | undefined);
+        const inviterName =
+          (notif.actionMeta?.inviterName as string | undefined) ??
+          (notif.data?.inviterName as string | undefined);
 
         const subtitle = leagueName
-          ? `Liga: ${leagueName}${inviterName ? ` · Invitado por ${inviterName}` : ''}`
-          : notif.message || null;
+          ? `Liga: ${leagueName}${inviterName ? ` - Invitado por ${inviterName}` : ''}`
+          : (notif.message ?? null);
 
         const timeAgo = formatDistanceToNow(new Date(notif.createdAt), {
           addSuffix: true,
@@ -409,8 +360,6 @@ function InvitesTab({
     </div>
   );
 }
-
-// ── Tab: Alertas (ELO, ranking, system notifications) ─────────────────────────
 
 function AlertsTab({
   section,
@@ -457,7 +406,7 @@ function AlertsTab({
                 onClick={() => onClickAlert(notif)}
                 className="inline-flex min-h-[44px] items-center rounded-xl border border-[#0E7C66]/25 bg-[#0E7C66]/5 px-3 py-1.5 text-xs font-semibold text-[#0E7C66] transition-colors hover:bg-[#0E7C66]/10 active:bg-[#0E7C66]/15"
               >
-                Ver →
+                Ver {'>'}
               </button>
             )}
           </InboxItemRow>
@@ -467,11 +416,9 @@ function AlertsTab({
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
-
 export default function InboxPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabId>('partidos');
+  const [activeTab, setActiveTab] = useState<TabId>('desafios');
   const [actingChallengeId, setActingChallengeId] = useState<string | null>(null);
   const [actedNotifIds, setActedNotifIds] = useState<Set<string>>(new Set());
 
@@ -482,8 +429,7 @@ export default function InboxPage() {
   const markRead = useMarkRead();
 
   const tabCounts: Record<TabId, number> = {
-    partidos: inbox.confirmations.items.length,
-    desafios: inbox.challenges.items.length,
+    desafios: inbox.intents.items.filter(isRenderableIntent).length,
     invitaciones: inbox.invites.items.length,
     alertas: inbox.alerts.items.filter((n) => !n.read).length,
   };
@@ -546,7 +492,6 @@ export default function InboxPage() {
     <>
       <PublicTopBar title="Bandeja" backHref="/competitive" />
 
-      {/* Tab bar — sticky below the TopBar (top-14 = 3.5rem) */}
       <div className="sticky top-14 z-30 border-b border-slate-100 bg-white">
         <div className="mx-auto flex max-w-md">
           {TABS.map((tab) => {
@@ -559,7 +504,7 @@ export default function InboxPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   'relative flex min-h-[44px] flex-1 items-center justify-center gap-1.5 whitespace-nowrap px-2 text-[13px] font-semibold transition-colors',
-                  isActive ? 'text-[#0E7C66]' : 'text-slate-400 hover:text-slate-600',
+                  isActive ? 'text-[#0E7C66]' : 'text-slate-400 hover:text-slate-600'
                 )}
               >
                 {tab.label}
@@ -567,9 +512,7 @@ export default function InboxPage() {
                   <span
                     className={cn(
                       'inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none',
-                      isActive
-                        ? 'bg-[#0E7C66] text-white'
-                        : 'bg-slate-100 text-slate-600',
+                      isActive ? 'bg-[#0E7C66] text-white' : 'bg-slate-100 text-slate-600'
                     )}
                   >
                     {count}
@@ -587,18 +530,12 @@ export default function InboxPage() {
         </div>
       </div>
 
-      {/* Tab content */}
       <div className="mx-auto max-w-md px-4 py-4">
-        {activeTab === 'partidos' && (
-          <ConfirmationsTab
-            section={inbox.confirmations}
-            onConfirm={(match) => router.push(`/matches/${match.id}`)}
-          />
-        )}
         {activeTab === 'desafios' && (
-          <ChallengesTab
-            section={inbox.challenges}
+          <IntentsTab
+            section={inbox.intents}
             actingId={actingChallengeId}
+            onConfirm={(matchId) => router.push(`/matches/${matchId}`)}
             onAccept={handleAcceptChallenge}
             onReject={handleRejectChallenge}
           />
@@ -612,10 +549,7 @@ export default function InboxPage() {
           />
         )}
         {activeTab === 'alertas' && (
-          <AlertsTab
-            section={inbox.alerts}
-            onClickAlert={handleAlertClick}
-          />
+          <AlertsTab section={inbox.alerts} onClickAlert={handleAlertClick} />
         )}
       </div>
     </>
