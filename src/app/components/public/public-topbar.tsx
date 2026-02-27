@@ -10,11 +10,14 @@ export function PublicTopBar({
   backHref,
   title,
   showNotifications = false,
+  notificationsHref = '/me/inbox',
 }: {
   backHref?: string;
   title?: string;
   /** Show the notification bell in the right slot instead of Home */
   showNotifications?: boolean;
+  /** Destination when the bell is tapped. Defaults to /me/inbox. */
+  notificationsHref?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -62,7 +65,7 @@ export function PublicTopBar({
         {showNotifications ? (
           <NotificationBell
             count={unreadCount ?? 0}
-            onClick={() => router.push('/notifications')}
+            onClick={() => router.push(notificationsHref)}
           />
         ) : (
           <Link

@@ -49,7 +49,7 @@ export default function CompetitivePage() {
   if (loadingProfile) {
     return (
       <>
-        <PublicTopBar title="Competitivo" />
+        <PublicTopBar title="Competitivo" showNotifications />
         <CompetitivePageSkeleton />
       </>
     );
@@ -62,14 +62,14 @@ export default function CompetitivePage() {
     if (status === 409) {
       return (
         <>
-          <PublicTopBar title="Competitivo" />
+          <PublicTopBar title="Competitivo" showNotifications />
           <CompetitivePageSkeleton />
         </>
       );
     }
     return (
       <>
-        <PublicTopBar title="Competitivo" />
+        <PublicTopBar title="Competitivo" showNotifications />
         <CompetitiveErrorState />
       </>
     );
@@ -78,7 +78,7 @@ export default function CompetitivePage() {
   if (!profile) {
     return (
       <>
-        <PublicTopBar title="Competitivo" />
+        <PublicTopBar title="Competitivo" showNotifications />
         <CompetitiveEmptyState />
       </>
     );
@@ -124,7 +124,7 @@ export default function CompetitivePage() {
 
   return (
     <>
-      <PublicTopBar title="Competitivo" />
+      <PublicTopBar title="Competitivo" showNotifications />
 
       <div className="space-y-4 px-4 py-4">
         {/* ── Primary & secondary CTAs ── */}
