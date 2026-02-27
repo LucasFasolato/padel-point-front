@@ -145,6 +145,7 @@ export function useChallengeActions() {
 }
 
 type CreateDirectChallengePayload = Parameters<typeof challengesService.createDirect>[0];
+type CreateOpenChallengePayload = Parameters<typeof challengesService.createOpen>[0];
 
 export function useCreateDirectChallenge() {
   const queryClient = useQueryClient();
@@ -157,6 +158,21 @@ export function useCreateDirectChallenge() {
     },
     onError: (error: Error) => {
       toast.error(error.message || 'No se pudo enviar el desafío');
+    },
+  });
+}
+
+export function useCreateOpenChallenge() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: CreateOpenChallengePayload) => challengesService.createOpen(payload),
+    onSuccess: () => {
+      toast.success('Búsqueda publicada');
+      queryClient.invalidateQueries({ queryKey: ['challenges'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'No se pudo publicar la búsqueda');
     },
   });
 }

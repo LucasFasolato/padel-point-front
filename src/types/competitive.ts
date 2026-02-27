@@ -81,6 +81,9 @@ export interface UserBasic {
   displayName: string;
 }
 
+/** Match type for competitive vs friendly games. Sent to backend on creation. */
+export type MatchType = 'COMPETITIVE' | 'FRIENDLY';
+
 export interface Challenge {
   id: string;
   type: ChallengeType;
@@ -88,6 +91,8 @@ export interface Challenge {
   targetCategory: number | null;
   reservationId: string | null;
   message: string | null;
+  /** COMPETITIVE = affects ranking; FRIENDLY = personal record only */
+  matchType?: MatchType;
   createdAt: string;
   updatedAt: string;
   

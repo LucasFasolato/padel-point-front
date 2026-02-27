@@ -1,28 +1,34 @@
 import  api  from '@/lib/api';
-import type { Challenge } from '@/types/competitive';
+import type { Challenge, MatchType } from '@/types/competitive';
 
 export const challengesService = {
   /**
-   * Crear desafío DIRECT (1v1 o 2v2)
+   * Crear desafío DIRECT (1v1 o 2v2).
+   * matchType: 'COMPETITIVE' (affects ranking) | 'FRIENDLY' (personal record only).
+   * NOTE: matchType is not in the OpenAPI schema (Record<string,never>) but
+   * the backend accepts it as a new field per product spec.
    */
   async createDirect(params: {
     opponentUserId: string;
     partnerUserId?: string;
     reservationId?: string;
     message?: string;
+    matchType?: MatchType;
   }): Promise<Challenge> {
     const { data } = await api.post('/challenges/direct', params);
     return data;
   },
 
   /**
-   * Crear desafío OPEN (busco rival de mi categoría)
+   * Crear desafío OPEN (busco rival de mi categoría).
+   * matchType: 'COMPETITIVE' | 'FRIENDLY' — same as direct.
    */
   async createOpen(params: {
     targetCategory: number;
     partnerUserId?: string;
     reservationId?: string;
     message?: string;
+    matchType?: MatchType;
   }): Promise<Challenge> {
     const { data } = await api.post('/challenges/open', params);
     return data;
