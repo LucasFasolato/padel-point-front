@@ -14,6 +14,7 @@ import { useChallengeActions, useChallengesInbox } from '@/hooks/use-challenges'
 import { usePendingConfirmations } from '@/hooks/use-matches';
 import { CategoryBadge } from '@/app/components/competitive/category-badge';
 import { EloChart } from '@/app/components/competitive/elo-chart';
+import { ActivityFeed } from '@/app/components/competitive/activity-feed';
 import { SkillRadarCard } from '@/app/components/competitive/skill-radar-card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -248,6 +249,9 @@ export default function CompetitivePage() {
             )}
           </section>
         )}
+
+        {/* ── Activity feed ── */}
+        <ActivityFeed />
 
         {/* ── Tu progreso (ELO chart) ── */}
         <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
