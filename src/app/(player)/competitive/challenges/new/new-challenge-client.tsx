@@ -49,10 +49,15 @@ export default function NewChallengeClient() {
 
   const defaultType = (searchParams.get('type') as ChallengeType) || 'direct';
   const reservationIdParam = searchParams.get('reservationId') || '';
+  const partnerUserIdParam = searchParams.get('partnerUserId') || '';
 
   const [type, setType] = useState<ChallengeType>(defaultType);
   const [opponent, setOpponent] = useState<Player | null>(null);
-  const [partner, setPartner] = useState<Player | null>(null);
+  const [partner, setPartner] = useState<Player | null>(
+    partnerUserIdParam
+      ? { userId: partnerUserIdParam, displayName: '', email: '' }
+      : null
+  );
   const [reservationId, setReservationId] = useState(reservationIdParam);
   const [targetCategory, setTargetCategory] = useState<number>(6);
   const [message, setMessage] = useState('');
@@ -127,6 +132,22 @@ export default function NewChallengeClient() {
       <PublicTopBar title="Nuevo desafío" backHref="/competitive/challenges" />
 
       <div className="container mx-auto max-w-2xl px-4 py-6">
+        {/* Tip banner */}
+        <div className="mb-5 flex items-start gap-3 rounded-2xl border border-[#0E7C66]/20 bg-[#0E7C66]/5 px-4 py-3">
+          <span className="mt-0.5 text-base leading-none">💡</span>
+          <div className="text-sm text-[#0E7C66]">
+            <span className="font-semibold">Tip:</span> también podés usar{' '}
+            <button
+              type="button"
+              className="font-semibold underline underline-offset-2"
+              onClick={() => router.push('/competitive/find')}
+            >
+              Buscar partido
+            </button>{' '}
+            para encontrar rivales disponibles en tu ciudad.
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Tipo de desafío */}
           <div className="rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 p-6">

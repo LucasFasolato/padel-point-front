@@ -221,12 +221,27 @@ export default function ReportMatchPage({ params }: ReportMatchPageProps) {
             </p>
           </div>
 
-          {/* Info */}
-          <div className="rounded-lg bg-blue-50 p-4">
-            <p className="text-sm text-blue-900">
-              <span className="font-semibold">💡 Importante:</span> El rival recibirá una
-              notificación para confirmar el resultado. Una vez confirmado, se actualizará el ELO
-              de ambos jugadores.
+          {/* ELO impact notice */}
+          {challenge.matchType === 'FRIENDLY' ? (
+            <div className="rounded-xl bg-slate-50 px-4 py-3">
+              <p className="text-sm text-slate-600">
+                <span className="font-semibold">Partido amistoso:</span> El resultado quedará
+                registrado pero{' '}
+                <span className="font-semibold">no impactará el ELO</span> de ningún jugador.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-[#0E7C66]/5 px-4 py-3">
+              <p className="text-sm text-[#0E7C66]">
+                <span className="font-semibold">Partido competitivo:</span> Una vez confirmado,
+                este resultado{' '}
+                <span className="font-semibold">impactará tu ELO</span>.
+              </p>
+            </div>
+          )}
+          <div className="rounded-xl bg-blue-50 px-4 py-3">
+            <p className="text-sm text-blue-800">
+              El rival recibirá una notificación para confirmar el resultado.
             </p>
           </div>
 
