@@ -11,7 +11,7 @@ import { groupLeaguesByStatus } from '@/lib/league-utils';
 
 export default function LeaguesPage() {
   const router = useRouter();
-  const { data: leagues, isLoading, error } = useLeaguesList();
+  const { data: leagues, isLoading, isError, refetch } = useLeaguesList();
 
   return (
     <>
@@ -20,25 +20,13 @@ export default function LeaguesPage() {
       <div className="px-4 py-6 pb-28 space-y-6">
         {isLoading && <PageSkeleton />}
 
-        {error && (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center">
-            <p className="text-sm text-rose-700">No se pudieron cargar las ligas.</p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => window.location.reload()}
-            >
-              Reintentar
-            </Button>
-          </div>
-        )}
+        {isError && <LeaguesErrorCard onRetry={() => refetch()} />}
 
-        {!isLoading && !error && leagues && leagues.length === 0 && (
+        {!isLoading && !isError && leagues && leagues.length === 0 && (
           <EmptyState onCreateClick={() => router.push('/leagues/new')} />
         )}
 
-        {!isLoading && !error && leagues && leagues.length > 0 && (
+        {!isLoading && !isError && leagues && leagues.length > 0 && (
           <>
             {groupLeaguesByStatus(leagues).map((group) => (
               <section key={group.status}>
@@ -84,6 +72,25 @@ function PageSkeleton() {
       <Skeleton className="h-20 w-full rounded-xl" />
       <Skeleton className="h-5 w-24 rounded" />
       <Skeleton className="h-20 w-full rounded-xl" />
+    </div>
+  );
+}
+
+function LeaguesErrorCard({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-[#F7F8FA] p-6 text-center">
+      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
+        <Trophy size={22} className="text-slate-400" />
+      </div>
+      <p className="text-sm font-semibold text-slate-800">No pudimos cargar tus ligas</p>
+      <p className="mt-1 text-xs text-slate-500">Revisá tu conexión y reintentá.</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-4 flex min-h-[44px] w-full items-center justify-center rounded-2xl bg-[#0E7C66] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#0B6B58] active:scale-[0.98]"
+      >
+        Reintentar
+      </button>
     </div>
   );
 }

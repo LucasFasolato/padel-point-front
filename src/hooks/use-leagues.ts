@@ -63,7 +63,11 @@ export function useLeaguesList() {
   return useQuery({
     queryKey: KEYS.list,
     queryFn: () => leagueService.list(),
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60,
+    retry: 1,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10_000),
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
   });
 }
 
