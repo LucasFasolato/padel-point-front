@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
+  Activity,
   BarChart2,
   CheckCircle2,
   Clock,
@@ -15,16 +16,15 @@ import {
   Trophy,
   XCircle,
   Zap,
-  Activity,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { useMyActivity } from '@/hooks/use-activity';
-import { normalizeActivityEventType } from '@/types/activity';
+import { normalizeActivityEventType, UNKNOWN_EVENT_TYPE } from '@/types/activity';
 import { cn } from '@/lib/utils';
 import type { RawActivityEvent } from '@/types/activity';
 
-// ── Display config per event type ─────────────────────────────────────────────
+// ── Display config per canonical event type ───────────────────────────────────
 
 type EventConfig = {
   Icon: LucideIcon;
@@ -36,6 +36,8 @@ type EventConfig = {
 };
 
 const EVENT_CONFIG: Record<string, EventConfig> = {
+  // ── Match lifecycle ────────────────────────────────────────────────────────
+
   MATCH_CONFIRMED: {
     Icon: CheckCircle2,
     iconBg: 'bg-emerald-50',
@@ -51,9 +53,7 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
       return parts.length > 0 ? parts.join(' · ') : null;
     },
     getCta: (d) =>
-      d.matchId
-        ? { href: `/matches/${String(d.matchId)}`, label: 'Ver partido' }
-        : null,
+      d.matchId ? { href: `/matches/${String(d.matchId)}`, label: 'Ver partido' } : null,
   },
 
   MATCH_REPORTED: {
@@ -66,9 +66,7 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
         ? `Reportado por ${String(d.reporterName)}`
         : 'Pendiente de tu confirmación',
     getCta: (d) =>
-      d.matchId
-        ? { href: `/matches/${String(d.matchId)}`, label: 'Confirmar' }
-        : null,
+      d.matchId ? { href: `/matches/${String(d.matchId)}`, label: 'Confirmar' } : null,
   },
 
   MATCH_DISPUTED: {
@@ -79,9 +77,7 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
     getSubtitle: (d) =>
       d.opponentName ? `${String(d.opponentName)} disputó el resultado` : null,
     getCta: (d) =>
-      d.matchId
-        ? { href: `/matches/${String(d.matchId)}`, label: 'Ver detalles' }
-        : null,
+      d.matchId ? { href: `/matches/${String(d.matchId)}`, label: 'Ver detalles' } : null,
   },
 
   MATCH_RESOLVED: {
@@ -91,12 +87,12 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
     getTitle: () => 'Disputa resuelta',
     getSubtitle: (d) => (d.outcome ? String(d.outcome) : null),
     getCta: (d) =>
-      d.matchId
-        ? { href: `/matches/${String(d.matchId)}`, label: 'Ver partido' }
-        : null,
+      d.matchId ? { href: `/matches/${String(d.matchId)}`, label: 'Ver partido' } : null,
   },
 
-  CHALLENGE_RECEIVED: {
+  // ── Challenge lifecycle ────────────────────────────────────────────────────
+
+  CHALLENGE_CREATED: {
     Icon: Swords,
     iconBg: 'bg-violet-50',
     iconColor: 'text-violet-600',
@@ -122,7 +118,7 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
         : null,
   },
 
-  CHALLENGE_REJECTED: {
+  CHALLENGE_DECLINED: {
     Icon: XCircle,
     iconBg: 'bg-rose-50',
     iconColor: 'text-rose-500',
@@ -131,6 +127,8 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
       d.opponentName ? `${String(d.opponentName)} rechazó tu desafío` : null,
     getCta: () => null,
   },
+
+  // ── ELO ───────────────────────────────────────────────────────────────────
 
   ELO_UPDATED: {
     Icon: Zap,
@@ -149,13 +147,13 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
       return null;
     },
     getCta: (d) =>
-      d.matchId
-        ? { href: `/matches/${String(d.matchId)}`, label: 'Ver partido' }
-        : null,
+      d.matchId ? { href: `/matches/${String(d.matchId)}`, label: 'Ver partido' } : null,
   },
 
-  LEAGUE_RANKING_MOVED: {
-    // icon and colours resolved dynamically below
+  // ── Ranking ───────────────────────────────────────────────────────────────
+
+  RANKING_MOVEMENT: {
+    // Icon and colour resolved dynamically in ActivityCard based on direction
     Icon: TrendingUp,
     iconBg: 'bg-emerald-50',
     iconColor: 'text-[#0E7C66]',
@@ -170,7 +168,7 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
     getCta: () => ({ href: '/competitive/rankings', label: 'Ver ranking' }),
   },
 
-  RANKING_SNAPSHOT: {
+  RANKING_SNAPSHOT_PUBLISHED: {
     Icon: BarChart2,
     iconBg: 'bg-emerald-50',
     iconColor: 'text-[#0E7C66]',
@@ -185,15 +183,6 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
   },
 };
 
-const DEFAULT_CONFIG: EventConfig = {
-  Icon: Activity,
-  iconBg: 'bg-slate-100',
-  iconColor: 'text-slate-500',
-  getTitle: (d) => (typeof d.title === 'string' ? d.title : 'Actividad'),
-  getSubtitle: (d) => (typeof d.subtitle === 'string' ? d.subtitle : null),
-  getCta: () => null,
-};
-
 // ── Activity card ─────────────────────────────────────────────────────────────
 
 function ActivityCard({
@@ -204,10 +193,17 @@ function ActivityCard({
   onNavigate: (href: string) => void;
 }) {
   const type = normalizeActivityEventType(event.type);
-  const cfg = EVENT_CONFIG[type] ?? DEFAULT_CONFIG;
+
+  // Skip unknown types entirely — never throw
+  if (type === UNKNOWN_EVENT_TYPE) return null;
+
+  const cfg = EVENT_CONFIG[type];
+
+  // Unknown type not in display config — skip silently
+  if (!cfg) return null;
 
   // Dynamic icon/colour for ranking movement direction
-  const isRankingMoved = type === 'LEAGUE_RANKING_MOVED';
+  const isRankingMoved = type === 'RANKING_MOVEMENT';
   const rankingDelta =
     isRankingMoved && typeof event.data.positionDelta === 'number'
       ? event.data.positionDelta
@@ -222,11 +218,7 @@ function ActivityCard({
 
   const resolvedIconBg = isNegative || isEloNegative ? 'bg-rose-50' : cfg.iconBg;
   const resolvedIconColor = isNegative || isEloNegative ? 'text-rose-500' : cfg.iconColor;
-  const ResolvedIcon = isRankingMoved
-    ? isNegative
-      ? TrendingDown
-      : TrendingUp
-    : cfg.Icon;
+  const ResolvedIcon = isRankingMoved ? (isNegative ? TrendingDown : TrendingUp) : cfg.Icon;
 
   const title = cfg.getTitle(event.data);
   const subtitle = cfg.getSubtitle(event.data);
@@ -297,6 +289,19 @@ function ActivityCardSkeleton() {
   );
 }
 
+// ── Empty state ───────────────────────────────────────────────────────────────
+
+function ActivityEmptyState() {
+  return (
+    <div className="flex items-center gap-3 px-4 py-5">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50">
+        <Activity className="h-4 w-4 text-slate-400" />
+      </div>
+      <p className="text-sm text-slate-500">Todavía no hay actividad</p>
+    </div>
+  );
+}
+
 // ── Feed ──────────────────────────────────────────────────────────────────────
 
 export function ActivityFeed() {
@@ -308,7 +313,9 @@ export function ActivityFeed() {
 
   const items = data?.items ?? [];
 
-  // Stable callback for IntersectionObserver
+  // Memoised callbacks — stable references prevent child re-renders
+  const handleNavigate = useCallback((href: string) => router.push(href), [router]);
+
   const tryFetchNext = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
@@ -328,12 +335,8 @@ export function ActivityFeed() {
     return () => observer.disconnect();
   }, [tryFetchNext]);
 
-  // Graceful degradation: if errored and nothing cached, don't render at all
+  // Graceful degradation: error with no cache → hide entirely
   if (isError && items.length === 0) return null;
-  // Nothing to show after load
-  if (!isLoading && items.length === 0) return null;
-
-  const handleNavigate = (href: string) => router.push(href);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
@@ -350,6 +353,8 @@ export function ActivityFeed() {
             <ActivityCardSkeleton />
             <ActivityCardSkeleton />
           </>
+        ) : items.length === 0 ? (
+          <ActivityEmptyState />
         ) : (
           items.map((event) => (
             <ActivityCard key={event.id} event={event} onNavigate={handleNavigate} />
