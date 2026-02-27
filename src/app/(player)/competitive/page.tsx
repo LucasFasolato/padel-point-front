@@ -44,7 +44,7 @@ export default function CompetitivePage() {
   const skillRadarQuery = useSkillRadar();
   const inboxQuery = useChallengesInbox(CHALLENGES_LIMIT);
   const { acceptDirect, rejectDirect } = useChallengeActions();
-  const { data: pendingConfirmationsData } = usePendingConfirmations();
+  const pendingConfirmationsQuery = usePendingConfirmations();
 
   if (loadingProfile) {
     return (
@@ -84,7 +84,9 @@ export default function CompetitivePage() {
     );
   }
 
-  const pendingConfirmations = pendingConfirmationsData ?? [];
+  const pendingConfirmations = (
+    Array.isArray(pendingConfirmationsQuery.data) ? pendingConfirmationsQuery.data : []
+  ).filter((m) => m?.id); // skip malformed items with no id
   const pendingChallenges = (inboxQuery.data ?? []).filter(
     (c) => c.status === 'pending' && !hiddenChallengeIds.includes(c.id)
   );
@@ -99,6 +101,8 @@ export default function CompetitivePage() {
   const peakElo = profile.peakElo ?? profile.elo;
 
   const hasActivity =
+    pendingConfirmationsQuery.isLoading ||
+    pendingConfirmationsQuery.isError ||
     pendingConfirmations.length > 0 ||
     pendingChallenges.length > 0 ||
     recentEloEvents.length > 0;
@@ -179,8 +183,24 @@ export default function CompetitivePage() {
               <h2 className="text-sm font-bold text-slate-900">Actividad reciente</h2>
             </div>
 
-            {/* Pending confirmations */}
-            {pendingConfirmations.length > 0 && (
+            {/* Pending confirmations — resilient: skeleton / error / empty / items */}
+            {pendingConfirmationsQuery.isLoading ? (
+              <div>
+                <div className="bg-amber-50/80 px-5 py-2">
+                  <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                    <CheckCircle2 size={12} />
+                    Resultados por confirmar
+                  </p>
+                </div>
+                <div className="px-5 py-3">
+                  <Skeleton className="h-16 w-full rounded-xl" />
+                </div>
+              </div>
+            ) : pendingConfirmationsQuery.isError ? (
+              <PendingConfirmationsErrorCard
+                onRetry={() => pendingConfirmationsQuery.refetch()}
+              />
+            ) : pendingConfirmations.length > 0 ? (
               <div>
                 <div className="bg-amber-50/80 px-5 py-2">
                   <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
@@ -198,7 +218,7 @@ export default function CompetitivePage() {
                   ))}
                 </div>
               </div>
-            )}
+            ) : null}
 
             {/* Pending challenges */}
             {pendingChallenges.length > 0 && (
@@ -437,6 +457,26 @@ function PendingChallengeInboxCard({
   );
 }
 
+function PendingConfirmationsErrorCard({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="px-5 py-4">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+        <p className="text-sm font-semibold text-amber-900">
+          No pudimos cargar confirmaciones
+        </p>
+        <p className="mt-0.5 text-xs text-amber-700">Reintentá en unos segundos.</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[#0E7C66] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#0B6B58] active:scale-[0.98]"
+        >
+          Reintentar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function PendingConfirmationCard({
   match,
   onConfirm,
@@ -447,12 +487,17 @@ function PendingConfirmationCard({
   const reporterName =
     match.challenge?.teamA?.p1?.displayName ??
     match.teamA?.[0]?.displayName ??
-    'Un jugador';
+    'Rival';
+
+  const s1a = match.teamASet1 ?? '—';
+  const s1b = match.teamBSet1 ?? '—';
+  const s2a = match.teamASet2 ?? '—';
+  const s2b = match.teamBSet2 ?? '—';
 
   const sets = [
-    `${match.teamASet1}-${match.teamBSet1}`,
-    `${match.teamASet2}-${match.teamBSet2}`,
-    match.teamASet3 != null ? `${match.teamASet3}-${match.teamBSet3}` : null,
+    `${s1a}-${s1b}`,
+    `${s2a}-${s2b}`,
+    match.teamASet3 != null ? `${match.teamASet3}-${match.teamBSet3 ?? '—'}` : null,
   ]
     .filter(Boolean)
     .join(', ');
@@ -465,7 +510,7 @@ function PendingConfirmationCard({
         </p>
         {sets && <p className="text-xs text-slate-500">{sets}</p>}
       </div>
-      <Button type="button" size="sm" onClick={onConfirm} className="shrink-0">
+      <Button type="button" size="sm" onClick={onConfirm} className="min-h-[44px] shrink-0">
         Confirmar
       </Button>
     </div>

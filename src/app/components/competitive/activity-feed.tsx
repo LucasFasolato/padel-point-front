@@ -202,27 +202,42 @@ function ActivityCard({
   // Unknown type not in display config — skip silently
   if (!cfg) return null;
 
+  // Normalise data so all subsequent reads never receive null/undefined
+  const safeData: Record<string, unknown> =
+    event.data !== null &&
+    typeof event.data === 'object' &&
+    !Array.isArray(event.data)
+      ? (event.data as Record<string, unknown>)
+      : {};
+
   // Dynamic icon/colour for ranking movement direction
   const isRankingMoved = type === 'RANKING_MOVEMENT';
   const rankingDelta =
-    isRankingMoved && typeof event.data.positionDelta === 'number'
-      ? event.data.positionDelta
+    isRankingMoved && typeof safeData.positionDelta === 'number'
+      ? safeData.positionDelta
       : null;
   const isNegative = rankingDelta !== null && rankingDelta < 0;
 
   // Dynamic for ELO badge (red when negative)
   const isEloNegative =
     type === 'ELO_UPDATED' &&
-    typeof event.data.delta === 'number' &&
-    event.data.delta < 0;
+    typeof safeData.delta === 'number' &&
+    safeData.delta < 0;
 
   const resolvedIconBg = isNegative || isEloNegative ? 'bg-rose-50' : cfg.iconBg;
   const resolvedIconColor = isNegative || isEloNegative ? 'text-rose-500' : cfg.iconColor;
   const ResolvedIcon = isRankingMoved ? (isNegative ? TrendingDown : TrendingUp) : cfg.Icon;
 
-  const title = cfg.getTitle(event.data);
-  const subtitle = cfg.getSubtitle(event.data);
-  const cta = cfg.getCta(event.data);
+  let title: string;
+  let subtitle: string | null;
+  let cta: { href: string; label: string } | null;
+  try {
+    title = cfg.getTitle(safeData);
+    subtitle = cfg.getSubtitle(safeData);
+    cta = cfg.getCta(safeData);
+  } catch {
+    return null;
+  }
 
   const timeAgo = formatDistanceToNow(new Date(event.createdAt), {
     addSuffix: true,

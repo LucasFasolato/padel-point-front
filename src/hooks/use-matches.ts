@@ -137,7 +137,9 @@ export function usePendingConfirmations() {
     queryFn: () => matchesService.getPendingConfirmations(),
     enabled: !!user?.userId,
     staleTime: 1000 * 30,
-    retry: false,
+    // Allow 1 retry with exponential backoff; avoids spam on transient 500s
+    retry: 1,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10_000),
   });
 }
 
