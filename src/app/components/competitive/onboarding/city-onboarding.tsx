@@ -4,8 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, Loader2, MapPin } from 'lucide-react';
+import axios from 'axios';
 import { PlayerService } from '@/services/player-service';
 import { ARGENTINA_PROVINCES } from '@/lib/argentina-provinces';
+import type { ArgentinaProvince } from '@/lib/argentina-provinces';
+import { AR_TOP_CITIES } from '@/lib/ar-top-cities';
 import { toastManager } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +31,15 @@ export function CityOnboarding() {
 
   const canSubmit = province !== '' && city.trim() !== '' && position !== null;
 
+  const suggestions = province
+    ? (AR_TOP_CITIES[province as ArgentinaProvince] ?? [])
+    : [];
+
+  const handleProvinceChange = (value: string) => {
+    setProvince(value);
+    setCity(''); // reset city when province changes
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit || loading) return;
@@ -36,18 +48,27 @@ export function CityOnboarding() {
     setError('');
 
     try {
-      await PlayerService.geoOnboarding({
-        province,
-        cityName: city.trim(),
-        preferredPosition: position,
+      await PlayerService.updateMyPlayerProfile({
+        location: {
+          country: 'Argentina',
+          province,
+          city: city.trim(),
+        },
+        playStyleTags: position === 'DRIVE' ? ['right-side'] : ['left-side'],
       });
 
       // Invalidate competitive profile so the guard re-evaluates on next load
       await queryClient.invalidateQueries({ queryKey: ['competitive', 'profile'] });
 
       router.replace('/competitive');
-    } catch {
-      const msg = 'No pudimos guardar tus datos. Intentá nuevamente.';
+    } catch (err: unknown) {
+      let msg = 'No pudimos guardar tus datos. Intentá nuevamente.';
+      if (axios.isAxiosError(err)) {
+        const backendMsg = err.response?.data?.message;
+        if (typeof backendMsg === 'string' && backendMsg) {
+          msg = backendMsg;
+        }
+      }
       setError(msg);
       toastManager.error(msg, { idempotencyKey: 'city-onboarding-error' });
     } finally {
@@ -78,7 +99,7 @@ export function CityOnboarding() {
             <select
               required
               value={province}
-              onChange={(e) => setProvince(e.target.value)}
+              onChange={(e) => handleProvinceChange(e.target.value)}
               className="h-12 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/60 px-3 pr-9 text-sm text-slate-900 outline-none transition-all focus:border-[#0E7C66] focus:bg-white focus:ring-2 focus:ring-[#0E7C66]/10"
             >
               <option value="" disabled>
@@ -110,6 +131,27 @@ export function CityOnboarding() {
             onChange={(e) => setCity(e.target.value)}
             className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-[#0E7C66] focus:bg-white focus:ring-2 focus:ring-[#0E7C66]/10"
           />
+
+          {/* City suggestions */}
+          {suggestions.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setCity(s)}
+                  className={cn(
+                    'rounded-lg border px-2.5 py-1 text-xs font-medium transition-all',
+                    city === s
+                      ? 'border-[#0E7C66] bg-[#0E7C66] text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-[#0E7C66]/40 hover:text-[#0E7C66]'
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Preferred position */}
