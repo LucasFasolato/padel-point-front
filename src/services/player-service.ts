@@ -113,6 +113,18 @@ export const PlayerService = {
     return data;
   },
 
+  /**
+   * Geo onboarding: resolves cityName+province to a cityId and persists it on
+   * the user record so that GET /competitive/me stops returning 409 CITY_REQUIRED.
+   */
+  geoOnboarding: async (payload: {
+    province: string;
+    cityName: string;
+    preferredPosition: 'DRIVE' | 'REVES';
+  }): Promise<void> => {
+    await api.post('/players/me/onboarding', payload);
+  },
+
   addFavorite: async (
     targetUserId: paths['/players/me/favorites/{targetUserId}']['post']['parameters']['path']['targetUserId'],
   ): Promise<

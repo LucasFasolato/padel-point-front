@@ -36,9 +36,10 @@ export function CityOnboarding() {
     setError('');
 
     try {
-      await PlayerService.updateMyPlayerProfile({
-        location: { city: city.trim(), province, country: 'Argentina' },
-        playStyleTags: [position === 'DRIVE' ? 'right-side' : 'left-side'],
+      await PlayerService.geoOnboarding({
+        province,
+        cityName: city.trim(),
+        preferredPosition: position,
       });
 
       // Invalidate competitive profile so the guard re-evaluates on next load
