@@ -24,9 +24,7 @@ import {
   StandingsTable,
   LeagueShareCard,
   InviteModal,
-  ReportFromReservationModal,
   ReportManualModal,
-  ReportMethodSheet,
   LeagueChallengesSection,
   LeagueIntentsPanel,
   LeagueMatchCard,
@@ -40,8 +38,6 @@ import {
   useLeagueDetail,
   useLeagueStandings,
   useCreateInvites,
-  useEligibleReservations,
-  useReportFromReservation,
   useReportManual,
   useLeagueMatches,
   useUpdateMemberRole,
@@ -125,19 +121,15 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
   const { data: league, isLoading, error } = useLeagueDetail(leagueId);
   const { data: standingsData, isLoading: standingsLoading } = useLeagueStandings(leagueId);
   const inviteMutation = useCreateInvites(leagueId);
-  const reportFromReservation = useReportFromReservation(leagueId);
   const reportManual = useReportManual(leagueId);
   const createLeagueMatch = useCreateLeagueMatch(leagueId);
   const captureMatchResult = useCaptureLeagueMatchResult(leagueId);
-  const { data: reservations, isLoading: reservationsLoading } = useEligibleReservations(leagueId);
   const { data: matches, isLoading: matchesLoading } = useLeagueMatches(leagueId);
   const updateMemberRole = useUpdateMemberRole(leagueId);
   const deleteLeague = useDeleteLeague();
 
   const [showInvite, setShowInvite] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showReportMethodSheet, setShowReportMethodSheet] = useState(false);
-  const [showReservationReport, setShowReservationReport] = useState(false);
   const [showManualReport, setShowManualReport] = useState(false);
   const [showMatchModeSheet, setShowMatchModeSheet] = useState(false);
   const [showCreateMatchModal, setShowCreateMatchModal] = useState(false);
@@ -448,12 +440,13 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
                   </button>
                 )}
 
-                {/* Cargar resultado — active + canRecordMatches */}
-                {isActive && canRecordMatches && (
+                {/* Cargar resultado */}
+                {isActive && (
                   <button
                     type="button"
-                    onClick={() => setShowReportMethodSheet(true)}
-                    className="flex min-h-[72px] flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-4 text-center shadow-sm transition-colors active:scale-[0.98]"
+                    onClick={() => setShowManualReport(true)}
+                    disabled={!canRecordMatches}
+                    className="flex min-h-[72px] flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-4 text-center shadow-sm transition-colors active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Trophy size={22} className="text-slate-700" />
                     <span className="text-xs font-bold text-slate-800">Cargar resultado</span>
@@ -620,7 +613,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
                   fullWidth
                   size="lg"
                   className="gap-2 shadow-sm min-h-[52px]"
-                  onClick={() => setShowReportMethodSheet(true)}
+                  onClick={() => setShowManualReport(true)}
                   disabled={isReadOnly || !canRecordMatches}
                 >
                   <Trophy size={18} />
@@ -916,53 +909,17 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
         }}
       />
 
-      <ReportMethodSheet
-        isOpen={showReportMethodSheet}
-        onClose={() => setShowReportMethodSheet(false)}
-        onReservation={() => {
-          setShowReportMethodSheet(false);
-          setShowReservationReport(true);
-        }}
-        onManual={() => {
-          setShowReportMethodSheet(false);
-          setShowManualReport(true);
-        }}
-      />
-
-      <ReportFromReservationModal
-        isOpen={showReservationReport}
-        onClose={() => setShowReservationReport(false)}
-        onSubmit={(payload) => {
-          reportFromReservation.mutate(payload, {
-            onSuccess: (result) => {
-              setShowReservationReport(false);
-              if (result?.matchId) {
-                router.push(`/matches/${result.matchId}`);
-              }
-            },
-          });
-        }}
-        isPending={reportFromReservation.isPending}
-        members={league.members ?? []}
-        reservations={reservations ?? []}
-        reservationsLoading={reservationsLoading}
-      />
-
       <ReportManualModal
         isOpen={showManualReport}
         onClose={() => setShowManualReport(false)}
-        onSubmit={(payload) => {
-          reportManual.mutate(payload, {
-            onSuccess: (result) => {
-              setShowManualReport(false);
-              if (result?.matchId) {
-                router.push(`/matches/${result.matchId}`);
-              }
-            },
-          });
-        }}
+        onSubmit={(payload) => reportManual.mutateAsync(payload)}
         isPending={reportManual.isPending}
         members={league.members ?? []}
+        currentUserId={user?.userId}
+        onViewMatch={(matchId) => {
+          setShowManualReport(false);
+          router.push(`/matches/${matchId}`);
+        }}
       />
     </>
   );

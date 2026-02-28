@@ -273,6 +273,10 @@ describe('LeagueDetailPage', () => {
     });
     render(<LeagueDetailPage />);
     expect(screen.getByText('Necesitás al menos 2 jugadores.')).toBeInTheDocument();
+    const disabledButtons = screen
+      .queryAllByRole('button', { name: /Cargar resultado/i })
+      .filter((button) => button.hasAttribute('disabled'));
+    expect(disabledButtons.length).toBeGreaterThan(0);
   });
 
   it('hides CTA and shows finalized message when league is FINISHED', () => {

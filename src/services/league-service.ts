@@ -12,6 +12,7 @@ import type {
   ReportFromReservationPayload,
   ReportManualPayload,
   ReportFromReservationResponse,
+  ReportManualResponse,
   EligibleReservation,
   LeagueMatch,
   CreateLeagueMatchPayload,
@@ -438,13 +439,34 @@ export const leagueService = {
   async reportManual(
     leagueId: string,
     payload: ReportManualPayload
-  ): Promise<ReportFromReservationResponse> {
+  ): Promise<ReportManualResponse> {
     const validLeagueId = assertValidLeagueId(leagueId);
     const { data } = await api.post(
       `/leagues/${validLeagueId}/report-manual`,
       payload
     );
-    return data;
+    const raw = (data ?? {}) as Record<string, unknown>;
+    const match = raw.match && typeof raw.match === 'object' ? raw.match as Record<string, unknown> : null;
+    return {
+      matchId:
+        typeof raw.matchId === 'string'
+          ? raw.matchId
+          : typeof match?.id === 'string'
+            ? match.id
+            : undefined,
+      status:
+        typeof raw.status === 'string'
+          ? raw.status
+          : typeof match?.status === 'string'
+            ? match.status
+            : undefined,
+      match: match
+        ? {
+            id: typeof match.id === 'string' ? match.id : undefined,
+            status: typeof match.status === 'string' ? match.status : undefined,
+          }
+        : null,
+    };
   },
 
   /** Create a league challenge. */

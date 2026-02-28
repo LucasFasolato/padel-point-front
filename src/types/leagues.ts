@@ -190,15 +190,23 @@ export interface ReportFromReservationPayload {
 
 export interface ReportManualPayload {
   teamA1Id: string;
-  teamA2Id: string;
+  teamA2Id?: string;
   teamB1Id: string;
-  teamB2Id: string;
+  teamB2Id?: string;
   sets: { a: number; b: number }[];
   playedAt?: string;
 }
 
 export interface ReportFromReservationResponse {
   matchId?: string;
+  status?: string;
+}
+
+export interface ReportManualResponse extends ReportFromReservationResponse {
+  match?: {
+    id?: string;
+    status?: string;
+  } | null;
 }
 
 /** Reservation eligible for league match reporting. */

@@ -319,6 +319,20 @@ function getLeagueMatchResultErrorMessage(err: unknown): string {
   return 'No se pudo cargar el resultado. Intenta de nuevo.';
 }
 
+function getBackendMessage(err: unknown): string | null {
+  if (!axios.isAxiosError(err)) return null;
+  const payload = err.response?.data as { message?: unknown } | undefined;
+  const rawMessage = payload?.message;
+  if (typeof rawMessage === 'string' && rawMessage.trim().length > 0) {
+    return rawMessage.trim();
+  }
+  if (Array.isArray(rawMessage)) {
+    const first = rawMessage.find((item) => typeof item === 'string' && item.trim().length > 0);
+    if (typeof first === 'string') return first.trim();
+  }
+  return null;
+}
+
 /** Report a league match from a reservation. */
 export function useReportFromReservation(leagueId: string) {
   const qc = useQueryClient();
@@ -358,13 +372,25 @@ export function useReportManual(leagueId: string) {
       qc.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
       qc.invalidateQueries({ queryKey: KEYS.standings(leagueId) });
       qc.invalidateQueries({ queryKey: KEYS.activityPrefix(leagueId), exact: false });
+      qc.invalidateQueries({ queryKey: ['leagues', 'pending-confirmations', leagueId] });
+      qc.invalidateQueries({ queryKey: ['matches', 'pending-confirmations'] });
+      qc.invalidateQueries({ queryKey: ['intents'] });
+      qc.invalidateQueries({ queryKey: ['notifications'] });
       toast.success(LEAGUE_REPORT_SUCCESS_MESSAGE);
     },
     onError: (err) => {
       let message = 'No se pudo cargar el resultado. Intenta de nuevo.';
       if (axios.isAxiosError(err)) {
+        let backendMessage: string | null = null;
+        const status = err.response?.status;
+        if (status === 400 || status === 409) {
+          backendMessage = getBackendMessage(err);
+          if (backendMessage) {
+            message = backendMessage;
+          }
+        }
         const code = err.response?.data?.code as string | undefined;
-        if (code && REPORT_ERROR_MESSAGES[code]) {
+        if (!backendMessage && code && REPORT_ERROR_MESSAGES[code]) {
           message = REPORT_ERROR_MESSAGES[code];
         }
       }
