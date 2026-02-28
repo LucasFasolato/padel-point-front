@@ -13,6 +13,8 @@ export interface RankingsQueryParams {
   category?: Category;
   provinceCode?: string;
   cityId?: string;
+  /** Fallback when cityId is absent — sent together with provinceCode */
+  cityName?: string;
   limit?: number;
   cursor?: string;
 }

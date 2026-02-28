@@ -87,9 +87,15 @@ function getCityName(location: unknown): string | null {
   const locationRecord = asRecord(location);
   if (!locationRecord) return null;
 
+  // Explicit cityName field (preferred — new backend shape)
+  const fromCityName = asTrimmedString(locationRecord.cityName);
+  if (fromCityName) return fromCityName;
+
+  // Scalar city string
   const direct = asTrimmedString(locationRecord.city);
   if (direct) return direct;
 
+  // Nested city object
   const cityRecord = asRecord(locationRecord.city);
   return asTrimmedString(cityRecord?.name);
 }
@@ -244,15 +250,20 @@ export default function RankingsPage() {
   const cityId = getCityId(location);
   const provinceCode = getProvinceCode(location);
 
+  // CITY is usable when we have either a cityId OR the (cityName + provinceCode) pair
+  // that the backend accepts as a fallback resolver.
+  const canUseCity = !!cityId || (!!cityName && !!provinceCode);
+  const canUseProvince = !!provinceCode;
+
   const availableScopes: RankingScope[] = ['country'];
-  if (provinceName || provinceCode) availableScopes.unshift('province');
-  if (cityName || cityId) availableScopes.unshift('city');
+  if (canUseProvince) availableScopes.unshift('province');
+  if (canUseCity) availableScopes.unshift('city');
 
   const selectedScopeIsAvailable = availableScopes.includes(scope);
   const effectiveScope: RankingScope = selectedScopeIsAvailable ? scope : 'country';
 
-  const missingProvinceParam = scope === 'province' && !provinceCode;
-  const missingCityParam = scope === 'city' && !cityId;
+  const missingProvinceParam = scope === 'province' && !canUseProvince;
+  const missingCityParam = scope === 'city' && !canUseCity;
   const missingRequiredGeoParam = missingProvinceParam || missingCityParam;
 
   const rankingsQuery = useRankings({
@@ -260,6 +271,7 @@ export default function RankingsPage() {
     category,
     provinceCode,
     cityId,
+    cityName,
     enabled: !missingRequiredGeoParam,
   });
   const items = rankingsQuery.data?.items ?? [];
@@ -277,39 +289,39 @@ export default function RankingsPage() {
     profileQuery.isLoading || (profileQuery.isError && !profileQuery.data);
 
   useEffect(() => {
-    if (scope === 'province' && !provinceCode) {
+    if (scope === 'province' && !canUseProvince) {
       setGeoRequiredScope('province');
       setScope('country');
       return;
     }
 
-    if (scope === 'city' && !cityId) {
+    if (scope === 'city' && !canUseCity) {
       setGeoRequiredScope('city');
-      setScope(provinceCode ? 'province' : 'country');
+      setScope(canUseProvince ? 'province' : 'country');
     }
-  }, [scope, provinceCode, cityId]);
+  }, [scope, canUseProvince, canUseCity]);
 
   useEffect(() => {
-    if (geoRequiredScope === 'province' && provinceCode) {
+    if (geoRequiredScope === 'province' && canUseProvince) {
       setGeoRequiredScope(null);
       return;
     }
 
-    if (geoRequiredScope === 'city' && cityId) {
+    if (geoRequiredScope === 'city' && canUseCity) {
       setGeoRequiredScope(null);
     }
-  }, [geoRequiredScope, provinceCode, cityId]);
+  }, [geoRequiredScope, canUseProvince, canUseCity]);
 
   const handleScopeChange = (newScope: RankingScope) => {
-    if (newScope === 'province' && !provinceCode) {
+    if (newScope === 'province' && !canUseProvince) {
       setGeoRequiredScope('province');
       setScope('country');
       return;
     }
 
-    if (newScope === 'city' && !cityId) {
+    if (newScope === 'city' && !canUseCity) {
       setGeoRequiredScope('city');
-      setScope(provinceCode ? 'province' : 'country');
+      setScope(canUseProvince ? 'province' : 'country');
       return;
     }
 

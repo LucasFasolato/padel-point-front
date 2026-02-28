@@ -54,8 +54,14 @@ export const rankingsService = {
     if (params.scope === 'province' && params.provinceCode) {
       query.provinceCode = params.provinceCode;
     }
-    if (params.scope === 'city' && params.cityId) {
-      query.cityId = params.cityId;
+    if (params.scope === 'city') {
+      if (params.cityId) {
+        query.cityId = params.cityId;
+      } else if (params.cityName && params.provinceCode) {
+        // Backend fallback: resolve by name when cityId is missing
+        query.cityName = params.cityName.trim();
+        query.provinceCode = params.provinceCode;
+      }
     }
     if (typeof params.category === 'number') query.category = params.category;
     if (params.cursor) {

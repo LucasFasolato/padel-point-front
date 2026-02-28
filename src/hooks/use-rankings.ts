@@ -33,6 +33,8 @@ interface UseRankingsParams {
   category?: Category;
   provinceCode?: string | null;
   cityId?: string | null;
+  /** Fallback city identifier used when cityId is absent */
+  cityName?: string | null;
   timeframe?: InsightsTimeframe;
   mode?: InsightsMode;
   enabled?: boolean;
@@ -43,6 +45,7 @@ export function useRankings({
   category,
   provinceCode,
   cityId,
+  cityName,
   timeframe,
   mode,
   enabled = true,
@@ -50,6 +53,7 @@ export function useRankings({
   const queryScope = scope;
   const queryProvinceCode = provinceCode ?? null;
   const queryCityId = cityId ?? null;
+  const queryCityName = cityName ?? null;
   const queryCategory = category ?? 'ALL';
   const queryTimeframe = timeframe ?? 'CURRENT_SEASON';
   const queryMode = mode ?? 'COMPETITIVE';
@@ -60,6 +64,7 @@ export function useRankings({
       queryScope,
       queryProvinceCode,
       queryCityId,
+      queryCityName,
       queryCategory,
       queryTimeframe,
       queryMode,
@@ -70,6 +75,7 @@ export function useRankings({
         category: typeof queryCategory === 'number' ? queryCategory : undefined,
         provinceCode: queryProvinceCode ?? undefined,
         cityId: queryCityId ?? undefined,
+        cityName: queryCityName ?? undefined,
         cursor: pageParam as string | undefined,
       }),
     enabled,
