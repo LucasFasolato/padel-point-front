@@ -85,6 +85,7 @@ vi.mock('@/app/components/leagues', async (importOriginal) => {
     LeagueMatchModeSheet: () => null,
     LeagueMatchCreateModal: () => null,
     LeagueMatchResultModal: () => null,
+    RecentActivityStrip: () => null,
   };
 });
 

@@ -13,4 +13,4 @@ export { LeagueSettingsPanel } from './league-settings';
 export { LeagueMatchModeSheet } from './league-match-mode-sheet';
 export { LeagueMatchCreateModal } from './league-match-create-modal';
 export { LeagueMatchResultModal } from './league-match-result-modal';
-export { LeagueActivityFeed } from './league-activity-feed';
+export { LeagueActivityFeed, RecentActivityStrip } from './league-activity-feed';

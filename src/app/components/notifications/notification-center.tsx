@@ -15,6 +15,10 @@ import { isUuid } from '@/lib/id-utils';
 import { NotificationItem } from './notification-item';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import {
+  NOTIFICATION_TYPES,
+  normalizeNotificationType,
+} from '@/types/notifications';
 import type { AppNotification } from '@/types/notifications';
 
 function resolveInviteId(notification: AppNotification): string | null {
@@ -28,6 +32,29 @@ function resolveInviteId(notification: AppNotification): string | null {
 function resolveLeagueId(notification: AppNotification): string | null {
   const leagueId = notification.actionMeta?.leagueId ?? notification.data?.leagueId;
   return typeof leagueId === 'string' && leagueId.length > 0 ? leagueId : null;
+}
+
+/** Append tab + anchor hints to bare /leagues/:id notification links. */
+function enrichLeagueLink(notification: AppNotification): string | null {
+  const raw = notification.link;
+  if (!raw) return null;
+
+  // Only enrich bare league links: /leagues/{id} with no further path/query/hash
+  if (!/^\/leagues\/[^/?#]+$/.test(raw)) return raw;
+
+  const type = normalizeNotificationType(notification.type);
+  if (
+    type === NOTIFICATION_TYPES.MATCH_REPORTED ||
+    type === NOTIFICATION_TYPES.MATCH_CONFIRMED ||
+    type === NOTIFICATION_TYPES.MATCH_DISPUTED ||
+    type === NOTIFICATION_TYPES.MATCH_RESOLVED
+  ) {
+    return `${raw}?tab=partidos#matches`;
+  }
+  if (type === NOTIFICATION_TYPES.LEAGUE_RANKING_MOVED) {
+    return `${raw}?tab=tabla#standings`;
+  }
+  return raw;
 }
 
 export function NotificationCenter() {
@@ -60,8 +87,9 @@ export function NotificationCenter() {
       if (!notification.read) {
         markRead.mutate(notification.id);
       }
-      if (notification.link) {
-        router.push(notification.link);
+      const link = enrichLeagueLink(notification);
+      if (link) {
+        router.push(link);
       }
     },
     [markRead, router]

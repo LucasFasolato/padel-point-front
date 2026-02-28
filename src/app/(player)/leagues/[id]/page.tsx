@@ -32,6 +32,7 @@ import {
   LeagueMatchModeSheet,
   LeagueMatchCreateModal,
   LeagueMatchResultModal,
+  RecentActivityStrip,
 } from '@/app/components/leagues';
 import { IntentComposerSheet } from '@/app/components/competitive/intent-composer-sheet';
 import {
@@ -154,6 +155,17 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
   useEffect(() => {
     setActiveTab(normalizeLeagueTab(initialTabParam));
   }, [initialTabParam]);
+
+  // Scroll to hash anchor (#matches, #standings) after the active tab is rendered
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const t = setTimeout(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+    return () => clearTimeout(t);
+  }, [activeTab]);
 
   const handleTabChange = (value: string) => setActiveTab(normalizeLeagueTab(value));
 
@@ -525,12 +537,18 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
                   </div>
                 </button>
               )}
+
+              {/* Recent activity strip — last 5 events, hidden when empty */}
+              <RecentActivityStrip
+                leagueId={leagueId}
+                onNavigate={(url) => router.push(url)}
+              />
             </div>
           </TabsContent>
 
           {/* ── Tabla tab ───────────────────────────────────────────────────── */}
           <TabsContent value="tabla">
-            <div className="space-y-3 pt-1">
+            <div id="standings" className="space-y-3 pt-1">
               <LeagueShareCard
                 leagueName={league.name}
                 standings={standingsRows}
@@ -549,7 +567,7 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
 
           {/* ── Partidos tab ─────────────────────────────────────────────────── */}
           <TabsContent value="partidos">
-            <div className="space-y-4 pt-1">
+            <div id="matches" className="space-y-4 pt-1">
               {/* Pending confirmations section */}
               {leaguePendingConfirmations.length > 0 && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-5">
