@@ -24,7 +24,6 @@ vi.mock('@/store/auth-store', () => ({
 // Mock hooks
 const mockLeagueDetail = vi.fn<() => { data: League | undefined; isLoading: boolean; error: unknown }>();
 const mockLeagueMatches = vi.fn<() => { data: LeagueMatch[] | undefined }>();
-const mockUpdateSettings = vi.fn();
 const useLeagueDetailMock = vi.fn(() => mockLeagueDetail());
 const useLeagueStandingsMock = vi.fn(() => ({ data: undefined, isLoading: false }));
 const useCreateInvitesMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
@@ -32,8 +31,6 @@ const useReportFromReservationMock = vi.fn(() => ({ mutate: vi.fn(), isPending: 
 const useReportManualMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
 const useEligibleReservationsMock = vi.fn(() => ({ data: [], isLoading: false }));
 const useLeagueMatchesMock = vi.fn(() => mockLeagueMatches());
-const useLeagueSettingsMock = vi.fn(() => ({ data: undefined }));
-const useUpdateLeagueSettingsMock = vi.fn(() => ({ mutate: mockUpdateSettings, isPending: false }));
 const useUpdateMemberRoleMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
 const useCreateLeagueMatchMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
 const useCaptureLeagueMatchResultMock = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
@@ -54,8 +51,6 @@ vi.mock('@/hooks/use-leagues', async (importOriginal) => {
     useReportManual: (id: string) => useReportManualMock(id),
     useEligibleReservations: (id: string) => useEligibleReservationsMock(id),
     useLeagueMatches: (id: string) => useLeagueMatchesMock(id),
-    useLeagueSettings: (id: string) => useLeagueSettingsMock(id),
-    useUpdateLeagueSettings: (id: string) => useUpdateLeagueSettingsMock(id),
     useUpdateMemberRole: (id: string) => useUpdateMemberRoleMock(id),
     useCreateLeagueMatch: (id: string) => useCreateLeagueMatchMock(id),
     useCaptureLeagueMatchResult: (id: string) => useCaptureLeagueMatchResultMock(id),
@@ -87,10 +82,15 @@ vi.mock('@/app/components/leagues', async (importOriginal) => {
         {match.teamB.map((p) => p.displayName).join(' / ')} - {match.score}
       </button>
     ),
-    LeagueSettingsPanel: () => <div data-testid="settings-panel" />,
-    LeagueActivityFeed: () => <div data-testid="activity-feed" />,
+    LeagueMatchModeSheet: () => null,
+    LeagueMatchCreateModal: () => null,
+    LeagueMatchResultModal: () => null,
   };
 });
+
+vi.mock('@/app/components/competitive/intent-composer-sheet', () => ({
+  IntentComposerSheet: () => null,
+}));
 
 vi.mock('@/hooks/use-notification-socket', () => ({
   useLeagueActivitySocket: vi.fn(),
@@ -161,10 +161,10 @@ describe('LeagueDetailPage', () => {
       error: null,
     });
     render(<LeagueDetailPage />);
+    expect(screen.getByTestId('tab-resumen')).toBeInTheDocument();
     expect(screen.getByTestId('tab-tabla')).toBeInTheDocument();
     expect(screen.getByTestId('tab-partidos')).toBeInTheDocument();
     expect(screen.getByTestId('tab-miembros')).toBeInTheDocument();
-    expect(screen.getByTestId('tab-ajustes')).toBeInTheDocument();
   });
 
   it('clicking copy link enables share link and copies to clipboard', async () => {
@@ -295,10 +295,10 @@ describe('LeagueDetailPage', () => {
     mockLeagueMatches.mockReturnValue({ data: [] });
     render(<LeagueDetailPage />);
     expect(screen.getByText('Todavía no hay partidos')).toBeInTheDocument();
-    expect(screen.getByText(/Cargá un partido jugado/i)).toBeInTheDocument();
+    expect(screen.getByText(/Cargá un resultado para que aparezca acá/i)).toBeInTheDocument();
   });
 
-  it('shows empty state and disabled "Cargar resultado" button when finished', () => {
+  it('shows empty state and finalized message when finished', () => {
     mockLeagueDetail.mockReturnValue({
       data: { ...BASE_LEAGUE, status: 'finished' },
       isLoading: false,
@@ -307,9 +307,10 @@ describe('LeagueDetailPage', () => {
     mockLeagueMatches.mockReturnValue({ data: [] });
     render(<LeagueDetailPage />);
     expect(screen.getByText('Todavía no hay partidos')).toBeInTheDocument();
-    // "Cargar resultado" button in the Partidos tab should be visible but disabled
-    const buttons = screen.getAllByRole('button', { name: /Cargar resultado/i });
-    expect(buttons.some((btn) => btn.hasAttribute('disabled'))).toBe(true);
+    expect(screen.getByText(/Liga finalizada/)).toBeInTheDocument();
+    // No "Cargar resultado" action available for finished leagues
+    const buttons = screen.queryAllByRole('button', { name: /Cargar resultado/i });
+    expect(buttons.every((btn) => btn.hasAttribute('disabled'))).toBe(true);
   });
 
   it('renders match cards when matches exist', () => {
@@ -336,14 +337,17 @@ describe('LeagueDetailPage', () => {
     expect(screen.queryByText('Todavía no hay partidos')).not.toBeInTheDocument();
   });
 
-  it('renders settings panel in Ajustes tab', () => {
+  it('renders Resumen tab with hero card and league name', () => {
     mockLeagueDetail.mockReturnValue({
       data: { ...BASE_LEAGUE, status: 'active' },
       isLoading: false,
       error: null,
     });
     render(<LeagueDetailPage />);
-    expect(screen.getByTestId('settings-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-resumen')).toBeInTheDocument();
+    // League name appears in both topbar and hero card h1
+    expect(screen.getAllByText('Padel Masters').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId('status-badge')).toBeInTheDocument();
   });
 
   it('renders invalid-link state and never mounts league hooks', () => {

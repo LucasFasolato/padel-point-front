@@ -229,6 +229,7 @@ export function useCaptureLeagueMatchResult(leagueId: string) {
     onSuccess: () => {
       qc?.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
       qc?.invalidateQueries({ queryKey: KEYS.standings(leagueId) });
+      qc?.invalidateQueries({ queryKey: KEYS.activityPrefix(leagueId), exact: false });
       toast.success(LEAGUE_MATCH_RESULT_SUCCESS_MESSAGE);
     },
     onError: (err) => {
@@ -329,6 +330,7 @@ export function useReportFromReservation(leagueId: string) {
       qc.invalidateQueries({ queryKey: KEYS.detail(leagueId) });
       qc.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
       qc.invalidateQueries({ queryKey: KEYS.standings(leagueId) });
+      qc.invalidateQueries({ queryKey: KEYS.activityPrefix(leagueId), exact: false });
       toast.success(LEAGUE_REPORT_SUCCESS_MESSAGE);
     },
     onError: (err) => {
@@ -355,6 +357,7 @@ export function useReportManual(leagueId: string) {
       qc.invalidateQueries({ queryKey: KEYS.detail(leagueId) });
       qc.invalidateQueries({ queryKey: KEYS.matches(leagueId) });
       qc.invalidateQueries({ queryKey: KEYS.standings(leagueId) });
+      qc.invalidateQueries({ queryKey: KEYS.activityPrefix(leagueId), exact: false });
       toast.success(LEAGUE_REPORT_SUCCESS_MESSAGE);
     },
     onError: (err) => {

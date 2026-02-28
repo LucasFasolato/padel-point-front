@@ -17,6 +17,7 @@ export interface CreatedIntent {
 interface BaseParams {
   matchType?: MatchType;
   message?: string;
+  leagueId?: string;
 }
 
 export const intentsService = {
@@ -29,6 +30,7 @@ export const intentsService = {
       type: 'DIRECT',
       matchType: params.matchType ?? 'COMPETITIVE',
       message: params.message ?? null,
+      ...(params.leagueId ? { leagueId: params.leagueId } : {}),
     });
     return data;
   },
@@ -44,6 +46,7 @@ export const intentsService = {
       matchType: params.matchType ?? 'COMPETITIVE',
       message: params.message ?? null,
       expiresInHours: params.expiresInHours ?? 24,
+      ...(params.leagueId ? { leagueId: params.leagueId } : {}),
     });
     return data;
   },
@@ -59,6 +62,7 @@ export const intentsService = {
       matchType: params.matchType ?? 'COMPETITIVE',
       message: params.message ?? null,
       expiresInHours: params.expiresInHours ?? 24,
+      ...(params.leagueId ? { leagueId: params.leagueId } : {}),
     });
     return data;
   },

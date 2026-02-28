@@ -37,6 +37,10 @@ interface IntentComposerSheetProps {
   onClose: () => void;
   /** Called when 409 "already active" is returned — scroll to intents section */
   onViewExisting?: () => void;
+  /** When set, the intent is scoped to this league (leagueId is sent with the payload) */
+  leagueId?: string;
+  /** Display name shown as context badge when leagueId is provided */
+  leagueName?: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -45,6 +49,8 @@ export function IntentComposerSheet({
   isOpen,
   onClose,
   onViewExisting,
+  leagueId,
+  leagueName,
 }: IntentComposerSheetProps) {
   const [intentType, setIntentType] = useState<IntentKind>('DIRECT');
   const [matchMode, setMatchMode] = useState<MatchMode>('COMPETITIVE');
@@ -90,6 +96,7 @@ export function IntentComposerSheet({
         matchType: matchMode,
         message: message.trim() || undefined,
         expiresInHours: showExpiry ? expiresInHours : undefined,
+        leagueId: leagueId ?? undefined,
       });
       onClose();
     } catch (err) {
@@ -131,8 +138,14 @@ export function IntentComposerSheet({
         {/* Header */}
         <div className="flex items-center justify-between px-5 pb-4">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Crear desafío</h2>
-            <p className="text-xs text-slate-500">Elegí cómo querés jugar</p>
+            <h2 className="text-base font-bold text-slate-900">Quiero jugar</h2>
+            {leagueId && leagueName ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#0E7C66]/10 px-2 py-0.5 text-[11px] font-semibold text-[#0E7C66]">
+                🏆 {leagueName}
+              </span>
+            ) : (
+              <p className="text-xs text-slate-500">Elegí cómo querés jugar</p>
+            )}
           </div>
           <button
             type="button"

@@ -111,6 +111,7 @@ export interface CreateIntentParams {
   matchType?: 'COMPETITIVE' | 'FRIENDLY';
   message?: string;
   expiresInHours?: number;
+  leagueId?: string;
 }
 
 const INTENT_SUBTITLES: Record<IntentKind, string> = {
@@ -124,13 +125,14 @@ export function useCreateIntent() {
 
   return useMutation({
     mutationFn: (params: CreateIntentParams) => {
+      const base = { matchType: params.matchType, message: params.message, leagueId: params.leagueId };
       switch (params.type) {
         case 'DIRECT':
-          return intentsService.createDirect(params);
+          return intentsService.createDirect(base);
         case 'OPEN':
-          return intentsService.createOpen(params);
+          return intentsService.createOpen({ ...base, expiresInHours: params.expiresInHours });
         case 'FIND_PARTNER':
-          return intentsService.createFindPartner(params);
+          return intentsService.createFindPartner({ ...base, expiresInHours: params.expiresInHours });
       }
     },
 
