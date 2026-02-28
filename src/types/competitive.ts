@@ -234,8 +234,11 @@ export interface PlayerInsights {
 
 // ── User Intents (normalised action items) ────────────────────────────────────
 
-/** The two kinds of action a user needs to take in the "Desafíos" section. */
-export type IntentType = 'CONFIRM_RESULT' | 'ACCEPT_CHALLENGE';
+/**
+ * CONFIRM_RESULT / ACCEPT_CHALLENGE — incoming intents needing action.
+ * CREATED_INTENT — outgoing intent created by the user (shown optimistically).
+ */
+export type IntentType = 'CONFIRM_RESULT' | 'ACCEPT_CHALLENGE' | 'CREATED_INTENT';
 export type IntentStatus = MatchResultStatus | ChallengeStatus | (string & {});
 
 /**

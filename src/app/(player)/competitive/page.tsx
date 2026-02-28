@@ -16,6 +16,7 @@ import { CategoryBadge } from '@/app/components/competitive/category-badge';
 import { EloChart } from '@/app/components/competitive/elo-chart';
 import { ActivityFeed } from '@/app/components/competitive/activity-feed';
 import { InsightsSection } from '@/app/components/competitive/insights-section';
+import { IntentComposerSheet } from '@/app/components/competitive/intent-composer-sheet';
 import { SkillRadarCard } from '@/app/components/competitive/skill-radar-card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -32,6 +33,7 @@ export default function CompetitivePage() {
   const [challengeActionError, setChallengeActionError] = useState<string | null>(null);
   const [actingChallengeId, setActingChallengeId] = useState<string | null>(null);
   const [chartOpen, setChartOpen] = useState(true);
+  const [composerOpen, setComposerOpen] = useState(false);
 
   const {
     data: profile,
@@ -129,17 +131,17 @@ export default function CompetitivePage() {
         <section className="space-y-2.5">
           <button
             type="button"
-            onClick={() => router.push('/competitive/find')}
-            className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[#22C55E] py-4 text-base font-bold text-white shadow-sm transition-transform active:scale-[0.98] hover:bg-[#16A34A]"
+            onClick={() => setComposerOpen(true)}
+            className="flex min-h-[48px] w-full items-center justify-center gap-2.5 rounded-2xl bg-[#0E7C66] py-4 text-base font-bold text-white shadow-sm transition-transform active:scale-[0.98] hover:bg-[#0B6B58]"
           >
-            🎾 Buscar partido
+            🎾 Quiero jugar
           </button>
           <button
             type="button"
-            onClick={() => router.push('/leagues')}
-            className="flex w-full items-center justify-center gap-2.5 rounded-2xl border border-slate-200 bg-white py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition-transform active:scale-[0.98] hover:bg-slate-50"
+            onClick={() => router.push('/competitive/find')}
+            className="flex min-h-[44px] w-full items-center justify-center gap-2.5 rounded-2xl border border-slate-200 bg-white py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition-transform active:scale-[0.98] hover:bg-slate-50"
           >
-            🏟 Ligas
+            Buscar rivales
           </button>
         </section>
 
@@ -179,7 +181,10 @@ export default function CompetitivePage() {
 
         {/* ── Activity feed ── */}
         {hasActivity && (
-          <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+          <section
+            id="intents-section"
+            className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm"
+          >
             <div className="border-b border-slate-100 px-5 py-3.5">
               <h2 className="text-sm font-bold text-slate-900">Actividad reciente</h2>
             </div>
@@ -345,6 +350,14 @@ export default function CompetitivePage() {
           </div>
         </div>
       </div>
+
+      <IntentComposerSheet
+        isOpen={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        onViewExisting={() => {
+          document.getElementById('intents-section')?.scrollIntoView({ behavior: 'smooth' });
+        }}
+      />
     </>
   );
 }
@@ -428,6 +441,22 @@ function CompetitiveIntentCard({
 }) {
   if (!isRenderableIntent(intent)) return null;
 
+  if (intent.intentType === 'CREATED_INTENT') {
+    return (
+      <div className="flex items-center gap-3 px-5 py-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-900">
+            {intent.subtitle ?? 'Tu desafío'}
+          </p>
+          <p className="text-xs text-slate-400">Buscando...</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-[#0E7C66]/10 px-2.5 py-1 text-xs font-bold text-[#0E7C66]">
+          Activo
+        </span>
+      </div>
+    );
+  }
+
   if (intent.intentType === 'CONFIRM_RESULT') {
     return (
       <div className="flex items-center justify-between gap-3 px-5 py-3">
@@ -497,6 +526,8 @@ function isRenderableIntent(intent: UserIntent): boolean {
       return intent.status === 'pending_confirm';
     case 'ACCEPT_CHALLENGE':
       return intent.status === 'pending';
+    case 'CREATED_INTENT':
+      return intent.status === 'active';
     default:
       return false;
   }
