@@ -1,425 +1,616 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
-import { LogOut, Camera, ChevronDown, ChevronUp } from 'lucide-react';
-import api from '@/lib/api';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import {
+  Camera,
+  ChevronDown,
+  LogOut,
+  MapPin,
+  User,
+  Swords,
+  AlertTriangle,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { toastManager } from '@/lib/toast';
-import { MediaKind, MediaOwnerType } from '@/types';
+import { ARGENTINA_PROVINCES } from '@/lib/argentina-provinces';
+import type { ArgentinaProvince } from '@/lib/argentina-provinces';
+import { AR_TOP_CITIES } from '@/lib/ar-top-cities';
 import { cloudinaryUploadSigned, MediaService } from '@/services/media-service';
+import { MediaKind, MediaOwnerType } from '@/types';
 import { useAuthStore } from '@/store/auth-store';
 import { useLogout } from '@/hooks/use-logout';
+import {
+  useMyAccountProfile,
+  useUpdateMyAccountProfile,
+  useMyPlayerProfile,
+  useUpdateMyPlayerProfile,
+} from '@/hooks/use-player-profile';
 import { useCompetitiveProfile } from '@/hooks/use-competitive-profile';
-import { CategoryBadge } from '@/app/components/competitive/category-badge';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { Button } from '@/app/components/ui/button';
+import { Card } from '@/app/components/ui/card';
+import { Input } from '@/app/components/ui/input';
+import { CategoryBadge } from '@/app/components/competitive/category-badge';
+import type { UpdateMyPlayerProfilePayload } from '@/services/player-service';
 
-type ProfileResponse = {
-  userId?: string;
-  displayName?: string | null;
-  phone?: string | null;
-  email: string;
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Side = 'DRIVE' | 'REVES' | 'BALANCED';
+
+type FormValues = {
+  displayName: string;
+  phone: string;
+  province: string;
+  city: string;
+  side: Side;
 };
 
-type FieldErrors = {
-  displayName?: string;
-  phone?: string;
+const DEFAULT_FORM: FormValues = {
+  displayName: '',
+  phone: '',
+  province: '',
+  city: '',
+  side: 'BALANCED',
 };
 
-const MAX_BYTES = 5 * 1024 * 1024;
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+// ─── Section header ───────────────────────────────────────────────────────────
 
-const getFileError = (file: File) => {
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return 'Formato no permitido. Usá JPG, PNG o WEBP.';
-  }
-  if (file.size > MAX_BYTES) {
-    return 'El archivo supera 5MB.';
-  }
-  return null;
-};
-
-function StatCard({ label, value }: { label: string; value: string | number }) {
+function SectionHeader({
+  icon,
+  title,
+}: {
+  icon: React.ReactNode;
+  title: string;
+}) {
   return (
-    <div className="flex flex-col items-center rounded-xl bg-white/10 px-4 py-3">
-      <span className="text-xl font-bold text-white">{value}</span>
-      <span className="mt-0.5 text-xs font-medium text-emerald-100">{label}</span>
+    <div className="mb-4 flex items-center gap-2.5">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-[#0E7C66]">
+        {icon}
+      </div>
+      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+        {title}
+      </h2>
     </div>
   );
 }
 
+// ─── Segmented control: Drive / Revés / Sin preferencia ──────────────────────
+
+const SIDE_OPTIONS: { value: Side; label: string }[] = [
+  { value: 'DRIVE', label: 'Drive' },
+  { value: 'REVES', label: 'Revés' },
+  { value: 'BALANCED', label: 'Sin pref.' },
+];
+
+function SegmentedControl({
+  value,
+  onChange,
+}: {
+  value: Side;
+  onChange: (v: Side) => void;
+}) {
+  return (
+    <div
+      role="group"
+      className="flex rounded-xl border border-slate-200 bg-slate-50 p-1"
+    >
+      {SIDE_OPTIONS.map(({ value: opt, label }) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onChange(opt)}
+          className={cn(
+            'flex-1 rounded-lg py-2 text-sm font-semibold transition-all',
+            value === opt
+              ? 'bg-white text-[#0E7C66] shadow-sm ring-1 ring-slate-100'
+              : 'text-slate-500 hover:text-slate-700',
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Province select ──────────────────────────────────────────────────────────
+
+function ProvinceSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-slate-700">
+        Provincia
+      </label>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-11 w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 pr-9 text-sm text-slate-900 outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+        >
+          <option value="">Seleccioná tu provincia</option>
+          {ARGENTINA_PROVINCES.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+          size={16}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
 export default function ProfilePage() {
-  const { user, logout } = useAuthStore();
-  const token = user?.userId ? 'session' : null;
+  const { user } = useAuthStore();
   const handleLogout = useLogout();
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [sessionExpired, setSessionExpired] = useState(false);
-  const [profile, setProfile] = useState<ProfileResponse | null>(null);
-  const [form, setForm] = useState({ displayName: '', phone: '' });
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  const {
+    data: accountProfile,
+    isLoading: accountLoading,
+    isError: accountError,
+    refetch: refetchAccount,
+  } = useMyAccountProfile();
+
+  const { data: playerProfile, isLoading: playerLoading } = useMyPlayerProfile();
+  const { data: competitiveProfile } = useCompetitiveProfile();
+
+  const { mutateAsync: updateAccount, isPending: savingAccount } =
+    useUpdateMyAccountProfile();
+  const { mutateAsync: updatePlayer, isPending: savingPlayer } =
+    useUpdateMyPlayerProfile();
+
+  const saving = savingAccount || savingPlayer;
+
+  // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
 
-  const abortRef = useRef<AbortController | null>(null);
-  const userId = profile?.userId || user?.userId || '';
+  // Form
+  const [form, setForm] = useState<FormValues>(DEFAULT_FORM);
+  const [savedForm, setSavedForm] = useState<FormValues>(DEFAULT_FORM);
+  const [initialized, setInitialized] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<keyof FormValues, string>>
+  >({});
 
-  const { data: competitiveProfile } = useCompetitiveProfile();
+  // Initialize form once both queries resolve
+  useEffect(() => {
+    if (initialized || !accountProfile || !playerProfile) return;
 
-  const hasChanges = useMemo(() => {
-    if (!profile) return false;
-    return (
-      form.displayName.trim() !== (profile.displayName ?? '') ||
-      form.phone.trim() !== (profile.phone ?? '')
-    );
-  }, [form.displayName, form.phone, profile]);
+    const tags = playerProfile.playStyleTags ?? [];
+    const side: Side = tags.includes('right-side')
+      ? 'DRIVE'
+      : tags.includes('left-side')
+        ? 'REVES'
+        : 'BALANCED';
 
-  const initials = useMemo(() => {
-    const name = form.displayName || profile?.displayName || user?.email || '';
-    return name.trim().charAt(0).toUpperCase() || 'P';
-  }, [form.displayName, profile?.displayName, user?.email]);
+    const values: FormValues = {
+      displayName: accountProfile.displayName ?? '',
+      phone: accountProfile.phone ?? '',
+      province: playerProfile.location?.province ?? '',
+      city: playerProfile.location?.city ?? '',
+      side,
+    };
 
-  const loadProfile = async () => {
-    if (!token) return;
-    setLoading(true);
-    setError(null);
-    setSessionExpired(false);
+    setForm(values);
+    setSavedForm(values);
+    setInitialized(true);
+  }, [initialized, accountProfile, playerProfile]);
 
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+  // Load avatar
+  const userId = accountProfile?.userId ?? user?.userId;
+  useEffect(() => {
+    if (!userId) return;
+    MediaService.getUserAvatar(userId)
+      .then((a) => setAvatarUrl(a?.secureUrl ?? a?.url ?? null))
+      .catch(() => setAvatarUrl(null));
+  }, [userId]);
 
-    try {
-      const res = await api.get<ProfileResponse>('/me/profile', {
-        signal: controller.signal,
-      });
+  // Dirty detection
+  const isDirty = useMemo(
+    () =>
+      form.displayName !== savedForm.displayName ||
+      form.phone !== savedForm.phone ||
+      form.province !== savedForm.province ||
+      form.city !== savedForm.city ||
+      form.side !== savedForm.side,
+    [form, savedForm],
+  );
 
-      const data = res.data;
-      setProfile(data);
-      setForm({ displayName: data.displayName ?? '', phone: data.phone ?? '' });
+  const setField = useCallback(
+    <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
+      setForm((prev) => ({ ...prev, [key]: value }));
+      setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
+    },
+    [],
+  );
 
-      const avatarOwnerId = data.userId || user?.userId;
-      if (avatarOwnerId) {
-        try {
-          const avatar = await MediaService.getUserAvatar(avatarOwnerId);
-          setAvatarUrl(avatar?.secureUrl || avatar?.url || null);
-        } catch {
-          setAvatarUrl(null);
-        }
+  const handleProvinceChange = useCallback((value: string) => {
+    setForm((prev) => ({ ...prev, province: value, city: '' }));
+  }, []);
+
+  // Avatar upload
+  const handleAvatarUpload = useCallback(
+    async (file: File) => {
+      if (!userId) return;
+      if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+        setAvatarError('Formato no permitido. Usá JPG, PNG o WEBP.');
+        return;
       }
-    } catch (err: unknown) {
-      if (controller.signal.aborted) return;
-      if (typeof err === 'object' && err !== null && 'response' in err) {
-        const status = (err as { response?: { status?: number } }).response?.status;
-        if (status === 401) { setSessionExpired(true); logout(); return; }
+      if (file.size > MAX_AVATAR_BYTES) {
+        setAvatarError('El archivo supera 5MB.');
+        return;
       }
-      setError('No pudimos cargar tu perfil. Intentá nuevamente.');
-    } finally {
-      if (!controller.signal.aborted) setLoading(false);
+
+      setAvatarUploading(true);
+      setAvatarError(null);
+
+      try {
+        const sig = await MediaService.getSignature({
+          ownerType: MediaOwnerType.USER,
+          ownerId: userId,
+          kind: MediaKind.USER_AVATAR,
+          fileNameHint: file.name,
+        });
+        const result = await cloudinaryUploadSigned(file, sig);
+        await MediaService.register({
+          ownerType: MediaOwnerType.USER,
+          ownerId: userId,
+          kind: MediaKind.USER_AVATAR,
+          publicId: result.public_id,
+          url: result.url,
+          secureUrl: result.secure_url,
+          bytes: result.bytes,
+          format: result.format,
+          width: result.width,
+          height: result.height,
+        });
+        const avatar = await MediaService.getUserAvatar(userId);
+        setAvatarUrl(avatar?.secureUrl ?? avatar?.url ?? null);
+        toastManager.success('Foto actualizada.', {
+          idempotencyKey: 'profile-avatar-success',
+        });
+      } catch {
+        setAvatarError('No pudimos subir la imagen. Reintentá.');
+      } finally {
+        setAvatarUploading(false);
+      }
+    },
+    [userId],
+  );
+
+  // Save — only PATCHes changed sections
+  const handleSave = useCallback(async () => {
+    if (!isDirty || saving) return;
+
+    if (!form.displayName.trim()) {
+      setFieldErrors({ displayName: 'El nombre es requerido' });
+      return;
     }
-  };
 
-  const parseFieldErrors = (message: string) => {
-    const next: FieldErrors = {};
-    const lowered = message.toLowerCase();
-    if (lowered.includes('display') || lowered.includes('nombre')) next.displayName = message;
-    if (lowered.includes('phone') || lowered.includes('tel')) next.phone = message;
-    return next;
-  };
-
-  const handleSave = async () => {
-    if (!token || saving) return;
-    setSaving(true);
     setFieldErrors({});
+    const tasks: Promise<unknown>[] = [];
+
+    // Identity: only if displayName or phone changed
+    const identityDirty =
+      form.displayName.trim() !== savedForm.displayName.trim() ||
+      form.phone.trim() !== savedForm.phone.trim();
+
+    if (identityDirty) {
+      tasks.push(
+        updateAccount({
+          displayName: form.displayName.trim() || null,
+          phone: form.phone.trim() || null,
+        }),
+      );
+    }
+
+    // Player profile: location and/or side
+    const locationDirty =
+      form.province !== savedForm.province || form.city !== savedForm.city;
+    const sideDirty = form.side !== savedForm.side;
+
+    if (locationDirty || sideDirty) {
+      const payload: UpdateMyPlayerProfilePayload = {};
+
+      if (locationDirty) {
+        payload.location = {
+          country: 'Argentina',
+          province: form.province || null,
+          city: form.city.trim() || null,
+        };
+      }
+
+      if (sideDirty) {
+        const existing = playerProfile?.playStyleTags ?? [];
+        const others = existing.filter(
+          (t) => t !== 'right-side' && t !== 'left-side',
+        );
+        const sideTag =
+          form.side === 'DRIVE'
+            ? (['right-side'] as const)
+            : form.side === 'REVES'
+              ? (['left-side'] as const)
+              : ([] as const);
+        payload.playStyleTags = [
+          ...others,
+          ...sideTag,
+        ] as UpdateMyPlayerProfilePayload['playStyleTags'];
+      }
+
+      tasks.push(updatePlayer(payload));
+    }
 
     try {
-      const payload = {
-        displayName: form.displayName.trim() || null,
-        phone: form.phone.trim() || null,
-      };
-      const res = await api.patch<ProfileResponse>('/me/profile', payload, {
+      await Promise.all(tasks);
+      setSavedForm({ ...form });
+      toastManager.success('Perfil actualizado.', {
+        idempotencyKey: 'profile-save-success',
       });
-
-      const updated = res.data;
-      setProfile(updated);
-      setForm({ displayName: updated.displayName ?? '', phone: updated.phone ?? '' });
-      toastManager.success('Perfil actualizado.', { idempotencyKey: 'profile-save-success' });
-      setEditOpen(false);
     } catch (err: unknown) {
-      if (typeof err === 'object' && err !== null && 'response' in err) {
-        const response = (err as { response?: { status?: number; data?: { message?: unknown } } }).response;
-        const status = response?.status;
-        const messageValue = response?.data?.message;
-        const message = Array.isArray(messageValue)
-          ? messageValue.join(', ')
-          : typeof messageValue === 'string'
-          ? messageValue
-          : 'No pudimos guardar los cambios.';
-
-        if (status === 401) { setSessionExpired(true); logout(); return; }
-        if (status === 400) {
-          const errors = parseFieldErrors(message);
-          if (errors.displayName || errors.phone) { setFieldErrors(errors); return; }
+      const res = (err as { response?: { status?: number; data?: { message?: unknown } } })
+        ?.response;
+      if (res?.status === 400 || res?.status === 422) {
+        const raw = res.data?.message;
+        const msg = Array.isArray(raw)
+          ? raw.join(', ')
+          : typeof raw === 'string'
+            ? raw
+            : '';
+        const lower = msg.toLowerCase();
+        if (lower.includes('display') || lower.includes('nombre')) {
+          setFieldErrors({ displayName: msg });
+          return;
+        }
+        if (lower.includes('city') || lower.includes('ciudad')) {
+          setFieldErrors({ city: msg });
+          return;
+        }
+        if (msg) {
+          toastManager.error(msg, { idempotencyKey: 'profile-save-error' });
+          return;
         }
       }
       toastManager.error('No pudimos guardar los cambios. Intentá nuevamente.', {
         idempotencyKey: 'profile-save-error',
       });
-    } finally {
-      setSaving(false);
     }
-  };
+  }, [isDirty, saving, form, savedForm, updateAccount, updatePlayer, playerProfile]);
 
-  const handleAvatarUpload = async (file: File) => {
-    if (!userId) return;
-    const errorMessage = getFileError(file);
-    if (errorMessage) { setAvatarError(errorMessage); return; }
+  const loading = accountLoading || playerLoading;
+  const initials = (
+    form.displayName ||
+    accountProfile?.email ||
+    user?.email ||
+    'P'
+  )
+    .trim()
+    .charAt(0)
+    .toUpperCase();
 
-    setAvatarUploading(true);
-    setAvatarError(null);
-
-    try {
-      const signature = await MediaService.getSignature({
-        ownerType: MediaOwnerType.USER,
-        ownerId: userId,
-        kind: MediaKind.USER_AVATAR,
-        fileNameHint: file.name,
-      });
-
-      const uploadResult = await cloudinaryUploadSigned(file, signature);
-
-      await MediaService.register({
-        ownerType: MediaOwnerType.USER,
-        ownerId: userId,
-        kind: MediaKind.USER_AVATAR,
-        publicId: uploadResult.public_id,
-        url: uploadResult.url,
-        secureUrl: uploadResult.secure_url,
-        bytes: uploadResult.bytes,
-        format: uploadResult.format,
-        width: uploadResult.width,
-        height: uploadResult.height,
-      });
-
-      const avatar = await MediaService.getUserAvatar(userId);
-      setAvatarUrl(avatar?.secureUrl || avatar?.url || null);
-      toastManager.success('Foto actualizada.', { idempotencyKey: 'profile-avatar-success' });
-    } catch (err: unknown) {
-      if (typeof err === 'object' && err !== null && 'status' in err) {
-        const status = (err as { status?: number }).status;
-        if (status === 401) { setSessionExpired(true); logout(); return; }
-      }
-      const message =
-        typeof err === 'object' && err !== null && 'message' in err
-          ? String((err as { message?: string }).message || '')
-          : '';
-      setAvatarError(message || 'No pudimos subir la imagen. Reintentá.');
-    } finally {
-      setAvatarUploading(false);
-    }
-  };
-
-  useEffect(() => { return () => { abortRef.current?.abort(); }; }, []);
-
-  useEffect(() => {
-    if (token) {
-      loadProfile();
-    } else {
-      setProfile(null);
-      setForm({ displayName: '', phone: '' });
-      setAvatarUrl(null);
-      setError(null);
-      setSessionExpired(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
-
-  const displayName = form.displayName || profile?.displayName || user?.email || 'Jugador';
+  const suggestions = form.province
+    ? (AR_TOP_CITIES[form.province as ArgentinaProvince] ?? [])
+    : [];
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <PublicTopBar title="Mi cuenta" backHref="/competitive" />
+    <div className="min-h-screen bg-slate-50 pb-36">
+      <PublicTopBar title="Mi perfil" backHref="/me" />
 
-      {!token ? (
-        <div className="px-4 py-16 text-center">
-          <p className="text-slate-500">Iniciá sesión para ver tu perfil.</p>
-          <div className="mt-6 flex flex-col items-center gap-3">
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-2.5 text-sm font-bold text-white"
-            >
-              Iniciar sesión
-            </Link>
-            <Link href="/competitive" className="text-sm text-slate-500">Volver al inicio</Link>
-          </div>
-        </div>
-      ) : sessionExpired ? (
-        <div className="px-4 py-16 text-center">
-          <p className="text-slate-500">Sesión expirada.</p>
-          <Link
-            href="/login"
-            className="mt-6 inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-2.5 text-sm font-bold text-white"
-          >
-            Volver a iniciar sesión
-          </Link>
-        </div>
-      ) : loading ? (
+      {/* ── Loading ── */}
+      {loading ? (
         <div className="space-y-4 px-4 py-6">
-          <Skeleton className="h-56 w-full rounded-2xl" />
-          <Skeleton className="h-40 w-full rounded-2xl" />
+          <div className="flex justify-center py-2">
+            <Skeleton className="h-20 w-20 rounded-full" />
+          </div>
+          <Skeleton className="h-52 w-full rounded-2xl" />
+          <Skeleton className="h-44 w-full rounded-2xl" />
+          <Skeleton className="h-32 w-full rounded-2xl" />
         </div>
-      ) : error ? (
-        <div className="px-4 py-16 text-center">
-          <p className="text-slate-500">{error}</p>
-          <Button onClick={loadProfile} className="mt-4">Reintentar</Button>
+      ) : accountError ? (
+        /* ── Error ── */
+        <div className="mx-4 mt-8 flex flex-col items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50 px-5 py-8 text-center">
+          <AlertTriangle size={28} className="text-rose-400" />
+          <div>
+            <p className="text-sm font-semibold text-rose-700">
+              No pudimos cargar tu perfil
+            </p>
+            <p className="mt-0.5 text-xs text-rose-500">
+              Revisá tu conexión e intentá de nuevo.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => void refetchAccount()}>
+            Reintentar
+          </Button>
         </div>
       ) : (
-        <div className="space-y-4 px-4 py-4 pb-24">
-          {/* Hero card */}
-          <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 shadow-lg">
-            <div className="flex items-center gap-4">
-              {/* Avatar */}
-              <div className="relative shrink-0">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="Avatar"
-                    className="h-20 w-20 rounded-full object-cover ring-2 ring-white/30"
-                  />
-                ) : (
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/20 text-2xl font-bold text-white ring-2 ring-white/30">
-                    {initials}
-                  </div>
-                )}
-                <label className="absolute -bottom-1 -right-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white shadow-md">
-                  <Camera size={14} className="text-slate-700" />
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    disabled={avatarUploading}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      handleAvatarUpload(file);
-                      e.currentTarget.value = '';
-                    }}
-                    className="hidden"
-                  />
-                </label>
-                {avatarUploading && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 text-[10px] font-bold text-white">
-                    ...
-                  </div>
-                )}
-              </div>
-
-              {/* Name + category */}
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-lg font-bold text-white">{displayName}</p>
-                <p className="text-sm text-emerald-100">{profile?.email}</p>
-                {competitiveProfile?.category && (
-                  <div className="mt-2">
-                    <CategoryBadge category={competitiveProfile.category} size="sm" className="bg-white/20 text-white" />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Quick stats */}
-            {competitiveProfile && (
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                <StatCard label="ELO" value={competitiveProfile.elo} />
-                <StatCard label="Partidos" value={competitiveProfile.matchesPlayed} />
-                <StatCard label="Racha" value={competitiveProfile.winStreakCurrent ?? 0} />
-              </div>
-            )}
-
-            {avatarError && (
-              <p className="mt-2 rounded-lg bg-rose-500/30 px-3 py-2 text-xs text-white">{avatarError}</p>
-            )}
-          </div>
-
-          {/* Edit profile accordion */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <button
-              type="button"
-              onClick={() => setEditOpen((v) => !v)}
-              className="flex w-full items-center justify-between px-5 py-4"
-            >
-              <span className="text-sm font-semibold text-slate-900">Editar perfil</span>
-              {editOpen ? (
-                <ChevronUp size={18} className="text-slate-400" />
+        /* ── Main content ── */
+        <div className="space-y-4 px-4 py-5">
+          {/* Avatar */}
+          <div className="flex flex-col items-center gap-2 py-2">
+            <div className="relative">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="h-20 w-20 rounded-full object-cover ring-4 ring-white shadow-md"
+                />
               ) : (
-                <ChevronDown size={18} className="text-slate-400" />
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#0E7C66] to-[#065F46] text-2xl font-bold text-white ring-4 ring-white shadow-md">
+                  {initials}
+                </div>
               )}
-            </button>
-
-            {editOpen && (
-              <div className="border-t border-slate-100 px-5 pb-5 pt-4 space-y-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Nombre visible</label>
-                  <input
-                    type="text"
-                    value={form.displayName}
-                    onChange={(e) => setForm((prev) => ({ ...prev, displayName: e.target.value }))}
-                    placeholder="Tu nombre"
-                    className="w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-                  />
-                  {fieldErrors.displayName && (
-                    <p className="mt-1 text-xs text-red-500">{fieldErrors.displayName}</p>
-                  )}
+              <label className="absolute -bottom-1 -right-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-slate-100 bg-white shadow-md">
+                <Camera size={13} className="text-slate-700" />
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={avatarUploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      void handleAvatarUpload(file);
+                      e.currentTarget.value = '';
+                    }
+                  }}
+                  className="hidden"
+                />
+              </label>
+              {avatarUploading && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 text-[10px] font-bold text-white">
+                  …
                 </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Teléfono</label>
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
-                    placeholder="Ej: 11 2345 6789"
-                    className="w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-                  />
-                  {fieldErrors.phone && (
-                    <p className="mt-1 text-xs text-red-500">{fieldErrors.phone}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
-                  <input
-                    type="email"
-                    value={profile?.email ?? ''}
-                    readOnly
-                    className="w-full rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm text-slate-400"
-                  />
-                </div>
-
-                <Button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={!hasChanges || saving}
-                  className="w-full"
-                >
-                  {saving ? 'Guardando...' : 'Guardar cambios'}
-                </Button>
-              </div>
+              )}
+            </div>
+            {avatarError && (
+              <p className="text-xs text-rose-500">{avatarError}</p>
             )}
           </div>
 
-          {/* Logout */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          {/* ── A) Identidad ── */}
+          <Card padding="lg">
+            <SectionHeader icon={<User size={14} />} title="Identidad" />
+            <div className="space-y-4">
+              <Input
+                label="Nombre visible"
+                required
+                placeholder="Tu nombre"
+                value={form.displayName}
+                onChange={(e) => setField('displayName', e.target.value)}
+                error={fieldErrors.displayName}
+              />
+              <Input
+                label="Teléfono"
+                type="tel"
+                placeholder="Ej: 11 2345 6789"
+                value={form.phone}
+                onChange={(e) => setField('phone', e.target.value)}
+              />
+              <Input
+                label="Email"
+                type="email"
+                value={accountProfile?.email ?? ''}
+                readOnly
+                disabled
+                hint="El email no se puede modificar"
+              />
+            </div>
+          </Card>
+
+          {/* ── B) Ubicación ── */}
+          <Card padding="lg">
+            <SectionHeader icon={<MapPin size={14} />} title="Ubicación" />
+            <div className="space-y-4">
+              <ProvinceSelect
+                value={form.province}
+                onChange={handleProvinceChange}
+              />
+
+              <div>
+                <Input
+                  label="Ciudad"
+                  placeholder="Ej: Palermo, CABA"
+                  value={form.city}
+                  onChange={(e) => setField('city', e.target.value)}
+                  error={fieldErrors.city}
+                />
+                {suggestions.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {suggestions.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setField('city', s)}
+                        className={cn(
+                          'rounded-lg border px-2.5 py-1 text-xs font-medium transition-all',
+                          form.city === s
+                            ? 'border-[#0E7C66] bg-[#0E7C66] text-white'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-[#0E7C66]/40 hover:text-[#0E7C66]',
+                        )}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                <MapPin size={12} className="shrink-0 text-[#0E7C66]" />
+                Esto define tus rankings locales
+              </p>
+            </div>
+          </Card>
+
+          {/* ── C) Juego ── */}
+          <Card padding="lg">
+            <SectionHeader icon={<Swords size={14} />} title="Juego" />
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Posición preferida
+                </label>
+                <SegmentedControl
+                  value={form.side}
+                  onChange={(v) => setField('side', v)}
+                />
+              </div>
+
+              {competitiveProfile?.category != null && (
+                <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">
+                      Categoría ELO
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      Derivada de tu ELO automáticamente
+                    </p>
+                  </div>
+                  <CategoryBadge
+                    category={competitiveProfile.category}
+                    size="sm"
+                  />
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* ── D) Cuenta ── */}
+          <Card padding="none">
             <button
               type="button"
-              onClick={handleLogout}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-semibold text-rose-600 hover:bg-rose-50"
+              onClick={() => void handleLogout()}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50"
             >
               <LogOut size={16} />
               Cerrar sesión
             </button>
+          </Card>
+        </div>
+      )}
+
+      {/* ── Sticky save bar (sits above BottomNav) ── */}
+      {!loading && !accountError && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-md bg-white/95 shadow-[0_-1px_0_0_theme(colors.slate.200)] backdrop-blur-sm">
+          <div className="px-4 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px)+0.75rem)] pt-3">
+            <Button fullWidth onClick={() => void handleSave()} disabled={!isDirty} loading={saving}>
+              Guardar cambios
+            </Button>
           </div>
         </div>
       )}
