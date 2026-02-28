@@ -51,6 +51,12 @@ export const rankingsService = {
       limit: params.limit ?? DEFAULT_LIMIT,
     };
     if (params.scope) query.scope = params.scope;
+    if (params.scope === 'province' && params.provinceCode) {
+      query.provinceCode = params.provinceCode;
+    }
+    if (params.scope === 'city' && params.cityId) {
+      query.cityId = params.cityId;
+    }
     if (typeof params.category === 'number') query.category = params.category;
     if (params.cursor) {
       // Synthetic page cursors are encoded as "page:N" by normalizeResponse

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { BarChart2, MapPin } from 'lucide-react';
@@ -20,7 +20,118 @@ import { ScopeSelector } from './components/scope-selector';
 import { RankingsList } from './components/rankings-list';
 import { RankingsSkeleton } from './components/rankings-skeleton';
 
-// ─── Category selector ───────────────────────────────────────────────────────
+type UnknownRecord = Record<string, unknown>;
+
+const PROVINCE_CODE_BY_NAME: Record<string, string> = {
+  'buenos aires': 'AR-B',
+  'ciudad autonoma de buenos aires': 'AR-C',
+  caba: 'AR-C',
+  'capital federal': 'AR-C',
+  catamarca: 'AR-K',
+  chaco: 'AR-H',
+  chubut: 'AR-U',
+  cordoba: 'AR-X',
+  corrientes: 'AR-W',
+  'entre rios': 'AR-E',
+  formosa: 'AR-P',
+  jujuy: 'AR-Y',
+  'la pampa': 'AR-L',
+  'la rioja': 'AR-F',
+  mendoza: 'AR-M',
+  misiones: 'AR-N',
+  neuquen: 'AR-Q',
+  'rio negro': 'AR-R',
+  salta: 'AR-A',
+  'san juan': 'AR-J',
+  'san luis': 'AR-D',
+  'santa cruz': 'AR-Z',
+  'santa fe': 'AR-S',
+  'santiago del estero': 'AR-G',
+  'tierra del fuego': 'AR-V',
+  'tierra del fuego antartida e islas del atlantico sur': 'AR-V',
+  tucuman: 'AR-T',
+};
+
+function asRecord(value: unknown): UnknownRecord | null {
+  return value && typeof value === 'object' ? (value as UnknownRecord) : null;
+}
+
+function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[,.-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getProvinceName(location: unknown): string | null {
+  const locationRecord = asRecord(location);
+  if (!locationRecord) return null;
+
+  const direct = asTrimmedString(locationRecord.province);
+  if (direct) return direct;
+
+  const provinceRecord = asRecord(locationRecord.province);
+  return asTrimmedString(provinceRecord?.name);
+}
+
+function getCityName(location: unknown): string | null {
+  const locationRecord = asRecord(location);
+  if (!locationRecord) return null;
+
+  const direct = asTrimmedString(locationRecord.city);
+  if (direct) return direct;
+
+  const cityRecord = asRecord(locationRecord.city);
+  return asTrimmedString(cityRecord?.name);
+}
+
+function getProvinceCode(location: unknown): string | null {
+  const locationRecord = asRecord(location);
+  if (!locationRecord) return null;
+
+  const directCode = asTrimmedString(locationRecord.provinceCode);
+  if (directCode) {
+    const normalized = directCode.toUpperCase();
+    if (/^[A-Z]{2}-[A-Z]$/.test(normalized)) return normalized;
+    if (/^[A-Z]$/.test(normalized)) return `AR-${normalized}`;
+    return normalized;
+  }
+
+  const provinceName = getProvinceName(location);
+  if (!provinceName) return null;
+  return PROVINCE_CODE_BY_NAME[normalizeText(provinceName)] ?? null;
+}
+
+function getCityId(location: unknown): string | null {
+  const locationRecord = asRecord(location);
+  if (!locationRecord) return null;
+
+  const directCityId = asTrimmedString(locationRecord.cityId);
+  if (directCityId) return directCityId;
+
+  const cityRecord = asRecord(locationRecord.city);
+  return asTrimmedString(cityRecord?.id) ?? asTrimmedString(cityRecord?.cityId);
+}
+
+function getGeoRequiredScopeFromError(error: unknown): RankingScope | null {
+  if (!axios.isAxiosError(error)) return null;
+  const status = error.response?.status;
+  if (status !== 400 && status !== 409) return null;
+
+  const code = (error.response?.data as { code?: unknown } | undefined)?.code;
+  if (code === 'CITY_REQUIRED') return 'city';
+  if (code === 'PROVINCE_REQUIRED') return 'province';
+  return null;
+}
 
 const CATEGORY_TABS: { label: string; value: Category | undefined }[] = [
   { label: 'Todas', value: undefined },
@@ -42,7 +153,7 @@ function CategorySelector({
   return (
     <div>
       <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-        Categoría
+        Categoria
       </p>
       <div className="-mx-4 overflow-x-auto px-4 pb-0.5">
         <div className="flex min-w-max gap-1.5">
@@ -73,8 +184,6 @@ function CategorySelector({
   );
 }
 
-// ─── Geo required banner ──────────────────────────────────────────────────────
-
 function GeoRequiredBanner({
   scope,
   onCompleteLocation,
@@ -86,15 +195,15 @@ function GeoRequiredBanner({
 }) {
   const msg =
     scope === 'city'
-      ? 'Necesitás una ciudad configurada para ver el ranking local.'
-      : 'Necesitás una provincia configurada para ver el ranking provincial.';
+      ? 'Necesitas una ciudad configurada para ver el ranking local.'
+      : 'Necesitas una provincia configurada para ver el ranking provincial.';
 
   return (
     <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 px-4 py-5">
       <div className="flex items-start gap-3">
         <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-[#0E7C66]" />
         <div className="flex-1">
-          <p className="text-sm font-semibold text-slate-900">Configurá tu ubicación</p>
+          <p className="text-sm font-semibold text-slate-900">Configura tu ubicacion</p>
           <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{msg}</p>
         </div>
       </div>
@@ -104,7 +213,7 @@ function GeoRequiredBanner({
           onClick={onCompleteLocation}
           className="min-h-[44px] w-full rounded-xl bg-[#0E7C66] px-4 py-3 text-sm font-semibold text-white transition-opacity active:opacity-80"
         >
-          Completar ubicación
+          Completar ubicacion
         </button>
         <button
           type="button"
@@ -118,57 +227,93 @@ function GeoRequiredBanner({
   );
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
-
 export default function RankingsPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
 
   const [scope, setScope] = useState<RankingScope>('country');
   const [category, setCategory] = useState<Category | undefined>(undefined);
+  const [geoRequiredScope, setGeoRequiredScope] = useState<RankingScope | null>(null);
 
-  // Profile data for my-position card and scope derivation
   const profileQuery = useCompetitiveProfile();
   const playerProfileQuery = useMyPlayerProfile();
 
-  const cityName = playerProfileQuery.data?.location?.city ?? null;
-  const provinceName = playerProfileQuery.data?.location?.province ?? null;
+  const location = playerProfileQuery.data?.location;
+  const cityName = getCityName(location);
+  const provinceName = getProvinceName(location);
+  const cityId = getCityId(location);
+  const provinceCode = getProvinceCode(location);
 
-  // Derive which scopes the user is eligible for based on their location profile
   const availableScopes: RankingScope[] = ['country'];
-  if (provinceName) availableScopes.unshift('province');
-  if (cityName) availableScopes.unshift('city');
+  if (provinceName || provinceCode) availableScopes.unshift('province');
+  if (cityName || cityId) availableScopes.unshift('city');
 
-  // If currently selected scope is not available (e.g. user clears location), fall back
-  const effectiveScope: RankingScope = availableScopes.includes(scope) ? scope : 'country';
+  const selectedScopeIsAvailable = availableScopes.includes(scope);
+  const effectiveScope: RankingScope = selectedScopeIsAvailable ? scope : 'country';
 
-  // Rankings data
-  const rankingsQuery = useRankings(effectiveScope, category);
+  const missingProvinceParam = scope === 'province' && !provinceCode;
+  const missingCityParam = scope === 'city' && !cityId;
+  const missingRequiredGeoParam = missingProvinceParam || missingCityParam;
+
+  const rankingsQuery = useRankings({
+    scope: effectiveScope,
+    category,
+    provinceCode,
+    cityId,
+    enabled: !missingRequiredGeoParam,
+  });
   const items = rankingsQuery.data?.items ?? [];
 
-  // My entry: look for current user in the list
-  const myEntry = user?.userId
-    ? (items.find((e) => e.userId === user.userId) ?? null)
+  const myEntry = user?.userId ? (items.find((e) => e.userId === user.userId) ?? null) : null;
+
+  const geoErrorScope = rankingsQuery.isError
+    ? getGeoRequiredScopeFromError(rankingsQuery.error)
     : null;
-
-  // Determine if error is a geo-requirement
-  const isGeoError =
-    rankingsQuery.isError &&
-    axios.isAxiosError(rankingsQuery.error) &&
-    rankingsQuery.error.response?.status === 409;
-
-  const geoErrorCode = isGeoError
-    ? (rankingsQuery.error as { response?: { data?: { code?: string } } }).response?.data?.code
-    : null;
-
-  const showGeoRequiredBanner =
-    isGeoError && (geoErrorCode === 'CITY_REQUIRED' || geoErrorCode === 'PROVINCE_REQUIRED');
+  const bannerScope = geoRequiredScope ?? geoErrorScope;
+  const showGeoRequiredBanner = bannerScope !== null;
 
   const isRankingLoading = rankingsQuery.isLoading;
   const isProfileLoading =
     profileQuery.isLoading || (profileQuery.isError && !profileQuery.data);
 
+  useEffect(() => {
+    if (scope === 'province' && !provinceCode) {
+      setGeoRequiredScope('province');
+      setScope('country');
+      return;
+    }
+
+    if (scope === 'city' && !cityId) {
+      setGeoRequiredScope('city');
+      setScope(provinceCode ? 'province' : 'country');
+    }
+  }, [scope, provinceCode, cityId]);
+
+  useEffect(() => {
+    if (geoRequiredScope === 'province' && provinceCode) {
+      setGeoRequiredScope(null);
+      return;
+    }
+
+    if (geoRequiredScope === 'city' && cityId) {
+      setGeoRequiredScope(null);
+    }
+  }, [geoRequiredScope, provinceCode, cityId]);
+
   const handleScopeChange = (newScope: RankingScope) => {
+    if (newScope === 'province' && !provinceCode) {
+      setGeoRequiredScope('province');
+      setScope('country');
+      return;
+    }
+
+    if (newScope === 'city' && !cityId) {
+      setGeoRequiredScope('city');
+      setScope(provinceCode ? 'province' : 'country');
+      return;
+    }
+
+    setGeoRequiredScope(null);
     setScope(newScope);
   };
 
@@ -177,7 +322,6 @@ export default function RankingsPage() {
       <PublicTopBar title="Rankings" backHref="/competitive" />
 
       <div className="px-4 pb-24 pt-5 space-y-5">
-        {/* ── My Position hero ── */}
         <MyPositionCard
           entry={myEntry}
           scope={effectiveScope}
@@ -186,7 +330,6 @@ export default function RankingsPage() {
           isLoading={isRankingLoading || isProfileLoading}
         />
 
-        {/* ── Scope selector (only shown when > 1 scope available) ── */}
         {playerProfileQuery.isLoading ? (
           <div className="space-y-1.5">
             <Skeleton className="h-3 w-20" />
@@ -206,19 +349,16 @@ export default function RankingsPage() {
           />
         )}
 
-        {/* ── Category selector ── */}
         <CategorySelector value={category} onChange={setCategory} />
 
-        {/* ── Geo required banner ── */}
         {showGeoRequiredBanner && (
           <GeoRequiredBanner
-            scope={effectiveScope}
+            scope={bannerScope}
             onCompleteLocation={() => router.push('/competitive/onboarding')}
             onEditProfile={() => router.push('/me/profile')}
           />
         )}
 
-        {/* ── Generic error ── */}
         {rankingsQuery.isError && !showGeoRequiredBanner && (
           <div className="flex items-center justify-between rounded-2xl border border-red-100 bg-red-50 px-4 py-3.5">
             <p className="text-sm text-red-600">No se pudo cargar el ranking.</p>
@@ -232,7 +372,6 @@ export default function RankingsPage() {
           </div>
         )}
 
-        {/* ── Leaderboard ── */}
         {isRankingLoading ? (
           <RankingsSkeleton />
         ) : !rankingsQuery.isError ? (
@@ -245,15 +384,14 @@ export default function RankingsPage() {
           />
         ) : null}
 
-        {/* ── Empty ranking explanation ── */}
         {!isRankingLoading && !rankingsQuery.isError && items.length === 0 && (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
             <BarChart2 className="h-10 w-10 text-slate-300" />
             <p className="text-sm font-semibold text-slate-700">
-              Todavía no hay jugadores en este ranking
+              Todavia no hay jugadores en este ranking
             </p>
             <p className="max-w-[28ch] text-xs text-slate-500">
-              Jugá al menos 4 partidos competitivos para que aparezcan resultados
+              Juga al menos 4 partidos competitivos para que aparezcan resultados
             </p>
           </div>
         )}

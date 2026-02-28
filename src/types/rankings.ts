@@ -11,6 +11,8 @@ export interface ScopeInfo {
 export interface RankingsQueryParams {
   scope?: RankingScope;
   category?: Category;
+  provinceCode?: string;
+  cityId?: string;
   limit?: number;
   cursor?: string;
 }

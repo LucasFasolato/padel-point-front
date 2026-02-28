@@ -22,21 +22,56 @@ export function useRankingScopes() {
   });
 }
 
-export function useRankings(scope: RankingScope, category?: Category) {
+interface UseRankingsParams {
+  scope: RankingScope;
+  category?: Category;
+  provinceCode?: string | null;
+  cityId?: string | null;
+  enabled?: boolean;
+}
+
+export function useRankings({
+  scope,
+  category,
+  provinceCode,
+  cityId,
+  enabled = true,
+}: UseRankingsParams) {
   return useInfiniteQuery({
-    queryKey: ['rankings', { scope, category: category ?? null }],
+    queryKey: [
+      'rankings',
+      {
+        scope,
+        category: category ?? null,
+        provinceCode: provinceCode ?? null,
+        cityId: cityId ?? null,
+      },
+    ],
     queryFn: ({ pageParam }) =>
       rankingsService.getRanking({
         scope,
         category,
+        provinceCode: provinceCode ?? undefined,
+        cityId: cityId ?? undefined,
         cursor: pageParam as string | undefined,
       }),
+    enabled,
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: 1000 * 60 * 2,
     retry: (failureCount, err) => {
-      // Never retry geo-requirement errors — UI shows a banner instead
-      if (axios.isAxiosError(err) && err.response?.status === 409) return false;
+      // Never retry geo-requirement errors - UI shows a banner instead.
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        const code = (err.response?.data as { code?: unknown } | undefined)?.code;
+        if (status === 409) return false;
+        if (
+          status === 400 &&
+          (code === 'PROVINCE_REQUIRED' || code === 'CITY_REQUIRED')
+        ) {
+          return false;
+        }
+      }
       return failureCount < 2;
     },
     select: (data) => ({
