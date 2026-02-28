@@ -205,6 +205,33 @@ export interface RankingQueryParams {
   cursor?: string;
 }
 
+// ── Player Insights ───────────────────────────────────────────────────────────
+
+export type InsightsTimeframe = 'week' | 'month' | 'season';
+export type InsightsMode = 'COMPETITIVE' | 'FRIENDLY' | 'ALL';
+
+export interface PlayerInsights {
+  timeframe: string;
+  mode: string;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  /** Win rate as integer 0–100 */
+  winRate: number;
+  /** Net ELO change during the timeframe */
+  eloDelta: number;
+  /** Current consecutive streak length */
+  streak: number;
+  /** Direction of current streak, or null if no streak */
+  streakType: 'W' | 'L' | 'D' | null;
+  /** Populated when backend tracks ranking eligibility */
+  neededForRanking?: {
+    remaining: number;
+    total: number;
+  } | null;
+}
+
 // ── User Intents (normalised action items) ────────────────────────────────────
 
 /** The two kinds of action a user needs to take in the "Desafíos" section. */

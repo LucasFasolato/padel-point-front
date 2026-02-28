@@ -15,6 +15,7 @@ import { useIntents } from '@/hooks/use-intents';
 import { CategoryBadge } from '@/app/components/competitive/category-badge';
 import { EloChart } from '@/app/components/competitive/elo-chart';
 import { ActivityFeed } from '@/app/components/competitive/activity-feed';
+import { InsightsSection } from '@/app/components/competitive/insights-section';
 import { SkillRadarCard } from '@/app/components/competitive/skill-radar-card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -172,6 +173,9 @@ export default function CompetitivePage() {
             <StatCell label="Partidos" value={profile.matchesPlayed} />
           </div>
         </section>
+
+        {/* ── Insights ── */}
+        <InsightsSection />
 
         {/* ── Activity feed ── */}
         {hasActivity && (
@@ -506,6 +510,16 @@ function CompetitivePageSkeleton() {
         <Skeleton className="h-12 w-full rounded-2xl" />
       </div>
       <Skeleton className="h-40 w-full rounded-2xl" />
+      {/* insights skeleton */}
+      <div className="space-y-2.5">
+        <Skeleton className="h-4 w-28 rounded" />
+        <Skeleton className="h-24 w-full rounded-2xl" />
+        <div className="grid grid-cols-3 gap-2.5">
+          <Skeleton className="h-[72px] rounded-2xl" />
+          <Skeleton className="h-[72px] rounded-2xl" />
+          <Skeleton className="h-[72px] rounded-2xl" />
+        </div>
+      </div>
       <Skeleton className="h-48 w-full rounded-2xl" />
     </div>
   );
