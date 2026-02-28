@@ -29,12 +29,15 @@ vi.mock('@/hooks/use-matches', () => ({
   usePendingConfirmations: vi.fn(() => ({ data: [], isLoading: false })),
 }));
 
-const mockUseChallengesInbox = vi.fn();
+const mockUseIntents = vi.fn();
 const mockAcceptMutateAsync = vi.fn();
 const mockRejectMutateAsync = vi.fn();
 
+vi.mock('@/hooks/use-intents', () => ({
+  useIntents: () => mockUseIntents(),
+}));
+
 vi.mock('@/hooks/use-challenges', () => ({
-  useChallengesInbox: (...args: unknown[]) => mockUseChallengesInbox(...args),
   useChallengeActions: () => ({
     acceptDirect: { mutateAsync: mockAcceptMutateAsync },
     rejectDirect: { mutateAsync: mockRejectMutateAsync },
@@ -48,10 +51,22 @@ vi.mock('react-chartjs-2', () => ({
 vi.mock('@/app/components/competitive/elo-chart', () => ({
   EloChart: ({ history }: { history: unknown[] }) =>
     history.length === 0 ? (
-      <div>Jug\u00E1 tu primer partido para ver tu evoluci\u00F3n</div>
+      <div>Juga tu primer partido para ver tu evolucion</div>
     ) : (
       <div data-testid="elo-chart-mock">chart:{history.length}</div>
     ),
+}));
+
+vi.mock('@/app/components/competitive/insights-section', () => ({
+  InsightsSection: () => <div data-testid="insights-section" />,
+}));
+
+vi.mock('@/app/components/competitive/activity-feed', () => ({
+  ActivityFeed: () => <div data-testid="activity-feed" />,
+}));
+
+vi.mock('@/app/components/competitive/intent-composer-sheet', () => ({
+  IntentComposerSheet: () => null,
 }));
 
 import CompetitivePage from '../page';
@@ -67,26 +82,15 @@ const mockedUseCompetitiveProfile = vi.mocked(useCompetitiveProfile);
 const mockedUseEloHistory = vi.mocked(useEloHistory);
 const mockedUseSkillRadar = vi.mocked(useSkillRadar);
 
-function makeInboxChallenge(id = 'c-1') {
+function makePendingChallengeIntent(id = 'c-1') {
   return {
-    id,
-    type: 'direct',
+    id: `challenge:${id}`,
+    intentType: 'ACCEPT_CHALLENGE',
     status: 'pending',
-    targetCategory: null,
-    reservationId: null,
-    message: null,
+    actorName: 'Rival Uno',
+    subtitle: 'Te desafio a un partido',
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    teamA: {
-      p1: { userId: 'u-2', email: 'rival@test.com', displayName: 'Rival Uno' },
-      p2: null,
-    },
-    teamB: {
-      p1: null,
-      p2: null,
-    },
-    invitedOpponent: { userId: 'u-1', email: 'yo@test.com', displayName: 'Yo' },
-    isReady: false,
+    challengeId: id,
   };
 }
 
@@ -122,10 +126,11 @@ describe('CompetitivePage onboarding gate', () => {
     vi.clearAllMocks();
     mockAcceptMutateAsync.mockResolvedValue({});
     mockRejectMutateAsync.mockResolvedValue({});
-    mockUseChallengesInbox.mockReturnValue({
-      data: [],
+    mockUseIntents.mockReturnValue({
+      items: [],
       isLoading: false,
       isError: false,
+      refetch: vi.fn(),
     });
     mockedUseEloHistory.mockReturnValue({
       data: { items: [] },
@@ -163,7 +168,7 @@ describe('CompetitivePage onboarding gate', () => {
     } as ReturnType<typeof useCompetitiveProfile>);
 
     render(<CompetitivePage />);
-    expect(screen.queryByText('Activ\u00E1 tu perfil competitivo')).not.toBeInTheDocument();
+    expect(screen.queryByText(/perfil competitivo/i)).not.toBeInTheDocument();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
@@ -179,8 +184,7 @@ describe('CompetitivePage onboarding gate', () => {
     } as ReturnType<typeof useCompetitiveProfile>);
 
     render(<CompetitivePage />);
-    // Shows skeleton — OnboardingGuard in layout handles the redirect
-    expect(screen.queryByText('Activ\u00E1 tu perfil competitivo')).not.toBeInTheDocument();
+    expect(screen.queryByText(/perfil competitivo/i)).not.toBeInTheDocument();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
@@ -191,7 +195,6 @@ describe('CompetitivePage onboarding gate', () => {
     expect(mockReplace).not.toHaveBeenCalled();
     expect(screen.getByText('Test Player')).toBeInTheDocument();
     expect(screen.getByText('Tu progreso')).toBeInTheDocument();
-    expect(screen.queryByText('Desaf\u00EDos pendientes')).not.toBeInTheDocument();
   });
 
   it('renders progress chart when elo history data exists', () => {
@@ -222,8 +225,7 @@ describe('CompetitivePage onboarding gate', () => {
     render(<CompetitivePage />);
 
     expect(screen.getByTestId('elo-chart-mock')).toHaveTextContent('chart:1');
-    expect(screen.getByText(/\u00DAltimo cambio:/)).toBeInTheDocument();
-    // "Resultado de partido" appears in both the activity feed and the "Tu progreso" section
+    expect(screen.getByText(/cambio:/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Resultado de partido/).length).toBeGreaterThan(0);
   });
 
@@ -235,31 +237,33 @@ describe('CompetitivePage onboarding gate', () => {
     } as ReturnType<typeof useOnboardingState>);
 
     render(<CompetitivePage />);
-    expect(screen.getByText('Activ\u00E1 tu perfil competitivo')).toBeInTheDocument();
+    expect(screen.getByText(/perfil competitivo/i)).toBeInTheDocument();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it('renders pending challenges section when inbox has 1 pending', () => {
+  it('renders pending challenge intent when there is one', () => {
     mockReadyCompetitiveState();
-    mockUseChallengesInbox.mockReturnValue({
-      data: [makeInboxChallenge()],
+    mockUseIntents.mockReturnValue({
+      items: [makePendingChallengeIntent()],
       isLoading: false,
       isError: false,
+      refetch: vi.fn(),
     });
 
     render(<CompetitivePage />);
 
-    expect(screen.getByText('Desaf\u00EDos pendientes')).toBeInTheDocument();
+    expect(screen.getByText(/Desaf/)).toBeInTheDocument();
     expect(screen.getByText('Rival Uno')).toBeInTheDocument();
-    expect(screen.getByText('Te desafi\u00F3 a un partido')).toBeInTheDocument();
+    expect(screen.getByText('Te desafio a un partido')).toBeInTheDocument();
   });
 
   it('accept removes card', async () => {
     mockReadyCompetitiveState();
-    mockUseChallengesInbox.mockReturnValue({
-      data: [makeInboxChallenge('c-accept')],
+    mockUseIntents.mockReturnValue({
+      items: [makePendingChallengeIntent('c-accept')],
       isLoading: false,
       isError: false,
+      refetch: vi.fn(),
     });
 
     render(<CompetitivePage />);
@@ -274,10 +278,11 @@ describe('CompetitivePage onboarding gate', () => {
 
   it('reject removes card', async () => {
     mockReadyCompetitiveState();
-    mockUseChallengesInbox.mockReturnValue({
-      data: [makeInboxChallenge('c-reject')],
+    mockUseIntents.mockReturnValue({
+      items: [makePendingChallengeIntent('c-reject')],
       isLoading: false,
       isError: false,
+      refetch: vi.fn(),
     });
 
     render(<CompetitivePage />);

@@ -14,6 +14,7 @@ import {
   XCircle,
   Zap,
 } from 'lucide-react';
+import { IntentCard } from '@/app/components/competitive/intent-card';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { useInbox } from '@/hooks/use-inbox';
@@ -25,6 +26,7 @@ import {
   useMarkRead,
 } from '@/hooks/use-notifications';
 import { NOTIFICATION_TYPES } from '@/types/notifications';
+import { isInboxIntentRenderable } from '@/lib/intents';
 import { cn } from '@/lib/utils';
 import type { InboxSectionState } from '@/hooks/use-inbox';
 import type { UserIntent } from '@/types/competitive';
@@ -175,17 +177,6 @@ function InboxItemRow({
   );
 }
 
-function isRenderableIntent(intent: UserIntent): boolean {
-  switch (intent.intentType) {
-    case 'CONFIRM_RESULT':
-      return intent.status === 'pending_confirm';
-    case 'ACCEPT_CHALLENGE':
-      return intent.status === 'pending' && !!intent.challengeId;
-    default:
-      return false;
-  }
-}
-
 function IntentsTab({
   section,
   actingId,
@@ -202,88 +193,32 @@ function IntentsTab({
   if (section.isLoading) return <SectionSkeleton />;
   if (section.isError) return <SectionErrorCard onRetry={section.refetch} />;
 
-  const renderable = section.items.filter(isRenderableIntent);
+  const renderable = section.items.filter(isInboxIntentRenderable);
   if (renderable.length === 0) {
     return (
       <SectionEmptyState
         Icon={Swords}
-        title="Sin desafíos pendientes"
-        subtitle="Cuando tengas acciones pendientes de partidos aparecerán aquí."
+        title="Sin desafios pendientes"
+        subtitle="Cuando tengas acciones pendientes de partidos apareceran aqui."
       />
     );
   }
 
   return (
     <div className="space-y-3">
-      {renderable.map((intent) => {
-        const timeAgo = formatDistanceToNow(new Date(intent.createdAt), {
-          addSuffix: true,
-          locale: es,
-        });
-
-        if (intent.intentType === 'CONFIRM_RESULT') {
-          return (
-            <InboxItemRow
-              key={intent.id}
-              Icon={CheckCircle2}
-              iconBg="bg-amber-50"
-              iconColor="text-amber-600"
-              title={`${intent.actorName} reportó un resultado`}
-              subtitle={intent.subtitle || undefined}
-              timeAgo={timeAgo}
-            >
-              <button
-                type="button"
-                disabled={!intent.matchId}
-                onClick={() => {
-                  if (intent.matchId) onConfirm(intent.matchId);
-                }}
-                className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[#0E7C66] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#0B6B58] active:scale-[0.98] disabled:opacity-50"
-              >
-                Confirmar resultado
-              </button>
-            </InboxItemRow>
-          );
-        }
-
-        if (!intent.challengeId) return null;
-
-        const isActing = actingId === intent.challengeId;
-        return (
-          <InboxItemRow
-            key={intent.id}
-            Icon={Swords}
-            iconBg="bg-violet-50"
-            iconColor="text-violet-600"
-            title={intent.actorName}
-            subtitle={intent.subtitle ?? 'Te desafió a un partido'}
-            timeAgo={timeAgo}
-          >
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={isActing}
-                onClick={() => onReject(intent.challengeId!)}
-                className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
-              >
-                Rechazar
-              </button>
-              <button
-                type="button"
-                disabled={isActing}
-                onClick={() => onAccept(intent.challengeId!)}
-                className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl bg-[#0E7C66] px-3 text-sm font-semibold text-white transition-colors hover:bg-[#0B6B58] disabled:opacity-50 active:scale-[0.98]"
-              >
-                {isActing ? 'Procesando…' : 'Aceptar'}
-              </button>
-            </div>
-          </InboxItemRow>
-        );
-      })}
+      {renderable.map((intent) => (
+        <IntentCard
+          key={intent.id}
+          intent={intent}
+          isLoading={intent.challengeId ? actingId === intent.challengeId : false}
+          onConfirmResult={onConfirm}
+          onAcceptChallenge={onAccept}
+          onDeclineChallenge={onReject}
+        />
+      ))}
     </div>
   );
 }
-
 function InvitesTab({
   section,
   actedIds,
@@ -455,7 +390,7 @@ export default function InboxPage() {
   const markAllRead = useMarkAllRead();
 
   const tabCounts: Record<TabId, number> = {
-    desafios: inbox.intents.items.filter(isRenderableIntent).length,
+    desafios: inbox.intents.items.filter(isInboxIntentRenderable).length,
     invitaciones: inbox.invites.items.length,
     alertas: inbox.alerts.items.filter((n) => !n.read).length,
   };

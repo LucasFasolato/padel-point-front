@@ -18,14 +18,16 @@ import { ActivityFeed } from '@/app/components/competitive/activity-feed';
 import { InsightsSection } from '@/app/components/competitive/insights-section';
 import { IntentComposerSheet } from '@/app/components/competitive/intent-composer-sheet';
 import { SkillRadarCard } from '@/app/components/competitive/skill-radar-card';
+import { IntentCard } from '@/app/components/competitive/intent-card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
 import { COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT } from '@/lib/competitive-constants';
 import { formatEloChange, getEloHistoryReasonLabel } from '@/lib/competitive-utils';
+import { isCompetitiveIntentRenderable } from '@/lib/intents';
 import { cn } from '@/lib/utils';
-import type { EloHistoryPoint, UserIntent } from '@/types/competitive';
+import type { EloHistoryPoint } from '@/types/competitive';
 
 export default function CompetitivePage() {
   const router = useRouter();
@@ -85,7 +87,7 @@ export default function CompetitivePage() {
   }
 
   const renderableIntents = intentsQuery.items.filter(
-    (intent) => !hiddenIntentIds.includes(intent.id) && isRenderableIntent(intent)
+    (intent) => !hiddenIntentIds.includes(intent.id) && isCompetitiveIntentRenderable(intent)
   );
   const eloHistory = eloHistoryQuery.data?.items ?? [];
   const latestEloPoint = eloHistory.length > 0 ? eloHistory[0] : null;
@@ -212,9 +214,9 @@ export default function CompetitivePage() {
                     Desafíos
                   </p>
                 </div>
-                <div className="divide-y divide-slate-50">
+                <div className="space-y-2 px-4 py-3">
                   {renderableIntents.slice(0, 5).map((intent) => (
-                    <CompetitiveIntentCard
+                    <IntentCard
                       key={intent.id}
                       intent={intent}
                       isLoading={
@@ -222,11 +224,12 @@ export default function CompetitivePage() {
                           ? actingChallengeId === intent.challengeId
                           : false
                       }
-                      onConfirm={(matchId) => router.push(`/matches/${matchId}`)}
-                      onAccept={(challengeId) =>
+                      labels={{ confirm: 'Confirmar' }}
+                      onConfirmResult={(matchId) => router.push(`/matches/${matchId}`)}
+                      onAcceptChallenge={(challengeId) =>
                         handleChallengeAction('accept', challengeId, intent.id)
                       }
-                      onReject={(challengeId) =>
+                      onDeclineChallenge={(challengeId) =>
                         handleChallengeAction('reject', challengeId, intent.id)
                       }
                     />
@@ -424,113 +427,6 @@ function PendingIntentsErrorCard({ onRetry }: { onRetry: () => void }) {
       </div>
     </div>
   );
-}
-
-function CompetitiveIntentCard({
-  intent,
-  isLoading,
-  onConfirm,
-  onAccept,
-  onReject,
-}: {
-  intent: UserIntent;
-  isLoading?: boolean;
-  onConfirm: (matchId: string) => void;
-  onAccept: (challengeId: string) => void;
-  onReject: (challengeId: string) => void;
-}) {
-  if (!isRenderableIntent(intent)) return null;
-
-  if (intent.intentType === 'CREATED_INTENT') {
-    return (
-      <div className="flex items-center gap-3 px-5 py-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-slate-900">
-            {intent.subtitle ?? 'Tu desafío'}
-          </p>
-          <p className="text-xs text-slate-400">Buscando...</p>
-        </div>
-        <span className="shrink-0 rounded-full bg-[#0E7C66]/10 px-2.5 py-1 text-xs font-bold text-[#0E7C66]">
-          Activo
-        </span>
-      </div>
-    );
-  }
-
-  if (intent.intentType === 'CONFIRM_RESULT') {
-    return (
-      <div className="flex items-center justify-between gap-3 px-5 py-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900">
-            {intent.actorName} reportó un resultado
-          </p>
-          {intent.subtitle && <p className="text-xs text-slate-500">{intent.subtitle}</p>}
-        </div>
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => {
-            if (intent.matchId) onConfirm(intent.matchId);
-          }}
-          disabled={!intent.matchId}
-          className="min-h-[44px] shrink-0"
-        >
-          Confirmar
-        </Button>
-      </div>
-    );
-  }
-
-  if (!intent.challengeId) return null;
-
-  return (
-    <div className="px-5 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900">{intent.actorName}</p>
-          <p className="text-xs text-slate-500">{intent.subtitle ?? 'Te desafió a un partido'}</p>
-          <p className="text-xs text-slate-400">
-            {formatDistanceToNow(new Date(intent.createdAt), { addSuffix: true, locale: es })}
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="min-h-[40px]"
-            disabled={isLoading}
-            onClick={() => onReject(intent.challengeId!)}
-          >
-            Rechazar
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="primary"
-            className="min-h-[40px]"
-            disabled={isLoading}
-            onClick={() => onAccept(intent.challengeId!)}
-          >
-            Aceptar
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function isRenderableIntent(intent: UserIntent): boolean {
-  switch (intent.intentType) {
-    case 'CONFIRM_RESULT':
-      return intent.status === 'pending_confirm';
-    case 'ACCEPT_CHALLENGE':
-      return intent.status === 'pending';
-    case 'CREATED_INTENT':
-      return intent.status === 'active';
-    default:
-      return false;
-  }
 }
 
 function CompetitivePageSkeleton() {

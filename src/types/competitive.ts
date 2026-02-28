@@ -259,6 +259,8 @@ export interface UserIntent {
   /** Secondary line: score string for confirmations, context for challenges */
   subtitle: string | null;
   createdAt: string;
+  /** Optional league scope when the intent is tied to a league challenge/match. */
+  leagueId?: string | null;
   /** Set only for CONFIRM_RESULT */
   matchId?: string;
   /** Set only for ACCEPT_CHALLENGE */

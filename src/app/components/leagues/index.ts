@@ -7,6 +7,7 @@ export { ReportFromReservationModal } from './report-from-reservation-modal';
 export { ReportManualModal } from './report-manual-modal';
 export { ReportMethodSheet } from './report-method-sheet';
 export { LeagueChallengesSection } from './league-challenges-section';
+export { LeagueIntentsPanel } from './league-intents-panel';
 export { LeagueChallengeCreateModal } from './league-challenge-create-modal';
 export { LeagueMatchCard } from './league-match-card';
 export { LeagueSettingsPanel } from './league-settings';

@@ -63,6 +63,7 @@ export function useChallengeActions() {
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['challenges'] });
+    queryClient.invalidateQueries({ queryKey: ['intents'] });
   };
 
   const onInboxActionMutate = async (challengeId: string): Promise<InboxMutationContext> => {

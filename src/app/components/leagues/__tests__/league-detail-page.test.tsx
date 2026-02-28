@@ -75,6 +75,7 @@ vi.mock('@/app/components/leagues', async (importOriginal) => {
     ReportMethodSheet: () => null,
     ReportFromReservationModal: () => null,
     ReportManualModal: () => null,
+    LeagueIntentsPanel: () => <div data-testid="league-intents-panel" />,
     LeagueChallengesSection: () => <div data-testid="league-challenges-section" />,
     LeagueMatchCard: ({ match, onClick }: { match: LeagueMatch; onClick: () => void }) => (
       <button data-testid={`match-${match.id}`} onClick={onClick}>
@@ -370,7 +371,7 @@ describe('LeagueDetailPage', () => {
 
   it('uses public share standings endpoint and renders share view when share token is present without auth', () => {
     searchParamsRaw = 'share=1&token=token-public';
-    authState = { user: { userId: 'u-me' }, token: '' };
+    authState = { user: { userId: '' }, token: '' };
     usePublicLeagueStandingsMock.mockReturnValue({
       data: {
         leagueName: 'Liga Compartida',
@@ -394,7 +395,7 @@ describe('LeagueDetailPage', () => {
 
   it('shows error state when public share token is invalid', () => {
     searchParamsRaw = 'share=1&token=bad-token';
-    authState = { user: { userId: 'u-me' }, token: '' };
+    authState = { user: { userId: '' }, token: '' };
     usePublicLeagueStandingsMock.mockReturnValue({
       data: undefined,
       isLoading: false,

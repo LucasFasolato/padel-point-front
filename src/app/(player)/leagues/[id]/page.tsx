@@ -28,6 +28,7 @@ import {
   ReportManualModal,
   ReportMethodSheet,
   LeagueChallengesSection,
+  LeagueIntentsPanel,
   LeagueMatchCard,
   LeagueMatchModeSheet,
   LeagueMatchCreateModal,
@@ -670,12 +671,30 @@ function LeagueDetailContent({ leagueId, initialTabParam, justCreated }: LeagueD
                 </div>
               )}
 
-              {/* Desafíos section */}
-              <LeagueChallengesSection
-                leagueId={leagueId}
-                members={league.members ?? []}
-                currentUserId={user?.userId}
-              />
+              {/* Desafios section */}
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Desafios</h3>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Intents de esta liga, con activos primero.
+                  </p>
+                </div>
+
+                <LeagueIntentsPanel leagueId={leagueId} />
+
+                <details className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                  <summary className="cursor-pointer text-xs font-semibold text-slate-600">
+                    Historico (legacy)
+                  </summary>
+                  <div className="mt-3">
+                    <LeagueChallengesSection
+                      leagueId={leagueId}
+                      members={league.members ?? []}
+                      currentUserId={user?.userId}
+                    />
+                  </div>
+                </details>
+              </section>
             </div>
           </TabsContent>
 
