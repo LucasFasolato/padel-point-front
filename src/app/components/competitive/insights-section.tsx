@@ -12,7 +12,7 @@ interface InsightsSectionProps {
   mode?: InsightsMode;
 }
 
-export function InsightsSection({ timeframe = 'season', mode = 'ALL' }: InsightsSectionProps) {
+export function InsightsSection({ timeframe = 'CURRENT_SEASON', mode = 'ALL' }: InsightsSectionProps) {
   const router = useRouter();
   const { data, isLoading, isError } = useInsights(timeframe, mode);
 

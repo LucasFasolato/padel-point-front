@@ -207,7 +207,7 @@ export interface RankingQueryParams {
 
 // ── Player Insights ───────────────────────────────────────────────────────────
 
-export type InsightsTimeframe = 'week' | 'month' | 'season';
+export type InsightsTimeframe = 'LAST_30D' | 'CURRENT_SEASON';
 export type InsightsMode = 'COMPETITIVE' | 'FRIENDLY' | 'ALL';
 
 export interface PlayerInsights {
