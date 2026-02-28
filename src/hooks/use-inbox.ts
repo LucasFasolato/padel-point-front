@@ -7,6 +7,12 @@ import type { AppNotification } from '@/types/notifications';
 /** Notification types routed to the "Ligas" (invites) tab */
 const INVITE_TYPES = new Set<string>([NOTIFICATION_TYPES.LEAGUE_INVITE_RECEIVED]);
 
+/** Unread first, then descending by date */
+function sortByUnreadThenNewest(a: AppNotification, b: AppNotification): number {
+  if (a.read !== b.read) return a.read ? 1 : -1;
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+}
+
 export interface InboxSectionState<T> {
   items: T[];
   isLoading: boolean;
@@ -33,8 +39,8 @@ export function useInbox(): UseInboxResult {
   const notificationsQ = useNotifications(50);
 
   const allNotifs = notificationsQ.data ?? [];
-  const inviteItems = allNotifs.filter((n) => INVITE_TYPES.has(n.type));
-  const alertItems = allNotifs.filter((n) => !INVITE_TYPES.has(n.type));
+  const inviteItems = allNotifs.filter((n) => INVITE_TYPES.has(n.type)).sort(sortByUnreadThenNewest);
+  const alertItems = allNotifs.filter((n) => !INVITE_TYPES.has(n.type)).sort(sortByUnreadThenNewest);
 
   return {
     intents: {

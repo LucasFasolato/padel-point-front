@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -21,6 +21,7 @@ import { useChallengeActions } from '@/hooks/use-challenges';
 import {
   useAcceptNotificationInvite,
   useDeclineNotificationInvite,
+  useMarkAllRead,
   useMarkRead,
 } from '@/hooks/use-notifications';
 import { NOTIFICATION_TYPES } from '@/types/notifications';
@@ -149,10 +150,15 @@ function InboxItemRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-semibold leading-snug text-slate-900">
+          <p
+            className={cn(
+              'text-sm leading-snug text-slate-900',
+              unread ? 'font-bold' : 'font-semibold'
+            )}
+          >
             {unread && (
               <span
-                className="mr-1.5 inline-block h-2 w-2 translate-y-[-1px] rounded-full bg-[#0E7C66]"
+                className="mr-1.5 inline-block h-2 w-2 translate-y-[-1px] shrink-0 rounded-full bg-[#0E7C66]"
                 aria-label="No leída"
               />
             )}
@@ -364,9 +370,13 @@ function InvitesTab({
 function AlertsTab({
   section,
   onClickAlert,
+  onMarkAllRead,
+  isMarkingAllRead,
 }: {
   section: InboxSectionState<AppNotification>;
   onClickAlert: (notif: AppNotification) => void;
+  onMarkAllRead: () => void;
+  isMarkingAllRead: boolean;
 }) {
   if (section.isLoading) return <SectionSkeleton />;
   if (section.isError) return <SectionErrorCard onRetry={section.refetch} />;
@@ -380,8 +390,22 @@ function AlertsTab({
     );
   }
 
+  const hasUnread = section.items.some((n) => !n.read);
+
   return (
     <div className="space-y-3">
+      {hasUnread && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onMarkAllRead}
+            disabled={isMarkingAllRead}
+            className="min-h-[44px] px-3 py-1.5 text-xs font-semibold text-[#0E7C66] transition-colors hover:text-[#0B6B58] disabled:opacity-50"
+          >
+            {isMarkingAllRead ? 'Marcando…' : 'Marcar todo como leído'}
+          </button>
+        </div>
+      )}
       {section.items.map((notif) => {
         const { Icon, iconBg, iconColor } = getAlertConfig(notif.type);
         const timeAgo = formatDistanceToNow(new Date(notif.createdAt), {
@@ -421,12 +445,14 @@ export default function InboxPage() {
   const [activeTab, setActiveTab] = useState<TabId>('desafios');
   const [actingChallengeId, setActingChallengeId] = useState<string | null>(null);
   const [actedNotifIds, setActedNotifIds] = useState<Set<string>>(new Set());
+  const lastMarkAllReadAtRef = useRef(0);
 
   const inbox = useInbox();
   const { acceptDirect, rejectDirect } = useChallengeActions();
   const acceptInvite = useAcceptNotificationInvite();
   const declineInvite = useDeclineNotificationInvite();
   const markRead = useMarkRead();
+  const markAllRead = useMarkAllRead();
 
   const tabCounts: Record<TabId, number> = {
     desafios: inbox.intents.items.filter(isRenderableIntent).length,
@@ -486,6 +512,13 @@ export default function InboxPage() {
   const handleAlertClick = (notif: AppNotification) => {
     if (!notif.read) markRead.mutate(notif.id);
     if (notif.link) router.push(notif.link);
+  };
+
+  const handleMarkAllRead = () => {
+    const now = Date.now();
+    if (now - lastMarkAllReadAtRef.current < 500) return;
+    lastMarkAllReadAtRef.current = now;
+    markAllRead.mutate();
   };
 
   return (
@@ -549,7 +582,12 @@ export default function InboxPage() {
           />
         )}
         {activeTab === 'alertas' && (
-          <AlertsTab section={inbox.alerts} onClickAlert={handleAlertClick} />
+          <AlertsTab
+            section={inbox.alerts}
+            onClickAlert={handleAlertClick}
+            onMarkAllRead={handleMarkAllRead}
+            isMarkingAllRead={markAllRead.isPending}
+          />
         )}
       </div>
     </>

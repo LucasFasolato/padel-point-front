@@ -21,7 +21,7 @@ export function PublicTopBar({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { data: unreadCount } = useUnreadCount();
+  const { data: unreadCount } = useUnreadCount({ enabled: showNotifications });
 
   const onBack = () => {
     // Si me pasaste un backHref y no es el mismo path actual, uso eso

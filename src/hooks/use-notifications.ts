@@ -9,6 +9,81 @@ const KEYS = {
   unread: ['notifications', 'unread-count'] as const,
 };
 
+const DEFAULT_NOTIFICATION_LIMIT = 50;
+
+type NotificationListSnapshots = Array<[readonly unknown[], AppNotification[] | undefined]>;
+type NotificationMutationContext = {
+  prevLists: NotificationListSnapshots;
+  prevCount: number | undefined;
+};
+
+function countUnread(items: AppNotification[]): number {
+  return items.reduce((acc, item) => (item.read ? acc : acc + 1), 0);
+}
+
+function getNotificationListSnapshots(queryClient: ReturnType<typeof useQueryClient>) {
+  return queryClient.getQueriesData<AppNotification[]>({
+    queryKey: KEYS.list,
+    exact: false,
+  });
+}
+
+function rollbackNotificationLists(
+  queryClient: ReturnType<typeof useQueryClient>,
+  snapshots: NotificationListSnapshots
+) {
+  for (const [key, value] of snapshots) {
+    queryClient.setQueryData(key, value);
+  }
+}
+
+function markNotificationAsReadInLists(
+  queryClient: ReturnType<typeof useQueryClient>,
+  id: string
+): boolean {
+  let changed = false;
+
+  queryClient.setQueriesData<AppNotification[]>(
+    { queryKey: KEYS.list, exact: false },
+    (old) => {
+      if (!Array.isArray(old)) return old;
+
+      let localChange = false;
+      const next = old.map((item) => {
+        if (item.id === id && !item.read) {
+          localChange = true;
+          changed = true;
+          return { ...item, read: true };
+        }
+        return item;
+      });
+
+      return localChange ? next : old;
+    }
+  );
+
+  return changed;
+}
+
+function markAllNotificationsAsReadInLists(
+  queryClient: ReturnType<typeof useQueryClient>
+): boolean {
+  let changed = false;
+
+  queryClient.setQueriesData<AppNotification[]>(
+    { queryKey: KEYS.list, exact: false },
+    (old) => {
+      if (!Array.isArray(old)) return old;
+      if (!old.some((item) => !item.read)) return old;
+
+      changed = true;
+      return old.map((item) => (item.read ? item : { ...item, read: true }));
+    }
+  );
+
+  return changed;
+}
+
 export function useNotifications(limit: number = 50) {
   return useQuery({
     queryKey: [...KEYS.list, limit],
@@ -17,10 +92,34 @@ export function useNotifications(limit: number = 50) {
   });
 }
 
-export function useUnreadCount() {
+export function useUnreadCount(options?: { enabled?: boolean; limit?: number }) {
+  const queryClient = useQueryClient();
+  const limit = options?.limit ?? DEFAULT_NOTIFICATION_LIMIT;
+
   return useQuery({
     queryKey: KEYS.unread,
-    queryFn: () => notificationService.getUnreadCount(),
+    enabled: options?.enabled ?? true,
+    queryFn: async () => {
+      const exactList = queryClient.getQueryData<AppNotification[]>([...KEYS.list, limit]);
+      if (Array.isArray(exactList)) {
+        return countUnread(exactList);
+      }
+
+      const cachedList = queryClient
+        .getQueriesData<AppNotification[]>({ queryKey: KEYS.list, exact: false })
+        .find(([, value]) => Array.isArray(value))?.[1];
+      if (Array.isArray(cachedList)) {
+        return countUnread(cachedList);
+      }
+
+      const fetched = await queryClient.fetchQuery({
+        queryKey: [...KEYS.list, limit],
+        queryFn: () => notificationService.list(limit),
+        staleTime: 1000 * 60 * 2,
+      });
+
+      return countUnread(Array.isArray(fetched) ? fetched : []);
+    },
     staleTime: 1000 * 30,
     refetchInterval: 1000 * 60, // polling fallback: every 60s
     placeholderData: 0,
@@ -34,29 +133,22 @@ export function useMarkRead() {
   return useMutation({
     mutationFn: (id: string) => notificationService.markRead(id),
     onMutate: async (id) => {
-      // Optimistic: mark item as read in list cache
       await queryClient.cancelQueries({ queryKey: KEYS.list });
       await queryClient.cancelQueries({ queryKey: KEYS.unread });
 
-      const prevList = queryClient.getQueryData<AppNotification[]>([...KEYS.list, 50]);
+      const prevLists = getNotificationListSnapshots(queryClient);
       const prevCount = queryClient.getQueryData<number>(KEYS.unread);
+      const changed = markNotificationAsReadInLists(queryClient, id);
 
-      if (Array.isArray(prevList)) {
-        queryClient.setQueryData<AppNotification[]>(
-          [...KEYS.list, 50],
-          prevList.map((n) => (n.id === id ? { ...n, read: true } : n))
-        );
-      }
-      if (typeof prevCount === 'number' && prevCount > 0) {
+      if (changed && typeof prevCount === 'number' && prevCount > 0) {
         queryClient.setQueryData<number>(KEYS.unread, prevCount - 1);
       }
 
-      return { prevList, prevCount };
+      return { prevLists, prevCount } satisfies NotificationMutationContext;
     },
     onError: (_err, _id, context) => {
-      // Rollback
-      if (Array.isArray(context?.prevList)) {
-        queryClient.setQueryData([...KEYS.list, 50], context.prevList);
+      if (context?.prevLists) {
+        rollbackNotificationLists(queryClient, context.prevLists);
       }
       if (typeof context?.prevCount === 'number') {
         queryClient.setQueryData(KEYS.unread, context.prevCount);
@@ -78,22 +170,19 @@ export function useMarkAllRead() {
       await queryClient.cancelQueries({ queryKey: KEYS.list });
       await queryClient.cancelQueries({ queryKey: KEYS.unread });
 
-      const prevList = queryClient.getQueryData<AppNotification[]>([...KEYS.list, 50]);
+      const prevLists = getNotificationListSnapshots(queryClient);
       const prevCount = queryClient.getQueryData<number>(KEYS.unread);
+      const changed = markAllNotificationsAsReadInLists(queryClient);
 
-      if (Array.isArray(prevList)) {
-        queryClient.setQueryData<AppNotification[]>(
-          [...KEYS.list, 50],
-          prevList.map((n) => ({ ...n, read: true }))
-        );
+      if (changed) {
+        queryClient.setQueryData<number>(KEYS.unread, 0);
       }
-      queryClient.setQueryData<number>(KEYS.unread, 0);
 
-      return { prevList, prevCount };
+      return { prevLists, prevCount } satisfies NotificationMutationContext;
     },
     onError: (_err, _vars, context) => {
-      if (Array.isArray(context?.prevList)) {
-        queryClient.setQueryData([...KEYS.list, 50], context.prevList);
+      if (context?.prevLists) {
+        rollbackNotificationLists(queryClient, context.prevLists);
       }
       if (typeof context?.prevCount === 'number') {
         queryClient.setQueryData(KEYS.unread, context.prevCount);
@@ -123,24 +212,18 @@ export function useAcceptNotificationInvite() {
       await leagueService.acceptInvite(inviteId);
     },
     onMutate: async ({ notificationId }) => {
-      // Optimistically mark as read + decrement count
       await queryClient.cancelQueries({ queryKey: KEYS.list });
       await queryClient.cancelQueries({ queryKey: KEYS.unread });
 
-      const prevList = queryClient.getQueryData<AppNotification[]>([...KEYS.list, 50]);
+      const prevLists = getNotificationListSnapshots(queryClient);
       const prevCount = queryClient.getQueryData<number>(KEYS.unread);
+      const changed = markNotificationAsReadInLists(queryClient, notificationId);
 
-      if (Array.isArray(prevList)) {
-        queryClient.setQueryData<AppNotification[]>(
-          [...KEYS.list, 50],
-          prevList.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
-        );
-      }
-      if (typeof prevCount === 'number' && prevCount > 0) {
+      if (changed && typeof prevCount === 'number' && prevCount > 0) {
         queryClient.setQueryData<number>(KEYS.unread, prevCount - 1);
       }
 
-      return { prevList, prevCount };
+      return { prevLists, prevCount } satisfies NotificationMutationContext;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEYS.list });
@@ -149,9 +232,8 @@ export function useAcceptNotificationInvite() {
       toast.success('¡Te uniste a la liga!');
     },
     onError: (_err, _vars, context) => {
-      // Rollback optimistic update
-      if (Array.isArray(context?.prevList)) {
-        queryClient.setQueryData([...KEYS.list, 50], context.prevList);
+      if (context?.prevLists) {
+        rollbackNotificationLists(queryClient, context.prevLists);
       }
       if (typeof context?.prevCount === 'number') {
         queryClient.setQueryData(KEYS.unread, context.prevCount);
@@ -176,20 +258,15 @@ export function useDeclineNotificationInvite() {
       await queryClient.cancelQueries({ queryKey: KEYS.list });
       await queryClient.cancelQueries({ queryKey: KEYS.unread });
 
-      const prevList = queryClient.getQueryData<AppNotification[]>([...KEYS.list, 50]);
+      const prevLists = getNotificationListSnapshots(queryClient);
       const prevCount = queryClient.getQueryData<number>(KEYS.unread);
+      const changed = markNotificationAsReadInLists(queryClient, notificationId);
 
-      if (Array.isArray(prevList)) {
-        queryClient.setQueryData<AppNotification[]>(
-          [...KEYS.list, 50],
-          prevList.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
-        );
-      }
-      if (typeof prevCount === 'number' && prevCount > 0) {
+      if (changed && typeof prevCount === 'number' && prevCount > 0) {
         queryClient.setQueryData<number>(KEYS.unread, prevCount - 1);
       }
 
-      return { prevList, prevCount };
+      return { prevLists, prevCount } satisfies NotificationMutationContext;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEYS.list });
@@ -197,8 +274,8 @@ export function useDeclineNotificationInvite() {
       toast.success('Invitación rechazada.');
     },
     onError: (_err, _vars, context) => {
-      if (Array.isArray(context?.prevList)) {
-        queryClient.setQueryData([...KEYS.list, 50], context.prevList);
+      if (context?.prevLists) {
+        rollbackNotificationLists(queryClient, context.prevLists);
       }
       if (typeof context?.prevCount === 'number') {
         queryClient.setQueryData(KEYS.unread, context.prevCount);
