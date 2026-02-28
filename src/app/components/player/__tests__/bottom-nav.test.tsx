@@ -37,9 +37,9 @@ describe('BottomNav', () => {
     expect(screen.getByText('Inicio').closest('a')).toHaveAttribute('href', '/competitive');
   });
 
-  it('Ranking links to /ranking', () => {
+  it('Ranking links to /competitive/rankings', () => {
     render(<BottomNav />);
-    expect(screen.getByText('Ranking').closest('a')).toHaveAttribute('href', '/ranking');
+    expect(screen.getByText('Ranking').closest('a')).toHaveAttribute('href', '/competitive/rankings');
   });
 
   it('Ligas links to /leagues', () => {

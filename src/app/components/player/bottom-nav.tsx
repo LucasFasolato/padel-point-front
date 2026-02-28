@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 const TABS = [
   { name: 'Inicio', href: '/competitive', icon: Home },
-  { name: 'Ranking', href: '/ranking', icon: BarChart2 },
+  { name: 'Ranking', href: '/competitive/rankings', icon: BarChart2 },
   { name: 'Ligas', href: '/leagues', icon: Users },
   { name: 'Perfil', href: '/me/profile', icon: UserCircle },
 ] as const;
