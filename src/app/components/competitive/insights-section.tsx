@@ -17,7 +17,8 @@ export function InsightsSection({ timeframe = 'CURRENT_SEASON', mode = 'ALL' }: 
   const { data, isLoading, isError } = useInsights(timeframe, mode);
 
   if (isLoading) return <InsightsSkeleton />;
-  if (isError || !data) return null;
+  if (isError) return null;
+  if (!data) return null;
 
   const eloDelta = data.eloDelta ?? 0;
   const eloDeltaPos = eloDelta > 0;
