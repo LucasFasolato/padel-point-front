@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MapPin, X } from 'lucide-react';
 import { CategoryBadge } from '@/app/components/competitive/category-badge';
@@ -10,6 +10,7 @@ import { Skeleton } from '@/app/components/ui/skeleton';
 import { useRivalSuggestions } from '@/hooks/use-rival-suggestions';
 import { useCreateDirectChallenge } from '@/hooks/use-challenges';
 import { useMyPlayerProfile } from '@/hooks/use-player-profile';
+import { useCompetitiveProfile } from '@/hooks/use-competitive-profile';
 import { cn } from '@/lib/utils';
 import type { MatchType } from '@/types/competitive';
 import type { RivalItem } from '@/services/competitive-service';
@@ -17,12 +18,18 @@ import type { RivalItem } from '@/services/competitive-service';
 // ── Scope filter ──────────────────────────────────────────────────────────────
 
 type ScopeKey = 'city' | 'province' | 'country' | 'all';
+type OrderKey = 'elo' | 'activity';
 
 const SCOPE_LABELS: Record<ScopeKey, string> = {
   city: 'Mi ciudad',
   province: 'Mi provincia',
   country: 'Mi país',
   all: 'Global',
+};
+
+const ORDER_LABELS: Record<OrderKey, string> = {
+  elo: 'Cerca de tu ELO',
+  activity: 'Más activos',
 };
 
 function buildLocationParams(
@@ -43,12 +50,23 @@ function buildLocationParams(
   }
 }
 
+function buildMicrofact(rival: RivalItem): string | null {
+  const count = rival.matches30d ?? 0;
+  if (count > 0) {
+    return `${count} ${count === 1 ? 'partido' : 'partidos'} · últ. 30 días`;
+  }
+  if ((rival.momentum30d ?? 0) > 0) return 'Activo recientemente';
+  return null;
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DiscoverPage() {
   const router = useRouter();
 
   const [scope, setScope] = useState<ScopeKey>('city');
+  const [order, setOrder] = useState<OrderKey>('elo');
+  const [sameCat, setSameCat] = useState(true);
   const [challengeTarget, setChallengeTarget] = useState<RivalItem | null>(null);
   const [matchMode, setMatchMode] = useState<MatchType>('COMPETITIVE');
   const [message, setMessage] = useState('');
@@ -56,15 +74,35 @@ export default function DiscoverPage() {
 
   const profileQuery = useMyPlayerProfile();
   const profile = profileQuery.data;
+  const compProfileQuery = useCompetitiveProfile();
+  const myElo = compProfileQuery.data?.elo;
 
   const locationParams = buildLocationParams(scope, profile);
 
   const rivalsQuery = useRivalSuggestions(
-    { limit: 20, ...locationParams },
+    { limit: 20, ...locationParams, sameCategory: sameCat },
     { enabled: !profileQuery.isLoading }
   );
 
-  const rivals = rivalsQuery.data?.items ?? [];
+  const rawRivals = rivalsQuery.data?.items ?? [];
+
+  const rivals = useMemo(() => {
+    if (!rawRivals.length) return rawRivals;
+    if (order === 'activity') {
+      return [...rawRivals].sort(
+        (a, b) =>
+          (b.matches30d ?? 0) - (a.matches30d ?? 0) ||
+          (b.momentum30d ?? 0) - (a.momentum30d ?? 0)
+      );
+    }
+    // 'elo': closest ELO gap first
+    if (myElo != null) {
+      return [...rawRivals].sort(
+        (a, b) => Math.abs(a.elo - myElo) - Math.abs(b.elo - myElo)
+      );
+    }
+    return rawRivals;
+  }, [rawRivals, order, myElo]);
 
   const createChallenge = useCreateDirectChallenge();
 
@@ -101,9 +139,9 @@ export default function DiscoverPage() {
     <>
       <PublicTopBar title="Descubrí rivales" backHref="/competitive" />
 
-      <div className="space-y-4 px-4 py-4">
+      <div className="space-y-3 px-4 py-4">
         {/* ── Scope filter pills ── */}
-        <div className="flex gap-2 overflow-x-auto pb-0.5">
+        <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none]">
           {(Object.keys(SCOPE_LABELS) as ScopeKey[]).map((key) => (
             <button
               key={key}
@@ -119,6 +157,44 @@ export default function DiscoverPage() {
               {SCOPE_LABELS[key]}
             </button>
           ))}
+        </div>
+
+        {/* ── Order + Category chips ── */}
+        <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none]">
+          {(Object.keys(ORDER_LABELS) as OrderKey[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setOrder(key)}
+              className={cn(
+                'shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors',
+                order === key
+                  ? 'bg-slate-800 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              )}
+            >
+              {ORDER_LABELS[key]}
+            </button>
+          ))}
+
+          <span className="flex shrink-0 items-center px-1 text-slate-300" aria-hidden>
+            ·
+          </span>
+
+          {/* Category toggle */}
+          <button
+            type="button"
+            onClick={() => setSameCat((v) => !v)}
+            aria-pressed={sameCat}
+            className={cn(
+              'shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors',
+              sameCat
+                ? 'bg-[#0E7C66]/10 text-[#0E7C66] ring-1 ring-inset ring-[#0E7C66]/30'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            )}
+          >
+            Mi categoría
+          </button>
         </div>
 
         {/* ── Location context ── */}
@@ -221,6 +297,8 @@ function CandidateRow({
     .filter(Boolean)
     .join(', ');
 
+  const microfact = buildMicrofact(rival);
+
   return (
     <div className="flex items-center gap-3 px-4 py-3">
       {/* Avatar */}
@@ -231,13 +309,34 @@ function CandidateRow({
         {initials}
       </div>
 
-      {/* Name + location */}
+      {/* Name + category + location + microfact */}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-900">{rival.displayName}</p>
-        {location && (
-          <div className="mt-0.5 flex items-center gap-1">
-            <MapPin size={11} className="shrink-0 text-slate-400" />
-            <p className="truncate text-xs text-slate-400">{location}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="truncate text-sm font-semibold text-slate-900">{rival.displayName}</p>
+          {rival.category != null && (
+            <CategoryBadge
+              category={rival.category as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8}
+              size="sm"
+            />
+          )}
+        </div>
+
+        {(location || microfact) && (
+          <div className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-slate-400">
+            {location && (
+              <>
+                <MapPin size={11} className="shrink-0" />
+                <span className="truncate">{location}</span>
+              </>
+            )}
+            {location && microfact && (
+              <span className="shrink-0 text-slate-300" aria-hidden>
+                ·
+              </span>
+            )}
+            {microfact && (
+              <span className="shrink-0 font-medium text-emerald-600">{microfact}</span>
+            )}
           </div>
         )}
       </div>
@@ -257,7 +356,7 @@ function CandidateRow({
         className={cn(
           'flex min-h-[44px] shrink-0 items-center rounded-xl px-4 text-xs font-bold transition-all active:scale-[0.97]',
           sent
-            ? 'bg-slate-100 text-slate-400 cursor-default'
+            ? 'cursor-default bg-slate-100 text-slate-400'
             : 'bg-[#0E7C66] text-white hover:bg-[#0B6B58]'
         )}
       >
@@ -421,8 +520,11 @@ function DiscoverSkeleton() {
           <div key={i} className="flex items-center gap-3 px-4 py-3">
             <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
             <div className="flex-1 space-y-1.5">
-              <Skeleton className="h-3.5 w-36 rounded" />
-              <Skeleton className="h-3 w-24 rounded" />
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-3.5 w-32 rounded" />
+                <Skeleton className="h-4 w-10 rounded-full" />
+              </div>
+              <Skeleton className="h-3 w-44 rounded" />
             </div>
             <Skeleton className="h-6 w-14 rounded-full" />
             <Skeleton className="h-11 w-[84px] rounded-xl" />
