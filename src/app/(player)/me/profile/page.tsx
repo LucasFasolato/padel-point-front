@@ -27,6 +27,7 @@ import {
 } from '@/hooks/use-player-profile';
 import { useCompetitiveProfile } from '@/hooks/use-competitive-profile';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
+import { PageShell } from '@/app/components/shell/page-shell';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { Button } from '@/app/components/ui/button';
 import { Card } from '@/app/components/ui/card';
@@ -414,33 +415,35 @@ export default function ProfilePage() {
 
       {/* ── Loading ── */}
       {loading ? (
-        <div className="space-y-4 px-4 py-6">
+        <PageShell className="space-y-4 py-6">
           <div className="flex justify-center py-2">
             <Skeleton className="h-20 w-20 rounded-full" />
           </div>
           <Skeleton className="h-52 w-full rounded-2xl" />
           <Skeleton className="h-44 w-full rounded-2xl" />
           <Skeleton className="h-32 w-full rounded-2xl" />
-        </div>
+        </PageShell>
       ) : accountError ? (
         /* ── Error ── */
-        <div className="mx-4 mt-8 flex flex-col items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50 px-5 py-8 text-center">
-          <AlertTriangle size={28} className="text-rose-400" />
-          <div>
-            <p className="text-sm font-semibold text-rose-700">
-              No pudimos cargar tu perfil
-            </p>
-            <p className="mt-0.5 text-xs text-rose-500">
-              Revisá tu conexión e intentá de nuevo.
-            </p>
+        <PageShell className="pt-8">
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50 px-5 py-8 text-center">
+            <AlertTriangle size={28} className="text-rose-400" />
+            <div>
+              <p className="text-sm font-semibold text-rose-700">
+                No pudimos cargar tu perfil
+              </p>
+              <p className="mt-0.5 text-xs text-rose-500">
+                Revisá tu conexión e intentá de nuevo.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => void refetchAccount()}>
+              Reintentar
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={() => void refetchAccount()}>
-            Reintentar
-          </Button>
-        </div>
+        </PageShell>
       ) : (
         /* ── Main content ── */
-        <div className="space-y-4 px-4 py-5">
+        <PageShell className="space-y-4 py-5">
           {/* Avatar */}
           <div className="flex flex-col items-center gap-2 py-2">
             <div className="relative">
@@ -601,12 +604,12 @@ export default function ProfilePage() {
               Cerrar sesión
             </button>
           </Card>
-        </div>
+        </PageShell>
       )}
 
       {/* ── Sticky save bar (sits above BottomNav) ── */}
       {!loading && !accountError && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-md bg-white/95 shadow-[0_-1px_0_0_theme(colors.slate.200)] backdrop-blur-sm">
+        <div className="fixed bottom-0 left-0 right-0 z-40 mx-auto max-w-[420px] bg-white/95 shadow-[0_-1px_0_0_theme(colors.slate.200)] backdrop-blur-sm">
           <div className="px-4 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px)+0.75rem)] pt-3">
             <Button fullWidth onClick={() => void handleSave()} disabled={!isDirty} loading={saving}>
               Guardar cambios

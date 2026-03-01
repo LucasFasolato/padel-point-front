@@ -7,6 +7,7 @@ import { useMyPlayerProfile } from '@/hooks/use-player-profile';
 import { useUnreadCount } from '@/hooks/use-notifications';
 import { useAuthStore } from '@/store/auth-store';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
+import { PageShell } from '@/app/components/shell/page-shell';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { Button } from '@/app/components/ui/button';
 import { Card } from '@/app/components/ui/card';
@@ -66,7 +67,7 @@ export default function MyAccountPage() {
     <div className="min-h-screen bg-slate-50">
       <PublicTopBar title="Mi cuenta" />
 
-      <div className="space-y-4 px-4 py-4 pb-24">
+      <PageShell className="space-y-4 py-4">
         {/* 1 — Identity card */}
         {loading ? (
           <Skeleton className="h-44 w-full rounded-2xl" />
@@ -142,7 +143,7 @@ export default function MyAccountPage() {
             </div>
           </Card>
         )}
-      </div>
+      </PageShell>
     </div>
   );
 }

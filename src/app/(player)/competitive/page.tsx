@@ -23,6 +23,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
+import { PageShell } from '@/app/components/shell/page-shell';
 import { COMPETITIVE_ELO_HISTORY_DEFAULT_LIMIT } from '@/lib/competitive-constants';
 import { formatEloChange, getEloHistoryReasonLabel } from '@/lib/competitive-utils';
 import { isCompetitiveIntentRenderable } from '@/lib/intents';
@@ -128,7 +129,7 @@ export default function CompetitivePage() {
     <>
       <PublicTopBar title="Competitivo" showNotifications />
 
-      <div className="space-y-4 px-4 py-4">
+      <PageShell className="space-y-4 py-4">
         {/* ── Primary & secondary CTAs ── */}
         <section className="space-y-2.5">
           <button
@@ -352,7 +353,7 @@ export default function CompetitivePage() {
             <span className="text-2xl font-extrabold tracking-tight text-amber-900">{peakElo}</span>
           </div>
         </div>
-      </div>
+      </PageShell>
 
       <IntentComposerSheet
         isOpen={composerOpen}
@@ -431,7 +432,7 @@ function PendingIntentsErrorCard({ onRetry }: { onRetry: () => void }) {
 
 function CompetitivePageSkeleton() {
   return (
-    <div className="space-y-4 px-4 py-4">
+    <PageShell className="space-y-4 py-4">
       <div className="space-y-2.5">
         <Skeleton className="h-14 w-full rounded-2xl" />
         <Skeleton className="h-12 w-full rounded-2xl" />
@@ -448,7 +449,7 @@ function CompetitivePageSkeleton() {
         </div>
       </div>
       <Skeleton className="h-48 w-full rounded-2xl" />
-    </div>
+    </PageShell>
   );
 }
 

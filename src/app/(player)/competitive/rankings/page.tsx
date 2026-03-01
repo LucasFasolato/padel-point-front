@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { BarChart2, MapPin } from 'lucide-react';
 import { PublicTopBar } from '@/app/components/public/public-topbar';
+import { PageShell } from '@/app/components/shell/page-shell';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { useRankings } from '@/hooks/use-rankings';
 import { useCompetitiveProfile } from '@/hooks/use-competitive-profile';
@@ -159,7 +160,7 @@ function CategorySelector({
   return (
     <div>
       <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-        Categoria
+        Categoría
       </p>
       <div className="-mx-4 overflow-x-auto px-4 pb-0.5">
         <div className="flex min-w-max gap-1.5">
@@ -177,7 +178,7 @@ function CategorySelector({
                   'min-h-[40px] whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-semibold transition-all',
                   isActive
                     ? 'bg-slate-900 text-white shadow-sm'
-                    : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800',
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800',
                 )}
               >
                 {tab.label}
@@ -333,7 +334,7 @@ export default function RankingsPage() {
     <>
       <PublicTopBar title="Rankings" backHref="/competitive" />
 
-      <div className="px-4 pb-24 pt-5 space-y-5">
+      <PageShell className="space-y-5 pt-5">
         <MyPositionCard
           entry={myEntry}
           scope={effectiveScope}
@@ -407,7 +408,7 @@ export default function RankingsPage() {
             </p>
           </div>
         )}
-      </div>
+      </PageShell>
     </>
   );
 }

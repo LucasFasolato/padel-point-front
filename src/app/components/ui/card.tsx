@@ -1,6 +1,45 @@
 import { ReactNode, ElementType } from 'react';
 import { cn } from '@/lib/utils';
 
+// ── CardHeader ────────────────────────────────────────────────────────────────
+
+interface CardHeaderProps {
+  /** Kicker label rendered in ALLCAPS tracking style */
+  label: string;
+  /** Optional icon chip rendered to the left of the label */
+  icon?: ReactNode;
+  /** Optional trailing action slot (e.g. a ghost button) */
+  action?: ReactNode;
+  className?: string;
+}
+
+/**
+ * CardHeader — kicker label + optional icon chip for Card sections.
+ *
+ * @example
+ * ```tsx
+ * <Card padding="lg">
+ *   <CardHeader label="Progreso" icon={<TrendingUp size={12} />} />
+ *   <EloChart />
+ * </Card>
+ * ```
+ */
+export function CardHeader({ label, icon, action, className }: CardHeaderProps) {
+  return (
+    <div className={cn('mb-3 flex items-center gap-2', className)}>
+      {icon && (
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+          {icon}
+        </span>
+      )}
+      <p className="flex-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+        {label}
+      </p>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
+  );
+}
+
 interface CardProps {
   children: ReactNode;
   className?: string;

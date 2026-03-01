@@ -53,10 +53,10 @@ export function ScopeSelector({
               type="button"
               onClick={() => onChange(opt.value)}
               className={cn(
-                'flex min-h-[44px] flex-1 flex-col items-center justify-center rounded-xl border px-3 py-2.5 transition-all',
+                'flex min-h-[44px] flex-1 flex-col items-center justify-center rounded-xl px-3 py-2.5 transition-all',
                 isActive
-                  ? 'border-[#0E7C66] bg-[#0E7C66] text-white shadow-sm'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50',
+                  ? 'bg-[#0E7C66] text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
               )}
             >
               <span className="text-sm font-bold leading-tight">{opt.label}</span>
