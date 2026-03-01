@@ -58,17 +58,31 @@ function useSafeQueryClient() {
   }
 }
 
+export type LeaguesErrorCode = 'UNAUTHORIZED' | 'SERVER' | null;
+
 /** List all leagues the current user belongs to. */
 export function useLeaguesList() {
-  return useQuery({
+  const query = useQuery({
     queryKey: KEYS.list,
     queryFn: () => leagueService.list(),
     staleTime: 1000 * 60,
-    retry: 1,
+    retry: (failureCount, error) => {
+      if (axios.isAxiosError(error) && error.response?.status === 401) return false;
+      return failureCount < 1;
+    },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10_000),
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
   });
+
+  let errorCode: LeaguesErrorCode = null;
+  if (query.error && axios.isAxiosError(query.error)) {
+    const status = query.error.response?.status;
+    if (status === 401) errorCode = 'UNAUTHORIZED';
+    else if (status !== undefined && status >= 500) errorCode = 'SERVER';
+  }
+
+  return { ...query, errorCode };
 }
 
 /** Fetch a single league with standings and members. */
